@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../calendar/calendar_math.dart';
@@ -76,6 +77,18 @@ class CalendarView extends Notifier<CalendarViewState> {
   @override
   CalendarViewState build() {
     final today = ref.watch(todayProvider);
+
+    // 每次状态变化打一行日志。**只在 debug 构建里**。
+    //
+    // 为什么值得常驻：日历的状态是三向耦合的（选中日期 / 可见月份 / 模式），
+    // 真机上出了问题很难从画面上看出是哪一步转错了。
+    // 有了这行，`adb logcat | grep CAL` 就能看到完整轨迹 ——
+    // 而且它也是 UI 自动化验证的唯一观察窗口
+    // （Flutter 画在 canvas 上，uiautomator 读不到界面文字）。
+    if (kDebugMode) {
+      listenSelf((prev, next) => debugPrint('[CAL] $prev -> $next'));
+    }
+
     return CalendarViewState(
       selectedDate: today,
       visibleMonth: normalizeMonth(today),
