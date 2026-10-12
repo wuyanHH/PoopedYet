@@ -1,26 +1,64 @@
 name: pooped_yet
-description: "A new Flutter project."
+description: "屙了么 PoopedYet —— 记录拉屎时间的安卓应用"
 publish_to: 'none'
+
+# versionName+versionCode。上架后 versionCode 只能增不能减。
 version: 0.1.0+1
 
 environment:
-  sdk: ^3.11.3
+  # 本机 Flutter 3.47.7 / Dart 3.13.5。
+  # 注意：flutter_riverpod >=3.4.1 要求 Dart >=3.12.0，所以这条约束不能往回降，
+  # 否则 riverpod 会被迫退回 3.3.2。
+  sdk: ^3.12.0
 
 dependencies:
-  drift: ^2.35.2
-  drift_flutter: ^0.3.1
   flutter:
     sdk: flutter
-  flutter_riverpod: ^3.3.2
-  intl: ^0.20.3
-  lucide_icons_flutter: ^3.1.25
+  # 中文界面与 Material 日期/时间选择器的本地化。
+  # 不配这个，补录页会突然冒出英文弹窗。
+  flutter_localizations:
+    sdk: flutter
+
+  # 状态管理。Riverpod 3 全线把 flutter_test / test 列为**运行时**依赖
+  # （为了 ProviderContainer.test()），会连带 analyzer、shelf 进依赖树。
+  # AOT 编译会 tree-shake 掉用不到的代码，实测不影响 release 构建，
+  # 但这确实是它上游的打包缺陷，升级时留意。
+  flutter_riverpod: ^3.4.3
+
+  # 本地数据库。SQLite，纯本地，不联网。
+  drift: ^2.35.2
+  drift_flutter: ^0.3.1
+
+  # 应用私有目录（用于数据库文件）
   path_provider: ^2.1.6
+
+  # 轻量设置项（首启提示条是否已关闭、每周起始日等）
   shared_preferences: ^2.5.6
+
+  # 日期格式化。**版本受 flutter_localizations 牵制**，它要什么就得给什么：
+  # Flutter 3.41.5 上它钉 intl 0.20.2，3.47.7 上改成 ^0.20.3。
+  # 两边对不上时 pub 会直接报解析失败，照提示改即可。
+  intl: ^0.20.3
+
+  # 图标。全部用 Lucide 矢量图标，禁止 emoji。MIT/ISC 许可，可商用。
+  lucide_icons_flutter: ^3.1.25
+
+  # 主键生成。虽然它是 riverpod 的传递依赖，但显式声明 ——
+  # 靠传递依赖迟早会因为它上游改依赖树而突然消失。
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
 
+  # Drift 的代码生成
+  drift_dev: ^2.35.1
+  build_runner: ^2.4.13
+
 flutter:
   uses-material-design: true
+
+  # 节假日数据打包进 APK。每年国务院发公告后需要更新，见 docs/review.md P2-4。
+  # assets:
+  #   - assets/holidays/

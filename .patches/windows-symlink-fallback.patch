@@ -1,0 +1,24 @@
+diff --git a/packages/flutter_tools/lib/src/flutter_plugins.dart b/packages/flutter_tools/lib/src/flutter_plugins.dart
+index 98b0dd74747..cb3bd4874dd 100644
+--- a/packages/flutter_tools/lib/src/flutter_plugins.dart
++++ b/packages/flutter_tools/lib/src/flutter_plugins.dart
+@@ -1142,6 +1142,19 @@ void _createPlatformPluginSymlinks(
+     try {
+       link.createSync(path);
+     } on FileSystemException catch (e) {
++      if (globals.platform.isWindows) {
++        final result = globals.processManager.runSync(<String>[
++          'cmd.exe',
++          '/c',
++          'mklink',
++          '/J',
++          link.path,
++          path,
++        ]);
++        if (result.exitCode == 0) {
++          continue;
++        }
++      }
+       handleSymlinkException(
+         e,
+         platform: globals.platform,

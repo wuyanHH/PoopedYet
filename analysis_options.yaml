@@ -1,1 +1,24 @@
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - "**/*.g.dart" # Drift 生成代码，不参与 lint
+
 include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # ---- 真实能抓到 bug 的 ----
+    # 忘了 await 一个 Future 是异步代码里最常见的静默失败。
+    # 这个项目里 ensureDefaultPooper / archivePooper 都是事务，漏 await 很难查。
+    unawaited_futures: true
+    # 禁止 print：发布版本里拖慢性能，而且容易把用户数据打进日志。
+    avoid_print: true
+    # switch 必须覆盖所有分支 —— 将来给记录状态加第五种时会被提醒。
+    exhaustive_cases: true
+
+    # ---- 一致性（不抓 bug，但让 diff 干净）----
+    require_trailing_commas: true
+    prefer_single_quotes: true
+    always_declare_return_types: true
+    directives_ordering: true
