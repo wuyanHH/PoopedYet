@@ -183,3 +183,33 @@ C:\Users\…\Pub\Cache\… and E:\Projects\PoopedYet\android
 ```powershell
 [Environment]::SetEnvironmentVariable('PUB_CACHE','E:\Development\pub-cache','User')
 ```
+
+---
+
+## 六、构建工具版本（暂不动）
+
+`flutter build apk --release` 会报三条**前瞻性**告警：
+
+```
+Gradle 8.14.0        -> 建议至少 9.1.0
+AGP 8.11.1           -> 建议至少 9.0.1
+Kotlin 2.2.20        -> 建议至少 2.3.20
+```
+
+**这三个版本就是 Flutter 3.47.7 模板的默认值**（模板里是 `{{gradleVersion}}` 占位符，
+由 flutter_tools 填充），不是我们写旧的。告警说的是"未来某个 Flutter 版本会不再支持"。
+
+**决定：暂不升级。** 理由：
+
+- 当前构建正常出包，升级三个版本是**同时**动 Gradle / AGP / Kotlin 三个大件，
+  AGP 8→9 还是有破坏性变更的大版本。
+- 本机没有连着安卓设备或模拟器，升级后**只能验证"能编译"，验证不了"能跑"**。
+  仅靠编译通过就动构建工具，风险收益不划算。
+
+**什么时候必须动**：Flutter 把最低要求提上去、构建开始失败时。
+届时按告警里给的路径改：Gradle 在 `android/gradle/wrapper/gradle-wrapper.properties`，
+AGP 和 Kotlin 在 `android/settings.gradle.kts` 的 `plugins` 块。
+
+注意 `android/gradle.properties` 里已经被 Flutter 自动加了
+`android.builtInKotlin=false` 和 `android.newDsl=false`，
+说明 Flutter 自己正在往 AGP 9 过渡 —— 跟着它的节奏走就行。

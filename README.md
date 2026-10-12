@@ -8,6 +8,7 @@
 
 ```
 docs/
+  environment.md       ★ 本机环境：Flutter 升级、镜像、SDK 补丁、Gradle 镜像
   review.md            ★ 自我审查：遗漏点、阻塞项、优化点
   tech-stack.md        技术栈 + 数据模型 + 记录状态机 + 16 页界面结构 + 打包方案
   naming.md            中英文名与包名的选择论证
@@ -29,6 +30,32 @@ docs/
 ```
 
 ## 当前状态
+
+### 已经有代码了（脚手架）
+
+```
+lib/
+  main.dart
+  src/
+    theme/tokens.dart            设计令牌 ThemeExtension（与视觉稿同源）+ WCAG 对比度计算
+    calendar/calendar_math.dart  日历日期数学（纯函数，零 Flutter 依赖）
+    data/tables.dart             Drift 表定义
+    data/database.dart           数据库 + ensureDefaultPooper + 索引
+    data/database.g.dart         Drift 生成（3539 行，不入 lint）
+test/
+  theme/tokens_contrast_test.dart     对比度护栏（含"旧值必须失败"的回归断言）
+  calendar/calendar_math_test.dart    2026 全年逐月 + 1900~2300 抽样
+  data/database_test.dart             归档 / 默认唯一性 / 外键 restrict / 状态机
+```
+
+`flutter analyze` 零问题，`flutter test` **60 个全过**，`flutter build apk --release` 能出包。
+
+三块基础设施里已经埋进了设计评审的结论：焦糖一色三分、日历行数按月份实算、
+归档而非删除、`endUnknown` 不挡住新记录。每一条都有对应的失败测试守着。
+
+环境怎么配的（Flutter 升级、镜像、SDK 补丁、Gradle 镜像）见 [docs/environment.md](docs/environment.md)。
+
+### 还没做的
 
 需求梳理 + 技术选型 + UI 规范 + 一轮自我审查已完成，视觉稿 **20 页**已出图。**暂未开始写代码。**
 
