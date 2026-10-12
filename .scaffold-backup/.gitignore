@@ -1,0 +1,30 @@
+# ---- Flutter / Dart ----
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+
+# ---- Android ----
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
+android/app/upload-keystore.jks
+*.apk
+*.aab
+
+# ---- 签名与密钥，绝不入库 ----
+**/*.keystore
+**/*.jks
+**/key.properties
+
+# ---- 本工具的临时产物 ----
+# .design/_*.html 是自检脚本的临时注入文件，用完即删；万一残留也不要提交
+.design/_*.html
+
+# 视觉稿 PNG 是要入库的（是交付物），不要忽略 .design/*.png
