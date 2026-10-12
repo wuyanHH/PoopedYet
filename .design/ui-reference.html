@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>屙了么 · UI 样式参考 v0.2</title>
+<style>
+@font-face{
+  font-family:'Smiley Sans';
+  src:url('fonts/smiley/SmileySans-Oblique.woff2') format('woff2'),
+      url('fonts/smiley/SmileySans-Oblique.ttf') format('truetype');
+  font-weight:400; font-style:normal; font-display:block;
+}
+
+:root{
+  --paper:#FAF5EC; --paper-deep:#F2E9DA;
+  --surface:#FFFFFF; --surface-2:#FFFCF6;
+  --ink:#2E2622; --ink-2:#6B5B4E; --ink-3:#756552; --ink-4:#9C8C74;
+  --line:#E9DDCA; --line-soft:#F2E9DA;
+  --brand:#C8783C;             /* 仅限 >=24px 大字 / 纯装饰填充 */
+  --brand-ink:#9A5219;         /* 焦糖色【文字】：纸面 5.38:1 */
+  --brand-fill:#A85F29;        /* 焦糖色【白字底】：白字 4.85:1 */
+  --brand-soft:#F7E5D2;
+  --off:#B03A2E; --off-soft:#F8E2DE;
+  --work:#4A7C8C; --work-soft:#E0EBEF;
+  --live:#3F7A57; --live-soft:#E1EDE5;
+  --danger:#C4453A;
+  --r-card:20px; --r-cell:13px; --r-sheet:28px;
+  --sh-1:0 1px 2px rgba(94,66,42,.05), 0 4px 12px rgba(94,66,42,.05);
+  --sh-2:0 2px 6px rgba(94,66,42,.07), 0 12px 28px rgba(94,66,42,.09);
+  --sh-3:0 -8px 40px rgba(94,66,42,.16);
+  --f-disp:'Smiley Sans','Noto Sans SC',sans-serif;
+  --f-body:'Noto Sans SC','Microsoft YaHei',sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+
+/* ---------- 矢量图标：全部走 Lucide，currentColor 驱动 ---------- */
+.ic{width:var(--s,16px);height:var(--s,16px);flex:none;display:block;
+    fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+body{
+  font-family:var(--f-body); color:var(--ink); background:var(--paper);
+  padding:48px 40px 72px; min-height:100vh; position:relative; overflow-x:hidden;
+}
+body::before{
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+  background:
+    radial-gradient(680px 420px at 8% -6%, rgba(200,120,60,.16), transparent 62%),
+    radial-gradient(620px 420px at 96% 104%, rgba(78,140,106,.12), transparent 62%);
+}
+body::after{
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.22; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+}
+.stage{position:relative; z-index:1; margin:0 auto; width:fit-content}
+
+/* ---------- 分组显示：由 JS 按 location.hash 显式切换。
+   不用 :has()/:target —— 在无头 Chrome 里行为不稳定，曾导致「全部 15 屏同时渲染」，
+   测量出来的高度是假值。显式 style.display 覆盖最可靠。 ---------- */
+.grp{display:none}
+
+/* ================= 顶部 ================= */
+.masthead{display:flex; align-items:flex-end; justify-content:space-between; gap:40px; margin-bottom:26px; flex-wrap:wrap}
+.brandmark{display:flex; align-items:center; gap:16px}
+.logo{
+  width:60px;height:60px;border-radius:19px;display:grid;place-items:center;
+  background:linear-gradient(150deg,#B05F2C,#9A5219); box-shadow:0 8px 20px rgba(168,95,41,.3);
+  font-family:var(--f-disp); font-size:36px; line-height:1; color:#fff; padding-bottom:4px;
+}
+.masthead h1{font-family:var(--f-disp); font-size:44px; letter-spacing:.02em; line-height:1.02}
+.masthead .sub{color:var(--ink-2); font-size:13.5px; margin-top:7px; letter-spacing:.06em}
+.meta-right{display:flex; gap:26px; align-items:flex-end}
+.swatches{display:flex; gap:9px}
+.sw{width:44px; text-align:center}
+.sw i{display:block;height:44px;border-radius:13px;border:1px solid rgba(94,66,42,.1); margin-bottom:7px}
+.sw span{font-size:10px; color:var(--ink-3); letter-spacing:.02em}
+.ver{font-family:var(--f-disp); font-size:13px; color:var(--ink-3); letter-spacing:.1em; padding-bottom:4px}
+
+/* ---------- 分组导航 ---------- */
+.nav{display:flex; gap:8px; margin-bottom:34px; flex-wrap:wrap}
+.nav a{
+  font-size:12.5px;font-weight:800;letter-spacing:.04em;text-decoration:none;color:var(--ink-2);
+  background:var(--surface); border:1px solid var(--line); padding:8px 16px; border-radius:99px;
+  display:flex; align-items:center; gap:7px;
+}
+.nav a:hover{border-color:var(--brand-ink); color:var(--brand-ink)}
+.nav a .n{font-family:var(--f-disp); color:var(--brand-ink); font-size:13px}
+
+/* ================= 手机 ================= */
+/* 视觉稿是固定并排的展板，不允许换行 —— 换行会让「一行放几台」变得不可预测，
+   出图脚本也就没法按实测尺寸定窗口。窗口宽度由出图脚本负责给够。 */
+.phones{display:flex; gap:38px; flex-wrap:nowrap; align-items:flex-start}
+.unit{display:flex; flex-direction:column; gap:15px}
+.unit>.cap{display:flex; align-items:center; gap:10px; padding-left:5px}
+.unit>.cap b{font-family:var(--f-disp); font-size:16.5px; letter-spacing:.04em; color:var(--ink)}
+.unit>.cap em{
+  font-style:normal; font-size:10.5px; letter-spacing:.1em; color:var(--brand-ink);
+  background:var(--brand-soft); padding:3px 9px; border-radius:99px; font-weight:700;
+}
+.phone{
+  width:400px; height:866px; border-radius:46px; padding:11px; position:relative; flex:none;
+  background:linear-gradient(165deg,#4A4038,#241E1A 60%);
+  box-shadow:0 30px 70px rgba(72,48,28,.26), 0 4px 12px rgba(72,48,28,.16), inset 0 0 0 1.5px rgba(255,255,255,.07);
+}
+.screen{
+  width:100%; height:100%; border-radius:36px; overflow:hidden; position:relative;
+  background:var(--paper); display:flex; flex-direction:column;
+}
+.statusbar{
+  height:32px; flex:none; display:flex; align-items:center; justify-content:space-between;
+  padding:0 22px 0 26px; font-size:12.5px; font-weight:700; color:var(--ink);
+}
+.statusbar .r{display:flex; gap:6px; align-items:center; opacity:.85}
+.statusbar .r svg{display:block}
+
+/* ================= 应用栏 ================= */
+.appbar{flex:none; padding:4px 18px 11px; display:flex; align-items:center; justify-content:space-between; gap:10px}
+.appbar h2{font-family:var(--f-disp); font-size:24px; letter-spacing:.03em}
+.appbar .tools{display:flex; gap:8px; align-items:center}
+.icobtn{
+  width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.78);
+  border:1px solid var(--line-soft); color:var(--ink-2);
+}
+.icobtn.plain{background:transparent; border-color:transparent}
+.title-mid{font-family:var(--f-disp); font-size:18px; letter-spacing:.04em}
+
+/* ================= 日历 ================= */
+.calcard{
+  flex:none; margin:0 10px; background:var(--surface); border-radius:var(--r-card);
+  box-shadow:var(--sh-1); border:1px solid rgba(233,221,202,.7); padding:13px 9px 10px;
+}
+.calhead{display:flex; align-items:center; justify-content:space-between; padding:0 4px 10px}
+.calhead .mtitle{display:flex; align-items:center; gap:8px}
+.calhead .mtitle b{font-family:var(--f-disp); font-size:19px; letter-spacing:.03em}
+.calhead .nav2{display:flex; gap:3px}
+.calhead .nav2 span{
+  width:26px;height:26px;border-radius:8px;background:var(--paper-deep);
+  display:grid;place-items:center;color:var(--ink-2);
+}
+.seg{display:flex; background:var(--paper-deep); border-radius:99px; padding:3px; gap:2px}
+.seg span{font-size:12px; font-weight:700; padding:4px 13px; border-radius:99px; color:var(--ink-3); letter-spacing:.05em}
+.seg span.on{background:var(--brand-fill); color:#fff; box-shadow:0 2px 6px rgba(168,95,41,.3)}
+
+.weekhd{display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:5px}
+.weekhd span{text-align:center; font-size:11px; font-weight:700; color:var(--ink-3); letter-spacing:.06em; padding-bottom:3px}
+.weekhd span.we{color:var(--brand-ink)}
+
+.grid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px}
+.cell{height:58px; border-radius:var(--r-cell); padding:3px 3px 2px; display:flex; flex-direction:column;
+      position:relative; overflow:hidden; min-width:0}
+.cell.dim .dnum{color:var(--ink-3); opacity:.5}
+.cell.dim .bdg{opacity:.4}
+.cell-top{display:flex; align-items:center; justify-content:space-between; gap:2px; margin-bottom:1px; min-height:16px}
+.dnum{font-size:14.5px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.02em; line-height:1; padding-left:1px}
+.cell.we .dnum{color:var(--brand-ink)}
+.tag{font-size:10px; font-weight:800; line-height:1; padding:2px 4px; border-radius:6px; flex:none; color:#fff}
+.tag.off{background:var(--off)}    /* 白字 6.01:1 */
+.tag.work{background:var(--work)}   /* 白字 4.61:1 */
+
+.cell-badges{display:flex; flex-direction:column; gap:2px; align-items:flex-start; min-width:0}
+.brow{display:flex; align-items:center; gap:2px; min-width:0; flex-wrap:nowrap}
+.bdg{display:flex; align-items:center; gap:2px; max-width:100%; flex:none}
+.bdg b{font-size:10px; font-weight:800; color:var(--ink-2); font-variant-numeric:tabular-nums; line-height:1}
+.bdg.more{font-size:9px; font-weight:800; color:var(--ink-3); padding-left:1px; white-space:nowrap; flex:none}
+
+.cell.today{box-shadow:inset 0 0 0 1.5px var(--brand); background:#FFFBF5}
+.cell.today .dnum{color:var(--brand-ink)}
+.cell.sel{background:var(--brand-fill); box-shadow:0 3px 10px rgba(168,95,41,.34)}
+.cell.sel .dnum{color:#fff}
+.cell.sel .bdg b{color:#fff}
+.cell.sel .bdg.more{color:#fff}
+.cell.sel .tag{background:#fff; color:var(--ink)}
+.cell.sel .tag.off{color:var(--off)}
+.cell.sel .tag.work{color:var(--work)}
+
+.wgrid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px}
+.wcell{border-radius:14px; padding:6px 3px 7px; display:flex; flex-direction:column; align-items:center; gap:3px;
+       background:var(--surface-2); border:1px solid var(--line-soft); min-height:126px}
+.wcell .dnum{font-size:16px; padding:0}
+.wcell .wday{font-size:9.5px; font-weight:700; color:var(--ink-3); letter-spacing:.05em}
+.wcell.today{box-shadow:inset 0 0 0 1.5px var(--brand); background:#FFFBF5}
+.wcell.today .dnum{color:var(--brand-ink)}
+.wcell.sel{background:var(--brand-fill); border-color:var(--brand-ink); box-shadow:0 3px 10px rgba(168,95,41,.34)}
+.wcell.sel .dnum,.wcell.sel .wday{color:#fff}
+.wcell.sel .bdg b{color:#fff}
+.wcell .cell-badges{align-items:center; width:100%; gap:3px}
+
+/* ---------- 日历快速切换 ---------- */
+/* 月份/周标题做成可点的按钮（带 ▾），点开年月选择器。
+   否则从 2026年2月 跳到 2024年8月要点 18 次 ‹ ›。 */
+.mtbtn{display:flex; align-items:center; gap:5px; background:transparent; border:none;
+       padding:2px 3px 2px 0; margin:0; color:var(--ink); border-radius:9px}
+.mtbtn b{font-family:var(--f-disp); font-size:19px; letter-spacing:.03em}
+.mtbtn .ic{color:var(--ink-3)}
+
+/* 「回到今天」放在日期栏，不放在日历头部：头部横向只剩 2px 余量放不下，
+   而这一行本来就在回答"现在看的是哪一天"。 */
+.daybar .r{display:flex; align-items:center; gap:8px}
+.todaybtn{display:flex; align-items:center; gap:4px; background:var(--brand-soft); color:var(--brand-ink);
+          border:none; border-radius:99px; padding:4px 9px; font-family:var(--f-disp);
+          font-size:11px; font-weight:800; letter-spacing:.05em}
+
+/* 年月选择器 */
+.ystrip{display:flex; gap:7px; overflow:hidden; padding:1px 0 3px}
+.ystrip .yr{flex:none; font-family:var(--f-disp); font-size:15px; letter-spacing:.04em;
+            padding:6px 12px; border-radius:11px; background:var(--paper-deep); color:var(--ink-2)}
+.ystrip .yr.on{background:var(--brand-fill); color:#fff}
+.mgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+.mgrid .mo{height:50px; border-radius:14px; background:var(--paper-deep); position:relative;
+           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+           font-family:var(--f-disp); font-size:15px; letter-spacing:.04em; color:var(--ink-2)}
+.mgrid .mo .dot{width:4px; height:4px; border-radius:50%; background:var(--ink-4)}
+.mgrid .mo.has .dot{background:var(--brand-ink)}
+.mgrid .mo.on{background:var(--brand-fill); color:#fff}
+.mgrid .mo.on .dot{background:#fff}
+.mgrid .mo.cur{box-shadow:inset 0 0 0 1.5px var(--brand-ink)}
+
+/* 周选择器 */
+.wlist{display:flex; flex-direction:column; gap:7px}
+.wrow{display:flex; align-items:center; gap:10px; padding:11px 13px; border-radius:14px;
+      background:var(--surface); border:1px solid var(--line-soft)}
+.wrow.on{background:var(--brand-soft); border-color:var(--brand-ink)}
+.wrow .wk{font-family:var(--f-disp); font-size:14px; letter-spacing:.04em; color:var(--ink-2); width:50px; flex:none}
+.wrow.on .wk{color:var(--brand-ink)}
+.wrow .rg{flex:1; font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums}
+.wrow .ct{font-size:11px; font-weight:800; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.wrow.on .ct{color:var(--brand-ink)}
+
+/* ---------- 首启一次性提示条 ---------- */
+/* 首启不能弹墙，但「屙屎人」是这个 App 的特色，得让人知道能加人。
+   折中：静默建好「我」，用一条可关掉的提示条把「还能加人」说出来。 */
+.firsthint{
+  flex:none; margin:9px 10px 0; padding:10px 11px; border-radius:16px;
+  background:var(--brand-soft); border:1px solid rgba(154,82,25,.18);
+  display:flex; align-items:center; gap:9px;
+}
+.firsthint .iw{width:26px; height:26px; border-radius:9px; background:var(--brand-fill);
+               color:#fff; display:grid; place-items:center; flex:none}
+.firsthint .txt{flex:1; min-width:0}
+.firsthint .t1{font-size:13px; font-weight:800; color:var(--brand-ink); line-height:1.35}
+.firsthint .t2{font-size:11px; color:var(--ink-2); line-height:1.4; margin-top:1px}
+.firsthint .hbtn{flex:none; background:var(--brand-fill); color:#fff; border:none; border-radius:99px;
+                 padding:6px 11px; font-family:var(--f-disp); font-size:12px; letter-spacing:.04em}
+.firsthint .hx{flex:none; color:var(--ink-3); display:grid; place-items:center; padding-left:1px}
+
+/* ---------- 备注输入域 ---------- */
+/* 备注主入口是多行文本域；快捷备注 chip 点一下把文字追加进来，
+   不是各自生成一条。提交时整段存为一条带时刻的备注。 */
+.ta{width:100%; min-height:76px; resize:none; border:1px solid var(--line); border-radius:14px;
+    background:var(--surface); padding:10px 12px; font-family:inherit; font-size:13px;
+    line-height:1.55; color:var(--ink); outline:none; display:block}
+.ta::placeholder{color:var(--ink-3)}
+.ta-foot{display:flex; align-items:center; justify-content:space-between; margin-top:6px; padding:0 2px}
+.ta-foot .cnt{font-size:10.5px; font-weight:700; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.ta-send{background:var(--brand-fill); color:#fff; border:none; border-radius:99px; padding:7px 14px;
+         font-family:var(--f-disp); font-size:13px; letter-spacing:.05em}
+
+/* ================= 头像 ---------- */
+.av{border-radius:50%;background:var(--c,#F2E9DA);color:var(--fg,#8A6B4F);
+    display:grid;place-items:center;flex:none;border:1px solid rgba(94,66,42,.08)}
+.av-xs{width:14px;height:14px}
+.av-sm{width:26px;height:26px}
+.av-md{width:38px;height:38px;border-radius:13px}
+.av-lg{width:42px;height:42px;border-radius:14px}
+.av-xl{width:84px;height:84px;border-radius:28px}
+.cell.sel .av{background:#fff; border-color:rgba(255,255,255,.6)}
+.wcell.sel .av{background:#fff}
+
+/* ================= 记录列表 ================= */
+.listwrap{flex:1; min-height:0; display:flex; flex-direction:column; padding:0 14px}
+.daybar{display:flex; align-items:center; justify-content:space-between; padding:12px 6px 8px}
+.daybar .l{display:flex; align-items:baseline; gap:8px}
+.daybar b{font-family:var(--f-disp); font-size:17.5px; letter-spacing:.03em}
+.daybar .wd{font-size:12px; color:var(--ink-2); font-weight:700}
+.pill{font-size:11px; font-weight:700; color:var(--brand-ink); background:var(--brand-soft);
+      padding:4px 11px; border-radius:99px; display:flex; align-items:center; gap:4px}
+.scroller{flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:8px; padding-bottom:8px}
+
+.rec{background:var(--surface); border-radius:17px; padding:9px 12px; display:flex; gap:11px;
+     box-shadow:var(--sh-1); border:1px solid rgba(233,221,202,.65)}
+.rec.live{border-color:rgba(78,140,106,.4); box-shadow:0 0 0 1px rgba(78,140,106,.14), var(--sh-1)}
+.rec-main{flex:1; min-width:0}
+.rec-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px}
+.rec-name{font-size:14px; font-weight:800; letter-spacing:.02em}
+.rec-dur{font-size:10.5px; font-weight:700; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.rec-time{font-size:12.5px; color:var(--ink-2); font-variant-numeric:tabular-nums;
+          display:flex; align-items:center; gap:5px; font-weight:600}
+.rec-time .ar{color:var(--ink-3); display:flex}
+.dotlive{width:6px;height:6px;border-radius:50%;background:var(--live);display:inline-block;animation:pulse 1.7s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+.livetxt{color:var(--live); font-weight:800}
+
+.rec-notes{margin-top:7px; padding-top:7px; border-top:1px dashed var(--line); display:flex; flex-direction:column; gap:4px}
+.note{display:flex; gap:8px; font-size:11.5px; line-height:1.45; color:var(--ink-2)}
+.note .nt{flex:none; font-variant-numeric:tabular-nums; font-weight:700; font-size:10.5px; color:var(--ink-3); padding-top:1px}
+.note .ntx{flex:1; min-width:0}
+.note .nact{display:flex; gap:6px; color:var(--ink-3); align-items:flex-start; padding-top:1px}
+.chips-inline{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px}
+.tchip{font-size:10.5px; font-weight:700; padding:3.5px 9px; border-radius:99px; background:var(--paper-deep); color:var(--ink-2)}
+
+/* ================= FAB ================= */
+.fab{
+  position:absolute; right:18px; bottom:20px; display:flex; align-items:center; gap:8px;
+  background:linear-gradient(150deg,#B05F2C,#9A5219); color:#fff; border-radius:99px;
+  padding:13px 20px 13px 17px; box-shadow:0 10px 24px rgba(168,95,41,.4); border:none;
+}
+.fab span{font-family:var(--f-disp); font-size:16px; letter-spacing:.05em}
+
+/* ================= 底部弹层 ================= */
+.sheet-bg{position:absolute; inset:0; background:rgba(46,38,34,.34); backdrop-filter:blur(3px);
+          display:flex; flex-direction:column; justify-content:flex-end}
+.sheet{background:var(--paper); border-radius:var(--r-sheet) var(--r-sheet) 0 0; padding:9px 18px 18px;
+       box-shadow:var(--sh-3); max-height:92%; display:flex; flex-direction:column; gap:13px}
+.grab{width:36px;height:4px;border-radius:99px;background:var(--line); margin:0 auto 3px}
+.sheet-hd{display:flex; align-items:center; justify-content:space-between}
+.sheet-hd b{font-family:var(--f-disp); font-size:20px; letter-spacing:.03em}
+.sheet-hd .x{width:28px;height:28px;border-radius:9px;background:var(--paper-deep);display:grid;place-items:center;color:var(--ink-3)}
+
+.field{display:flex; flex-direction:column; gap:7px}
+.field>.lb{font-size:11px; font-weight:800; color:var(--ink-3); letter-spacing:.1em; display:flex; align-items:center; gap:6px}
+.field>.lb .opt{font-size:9.5px; font-weight:700; color:var(--ink-3); background:var(--paper-deep); padding:2px 7px; border-radius:99px}
+
+.picker-row{display:flex; gap:9px}
+.pcard{flex:1; background:var(--surface); border-radius:15px; padding:10px 12px; border:1px solid var(--line-soft);
+       display:flex; flex-direction:column; gap:3px; min-width:0}
+.pcard .k{font-size:10px; font-weight:700; color:var(--ink-3); letter-spacing:.06em}
+.pcard .v{font-size:14.5px; font-weight:800; font-variant-numeric:tabular-nums}
+.pcard .now{align-self:flex-start; margin-top:2px; font-size:10px; font-weight:800; color:var(--brand-ink);
+            background:var(--brand-soft); padding:2.5px 8px; border-radius:99px}
+.pcard.empty .v{color:var(--ink-3); font-weight:700; font-size:13px}
+
+.porow{display:flex; gap:9px}
+.po{flex:1; background:var(--surface); border-radius:16px; padding:10px 6px 9px; border:1.5px solid var(--line-soft);
+    display:flex; flex-direction:column; align-items:center; gap:5px; position:relative; min-width:0}
+.po b{font-size:11px; font-weight:700; white-space:nowrap}
+.po.on{border-color:var(--brand-ink); background:#FFFBF5; box-shadow:0 2px 8px rgba(168,95,41,.14)}
+.po.on b{color:var(--brand-ink)}
+.po .def{position:absolute; top:-7px; right:6px; font-size:8.5px; font-weight:800; color:#fff;
+         background:var(--brand-fill); padding:2px 6px; border-radius:99px}
+
+.qchips{display:flex; flex-wrap:wrap; gap:6px}
+.qchip{font-size:11.5px; font-weight:700; padding:6px 12px; border-radius:99px; background:var(--surface);
+       border:1px solid var(--line); color:var(--ink-2); display:flex; align-items:center; gap:5px}
+.qchip.add{color:var(--brand-ink); border-color:var(--brand-ink); border-style:dashed; background:transparent}
+
+.notelist{display:flex; flex-direction:column; gap:7px}
+.nrow{display:flex; gap:10px; background:var(--surface); border-radius:13px; padding:9px 11px; border:1px solid var(--line-soft); align-items:flex-start}
+.nrow .nt{font-size:10.5px; font-weight:800; color:var(--brand-ink); font-variant-numeric:tabular-nums; flex:none; padding-top:1.5px}
+.nrow .nx{font-size:12.5px; line-height:1.45; flex:1; min-width:0}
+.nrow .nact{color:var(--ink-3); display:flex; gap:7px; padding-top:1px}
+
+.addnote{display:flex; align-items:center; gap:9px; background:var(--surface); border-radius:13px;
+         padding:10px 11px; border:1px dashed var(--brand); color:var(--ink-3); font-size:12.5px}
+.addnote .send{margin-left:auto; color:var(--brand-ink); font-weight:800; font-size:11.5px}
+
+.btn-primary{height:50px; border-radius:16px; border:none; display:flex; align-items:center; justify-content:center; gap:9px;
+             width:100%; background:linear-gradient(150deg,#B05F2C,#9A5219); color:#fff;
+             font-family:var(--f-disp); font-size:18px; letter-spacing:.08em; box-shadow:0 8px 20px rgba(168,95,41,.32)}
+.btn-row{display:flex; gap:9px}
+.btn-ghost{flex:1; height:50px; border-radius:16px; border:1px solid var(--line); background:var(--surface);
+           color:var(--ink-2); font-family:var(--f-disp); font-size:16px; letter-spacing:.06em;
+           display:flex; align-items:center; justify-content:center; gap:7px}
+.btn-danger{color:var(--danger); border-color:rgba(196,69,58,.3); background:rgba(196,69,58,.05)}
+
+/* ---------- 忘了点结束：待确认弹层 ---------- */
+.warn-hd{display:flex; align-items:center; gap:10px}
+.warn-hd .ww{width:36px;height:36px;border-radius:12px;background:rgba(223,167,44,.18);
+             color:#A9791A; display:grid; place-items:center; flex:none}
+.warn-hd b{font-family:var(--f-disp); font-size:19px; letter-spacing:.03em}
+.poline{display:flex; align-items:center; gap:11px; background:var(--surface); border-radius:16px;
+        padding:12px 14px; border:1px solid var(--line-soft)}
+.poline .txt{flex:1; min-width:0}
+.poline .t1{font-size:14px; font-weight:800}
+.poline .t2{font-size:11.5px; color:var(--ink-3); margin-top:3px; font-variant-numeric:tabular-nums}
+.qbig{font-family:var(--f-disp); font-size:16.5px; letter-spacing:.05em; padding:2px 2px 0}
+.btn-stack{display:flex; flex-direction:column; gap:9px}
+.btn-stack .btn-primary,.btn-stack .btn-ghost{flex:none; height:47px; font-size:16.5px}
+.rec-time .unk{color:var(--ink-3); font-weight:600}
+
+/* ================= 通用行 / 卡片 ================= */
+.scrollpage{flex:1; min-height:0; overflow:hidden; padding:2px 16px 16px; display:flex; flex-direction:column; gap:16px}
+.sect-hd{display:flex; align-items:center; justify-content:space-between; padding:0 4px 8px}
+.sect-hd b{font-family:var(--f-disp); font-size:16.5px; letter-spacing:.04em}
+.sect-hd .add{font-size:11.5px; font-weight:800; color:var(--brand-ink); display:flex; align-items:center; gap:4px}
+.slab{font-size:10.5px; font-weight:800; color:var(--ink-3); letter-spacing:.12em; padding:0 4px 8px}
+
+.card{background:var(--surface); border-radius:var(--r-card); box-shadow:var(--sh-1);
+      border:1px solid rgba(233,221,202,.65); overflow:hidden}
+.rowitem{display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line-soft)}
+.rowitem:last-child{border-bottom:none}
+.rowitem .iw{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:none;
+             background:var(--brand-soft); color:var(--brand-ink)}
+.rowitem .iw.g{background:var(--live-soft); color:var(--live)}
+.rowitem .iw.b{background:var(--work-soft); color:var(--work)}
+.rowitem .txt{flex:1; min-width:0}
+.rowitem .t1{font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:6px}
+.rowitem .t2{font-size:11px; color:var(--ink-3); margin-top:2px}
+.rowitem .chev{color:var(--ink-3)}
+.rowitem .val{font-size:12px; color:var(--ink-3); font-weight:700}
+
+.switch{width:44px;height:26px;border-radius:99px;background:var(--brand-fill);position:relative;flex:none}
+.switch::after{content:'';position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;
+               box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.switch.off{background:var(--line)}
+.switch.off::after{right:auto;left:3px}
+
+.pcard2{display:flex; align-items:center; gap:12px; background:var(--surface); border-radius:16px;
+        padding:11px 13px; box-shadow:var(--sh-1); border:1px solid rgba(233,221,202,.65); margin-bottom:8px}
+.pcard2 .info{flex:1; min-width:0}
+.pcard2 .nm{font-size:14.5px; font-weight:800; display:flex; align-items:center; gap:6px}
+.pcard2 .nm .def{font-size:9px; font-weight:800; color:#fff; background:var(--brand-fill); padding:2px 7px; border-radius:99px}
+.pcard2 .rm{font-size:11px; color:var(--ink-3); margin-top:3px}
+.pcard2 .grabic{color:var(--ink-4); display:flex}
+
+.taglist{display:flex; flex-wrap:wrap; gap:7px}
+.tag2{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:7px 12px;
+      border-radius:12px; background:var(--surface); border:1px solid var(--line); color:var(--ink-2)}
+.tag2 .rm{color:var(--ink-3); display:flex}
+.tag2.add{color:var(--brand-ink); border-style:dashed; border-color:var(--brand-ink); background:transparent}
+
+.hint{font-size:11px; color:var(--ink-3); line-height:1.6; padding:0 4px}
+
+.searchbar{display:flex; align-items:center; gap:9px; background:var(--surface); border:1px solid var(--line);
+           border-radius:14px; padding:11px 13px; color:var(--ink-3); font-size:13px}
+.searchbar .kw{color:var(--ink); font-weight:600; flex:1}
+.fchips{display:flex; gap:7px; flex-wrap:wrap}
+.fchip{font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:99px;background:var(--surface);
+       border:1px solid var(--line); color:var(--ink-2); display:flex; align-items:center; gap:5px}
+.fchip.on{background:var(--brand-fill); border-color:var(--brand-ink); color:#fff}
+
+.tlhead{display:flex; align-items:baseline; gap:8px; padding:10px 4px 6px}
+.tlhead b{font-family:var(--f-disp); font-size:14.5px; letter-spacing:.03em}
+.tlhead span{font-size:10.5px; color:var(--ink-3); font-weight:700}
+
+.emptystate{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding-bottom:40px}
+.emptystate .ring{width:76px;height:76px;border-radius:26px;background:var(--paper-deep);display:grid;place-items:center;color:var(--ink-3)}
+.emptystate .t1{font-family:var(--f-disp); font-size:17px; letter-spacing:.04em}
+.emptystate .t2{font-size:11.5px; color:var(--ink-3); text-align:center; line-height:1.6}
+
+.avatar-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:8px}
+.av-opt{aspect-ratio:1; border-radius:14px; display:grid; place-items:center; border:1.5px solid var(--line-soft);
+        background:var(--surface); color:var(--ink-2)}
+.av-opt.on{border-color:var(--brand-ink); background:#FFFBF5; color:var(--brand-ink); box-shadow:0 2px 8px rgba(168,95,41,.16)}
+.av-preview{display:flex; flex-direction:column; align-items:center; gap:9px; padding:4px 0 2px}
+.av-preview .wrap{position:relative}
+.av-preview .cam{position:absolute; right:-4px; bottom:-4px; width:30px;height:30px;border-radius:11px;
+                 background:var(--brand-fill); color:#fff; display:grid;place-items:center; border:2.5px solid var(--paper)}
+.av-preview .who{font-size:12px; color:var(--ink-3)}
+
+.inputrow{display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--line-soft);
+          border-radius:14px; padding:12px 13px}
+.inputrow .lb{font-size:12px; font-weight:800; color:var(--ink-3); width:52px; flex:none}
+.inputrow .val{flex:1; font-size:13.5px; font-weight:600}
+.inputrow .val.ph{color:var(--ink-3); font-weight:400}
+
+.chart{display:flex; align-items:flex-end; gap:9px; height:118px; padding:0 4px}
+.chart .col{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end}
+.chart .bar{width:100%; border-radius:8px 8px 4px 4px; background:var(--brand-soft)}
+.chart .bar.hi{background:linear-gradient(180deg,#B05F2C,#9A5219)}
+.chart .cl{font-size:9.5px; color:var(--ink-3); font-weight:700}
+
+.bignum{display:flex; align-items:baseline; gap:9px; padding:2px 4px 10px}
+.bignum .n{font-family:var(--f-disp); font-size:42px; line-height:1; color:var(--brand-ink)}
+.bignum .u{font-size:12.5px; color:var(--ink-2); font-weight:700}
+
+.rankrow{display:flex; align-items:center; gap:10px; padding:9px 4px}
+.rankrow .rk{width:18px;font-family:var(--f-disp);font-size:14px;color:var(--ink-3);flex:none}
+.rankrow .nm{font-size:12.5px;font-weight:700;width:52px;flex:none}
+.rankrow .track{flex:1;height:9px;border-radius:99px;background:var(--paper-deep);overflow:hidden}
+.rankrow .fill{height:100%;border-radius:99px}
+.rankrow .ct{font-size:12px;font-weight:800;color:var(--ink-2);width:32px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
+
+.minical{display:grid; grid-template-columns:repeat(7,1fr); gap:3px}
+.minical .mc{height:32px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:700;
+             font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.minical .mc.dim{color:var(--ink-3);opacity:.45}
+.minical .mc.on{background:var(--brand-fill);color:#fff}
+
+/* ================= 底部规范条 ================= */
+.specbar{margin-top:44px; display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px;
+         background:var(--surface); border-radius:var(--r-card); padding:24px 26px; box-shadow:var(--sh-1);
+         border:1px solid rgba(233,221,202,.65)}
+.specbar h3{font-family:var(--f-disp); font-size:16.5px; margin-bottom:12px; letter-spacing:.04em}
+.specbar ul{list-style:none; display:flex; flex-direction:column; gap:8px}
+.specbar li{font-size:12.5px; color:var(--ink-2); line-height:1.6; display:flex; gap:9px}
+.specbar li code{font-family:ui-monospace,Consolas,monospace; font-size:11px; background:var(--paper-deep);
+                 padding:1.5px 6px; border-radius:6px; color:var(--brand-ink); flex:none; height:fit-content; margin-top:1px}
+</style>
+</head>
+<body>
+<!--SPRITE:START-->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
+  <circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="i-settings-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 17H5" />
+  <path d="M19 7h-9" />
+  <circle cx="17" cy="17" r="3" />
+  <circle cx="7" cy="7" r="3" /></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" />
+  <path d="M12 2v2" />
+  <path d="M12 20v2" />
+  <path d="m4.93 4.93 1.41 1.41" />
+  <path d="m17.66 17.66 1.41 1.41" />
+  <path d="M2 12h2" />
+  <path d="M20 12h2" />
+  <path d="m6.34 17.66-1.41 1.41" />
+  <path d="m19.07 4.93-1.41 1.41" /></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></symbol>
+  <symbol id="i-calendar-days" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3" />
+  <path d="M16 2v3" />
+  <rect x="3" y="3" width="18" height="18" rx="2" />
+  <path d="M3 9h18" />
+  <path d="M8 13h.01" />
+  <path d="M12 13h.01" />
+  <path d="M16 13h.01" />
+  <path d="M8 17h.01" />
+  <path d="M12 17h.01" />
+  <path d="M16 17h.01" /></symbol>
+  <symbol id="i-calendar-range" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" />
+  <path d="M16 2v3" />
+  <path d="M3 9h18" />
+  <path d="M8 2v3" />
+  <path d="M17 13h-6" />
+  <path d="M13 17H7" />
+  <path d="M7 13h.01" />
+  <path d="M17 17h.01" /></symbol>
+  <symbol id="i-chart-column" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16" />
+  <path d="M18 17V9" />
+  <path d="M13 17V5" />
+  <path d="M8 17v-3" /></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" />
+  <path d="m6 6 12 12" /></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" />
+  <path d="M12 5v14" /></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" />
+  <path d="m12 5 7 7-7 7" /></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7" />
+  <path d="M19 12H5" /></symbol>
+  <symbol id="i-grip-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1" />
+  <circle cx="9" cy="5" r="1" />
+  <circle cx="9" cy="19" r="1" />
+  <circle cx="15" cy="12" r="1" />
+  <circle cx="15" cy="5" r="1" />
+  <circle cx="15" cy="19" r="1" /></symbol>
+  <symbol id="i-ellipsis-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1" />
+  <circle cx="12" cy="5" r="1" />
+  <circle cx="12" cy="19" r="1" /></symbol>
+  <symbol id="i-dog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.25 16.25h1.5L12 17z" />
+  <path d="M16 14v.5" />
+  <path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444a11.702 11.702 0 0 0-.493-3.309" />
+  <path d="M8 14v.5" />
+  <path d="M8.5 8.5c-.384 1.05-1.083 2.028-2.344 2.5-1.931.722-3.576-.297-3.656-1-.113-.994 1.177-6.53 4-7 1.923-.321 3.651.845 3.651 2.235A7.497 7.497 0 0 1 14 5.277c0-1.39 1.844-2.598 3.767-2.277 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.239-2.5" /></symbol>
+  <symbol id="i-cat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z" />
+  <path d="M8 14v.5" />
+  <path d="M16 14v.5" />
+  <path d="M11.25 16.25h1.5L12 17l-.75-.75Z" /></symbol>
+  <symbol id="i-rabbit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 16a3 3 0 0 1 2.24 5" />
+  <path d="M18 12h.01" />
+  <path d="M18 21h-8a4 4 0 0 1-4-4 7 7 0 0 1 7-7h.2L9.6 6.4a1 1 0 1 1 2.8-2.8L15.8 7h.2c3.3 0 6 2.7 6 6v1a2 2 0 0 1-2 2h-1a3 3 0 0 0-3 3" />
+  <path d="M20 8.54V4a2 2 0 1 0-4 0v3" />
+  <path d="M7.612 12.524a3 3 0 1 0-1.6 4.3" /></symbol>
+  <symbol id="i-bird" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h.01" />
+  <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" />
+  <path d="m20 7 2 .5-2 .5" />
+  <path d="M10 18v3" />
+  <path d="M14 17.75V21" />
+  <path d="M7 18a6 6 0 0 0 3.84-10.61" /></symbol>
+  <symbol id="i-turtle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 10 2 4v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3a8 8 0 1 0-16 0v3a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1v-3l2-4h4Z" />
+  <path d="M4.82 7.9 8 10" />
+  <path d="M15.18 7.9 12 10" />
+  <path d="M16.93 10H20a2 2 0 0 1 0 4H2" /></symbol>
+  <symbol id="i-fish" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 12c.94-3.46 4.94-6 8.5-6 3.56 0 6.06 2.54 7 6-.94 3.47-3.44 6-7 6s-7.56-2.53-8.5-6Z" />
+  <path d="M18 12v.5" />
+  <path d="M16 17.93a9.77 9.77 0 0 1 0-11.86" />
+  <path d="M7 10.67C7 8 5.58 5.97 2.73 5.5c-1 1.5-1 5 .23 6.5-1.24 1.5-1.24 5-.23 6.5C5.58 18.03 7 16 7 13.33" />
+  <path d="M10.46 7.26C10.2 5.88 9.17 4.24 8 3h5.8a2 2 0 0 1 1.98 1.67l.23 1.4" />
+  <path d="m16.01 17.93-.23 1.4A2 2 0 0 1 13.8 21H9.5a5.96 5.96 0 0 0 1.49-3.98" /></symbol>
+  <symbol id="i-snail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13a6 6 0 1 0 12 0 4 4 0 1 0-8 0 2 2 0 0 0 4 0" />
+  <circle cx="10" cy="13" r="8" />
+  <path d="M2 21h12c4.4 0 8-3.6 8-8V7a2 2 0 1 0-4 0v6" />
+  <path d="M18 3 19.1 5.2" />
+  <path d="M22 3 20.9 5.2" /></symbol>
+  <symbol id="i-squirrel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.236 22a3 3 0 0 0-2.2-5" />
+  <path d="M16 20a3 3 0 0 1 3-3h1a2 2 0 0 0 2-2v-2a4 4 0 0 0-4-4V4" />
+  <path d="M18 13h.01" />
+  <path d="M18 6a4 4 0 0 0-4 4 7 7 0 0 0-7 7c0-5 4-5 4-10.5a4.5 4.5 0 1 0-9 0 2.5 2.5 0 0 0 5 0C7 10 3 11 3 17c0 2.8 2.2 5 5 5h10" /></symbol>
+  <symbol id="i-bug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-9" />
+  <path d="M14 7a4 4 0 0 1 4 4v3a6 6 0 0 1-12 0v-3a4 4 0 0 1 4-4z" />
+  <path d="M14.12 3.88 16 2" />
+  <path d="M21 21a4 4 0 0 0-3.81-4" />
+  <path d="M21 5a4 4 0 0 1-3.55 3.97" />
+  <path d="M22 13h-4" />
+  <path d="M3 21a4 4 0 0 1 3.81-4" />
+  <path d="M3 5a4 4 0 0 0 3.55 3.97" />
+  <path d="M6 13H2" />
+  <path d="m8 2 1.88 1.88" />
+  <path d="M9 7.13V6a3 3 0 1 1 6 0v1.13" /></symbol>
+  <symbol id="i-ghost" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10v1" />
+  <path d="M7.528 20.472a1.6 1.6 0 012.277 0l1.057 1.056a1.6 1.6 0 002.276 0l1.057-1.056a1.6 1.6 0 012.277 0l1.114 1.114a1.4 1.4 0 002.414-1V10a8 8 0 00-16 0v10.586a1.4 1.4 0 002.414 1z" />
+  <path d="M9 10v1" /></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5" /></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z" />
+  <path d="M5 21h14" /></symbol>
+  <symbol id="i-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+  <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09" />
+  <path d="M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z" />
+  <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05" /></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20" />
+  <path d="M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13" /></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" /></symbol>
+  <symbol id="i-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z" /></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" /></symbol>
+  <symbol id="i-coffee" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v2" />
+  <path d="M14 2v2" />
+  <path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1" />
+  <path d="M6 2v2" /></symbol>
+  <symbol id="i-milk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8" />
+  <path d="M9 2v2.789a4 4 0 0 1-.672 2.219l-.656.984A4 4 0 0 0 7 10.212V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.789a4 4 0 0 0-.672-2.219l-.656-.984A4 4 0 0 1 15 4.788V2" />
+  <path d="M7 15a6.472 6.472 0 0 1 5 0 6.47 6.47 0 0 0 5 0" /></symbol>
+  <symbol id="i-pizza" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14-1 1" />
+  <path d="m13.75 18.25-1.25 1.42" />
+  <path d="M17.775 5.654a15.68 15.68 0 0 0-12.121 12.12" />
+  <path d="M18.8 9.3a1 1 0 0 0 2.1 7.7" />
+  <path d="M21.964 20.732a1 1 0 0 1-1.232 1.232l-18-5a1 1 0 0 1-.695-1.232A19.68 19.68 0 0 1 15.732 2.037a1 1 0 0 1 1.232.695z" /></symbol>
+  <symbol id="i-utensils" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+  <path d="M7 2v20" />
+  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" /></symbol>
+  <symbol id="i-party-popper" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3 2 22l10.7-3.79" />
+  <path d="M4 3h.01" />
+  <path d="M22 8h.01" />
+  <path d="M15 2h.01" />
+  <path d="M22 20h.01" />
+  <path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10" />
+  <path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17" />
+  <path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7" />
+  <path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z" /></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+  <path d="m15 5 4 4" /></symbol>
+  <symbol id="i-trash-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6" />
+  <path d="M14 11v6" />
+  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+  <path d="M3 6h18" />
+  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34" />
+  <circle cx="11" cy="11" r="8" /></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" /></symbol>
+  <symbol id="i-sliders-horizontal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5H3" />
+  <path d="M12 19H3" />
+  <path d="M14 3v4" />
+  <path d="M16 17v4" />
+  <path d="M21 12h-9" />
+  <path d="M21 19h-5" />
+  <path d="M21 5h-7" />
+  <path d="M8 10v4" />
+  <path d="M8 12H3" /></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" />
+  <path d="M12 6v6l4 2" /></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="14" y1="2" y2="2" />
+  <line x1="12" x2="15" y1="14" y2="11" />
+  <circle cx="12" cy="14" r="8" /></symbol>
+  <symbol id="i-circle-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1" />
+  <circle cx="12" cy="12" r="10" /></symbol>
+  <symbol id="i-notebook-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" />
+  <path d="M2 6h4" />
+  <path d="M2 10h4" />
+  <path d="M2 14h4" />
+  <path d="M2 18h4" />
+  <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" /></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+  <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></symbol>
+  <symbol id="i-tags" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.172 2a2 2 0 0 1 1.414.586l6.71 6.71a2.4 2.4 0 0 1 0 3.408l-4.592 4.592a2.4 2.4 0 0 1-3.408 0l-6.71-6.71A2 2 0 0 1 6 9.172V3a1 1 0 0 1 1-1z" />
+  <path d="M2 7v6.172a2 2 0 0 0 .586 1.414l6.71 6.71a2.4 2.4 0 0 0 3.191.193" />
+  <circle cx="10.5" cy="6.5" r=".5" fill="currentColor" /></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+  <circle cx="12" cy="7" r="4" /></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+  <path d="M16 3.128a4 4 0 0 1 0 7.744" />
+  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+  <circle cx="9" cy="7" r="4" /></symbol>
+  <symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+  <circle cx="9" cy="7" r="4" />
+  <line x1="19" x2="19" y1="8" y2="14" />
+  <line x1="22" x2="16" y1="11" y2="11" /></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+  <circle cx="9" cy="9" r="2" />
+  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" />
+  <circle cx="12" cy="13" r="3" /></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z" />
+  <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+  <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+  <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+  <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3" />
+  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+  <path d="m7 10 5 5 5-5" /></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" />
+  <path d="m17 8-5-5-5 5" />
+  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /></symbol>
+  <symbol id="i-smartphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+  <path d="M12 18h.01" /></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" />
+  <path d="M12 16v-4" />
+  <path d="M12 8h.01" /></symbol>
+  <symbol id="i-triangle-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+  <path d="M12 9v4" />
+  <path d="M12 17h.01" /></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+  <rect width="20" height="14" x="2" y="6" rx="2" /></symbol>
+  <symbol id="i-graduation-cap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z" />
+  <path d="M22 10v6" />
+  <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" /></symbol>
+  <symbol id="i-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" /></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+  <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
+  <symbol id="i-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+  <circle cx="12" cy="10" r="3" /></symbol>
+  <symbol id="i-sticky-note" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 9a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z" />
+  <path d="M15 3v5a1 1 0 0 0 1 1h5" /></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" /></symbol>
+  <symbol id="i-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.8 19.6A2 2 0 1 0 14 16H2" />
+  <path d="M17.5 8a2.5 2.5 0 1 1 2 4H2" />
+  <path d="M9.8 4.4A2 2 0 1 1 11 8H2" /></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16" />
+  <path d="M2 8h18a2 2 0 0 1 2 2v10" />
+  <path d="M2 17h20" />
+  <path d="M6 8v9" /></symbol>
+  <symbol id="i-bath" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4 8 6" />
+  <path d="M17 19v2" />
+  <path d="M2 12h20" />
+  <path d="M7 19v2" />
+  <path d="M9 5 7.621 3.621A2.121 2.121 0 0 0 4 5v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5" /></symbol>
+</svg>
+<!--SPRITE:END-->
+
+<div class="stage">
+
+  <div class="masthead">
+    <div class="brandmark">
+      <div class="logo">屙</div>
+      <div>
+        <h1>屙了么</h1>
+        <div class="sub">拉屎记录 · UI 样式参考 v0.4 · 20 页</div>
+      </div>
+    </div>
+    <div class="meta-right">
+      <div class="swatches">
+        <div class="sw"><i style="background:#FAF5EC"></i><span>纸面</span></div>
+        <div class="sw"><i style="background:#C8783C"></i><span>焦糖</span></div>
+        <div class="sw"><i style="background:#2E2622"></i><span>墨</span></div>
+        <div class="sw"><i style="background:#D2564A"></i><span>休</span></div>
+        <div class="sw"><i style="background:#4A7C8C"></i><span>班</span></div>
+        <div class="sw"><i style="background:#4E8C6A"></i><span>进行中</span></div>
+      </div>
+      <div class="ver">PAPER&nbsp;JOURNAL&nbsp;/&nbsp;ICONS:&nbsp;LUCIDE</div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a href="#main"><span class="n">A</span>记录主流程</a>
+    <a href="#history"><span class="n">B</span>历史与补录</a>
+    <a href="#people"><span class="n">C</span>设置 · 人员与备注</a>
+    <a href="#calendar"><span class="n">D</span>设置 · 日历与数据</a>
+    <a href="#calnav"><span class="n">E</span>日历快速切换</a>
+    <a href="#all"><span class="n">★</span>全部 20 页</a>
+  </nav>
+
+  <section class="grp" id="main"><div class="phones" id="g-main"></div></section>
+  <section class="grp" id="history"><div class="phones" id="g-history"></div></section>
+  <section class="grp" id="people"><div class="phones" id="g-people"></div></section>
+  <section class="grp" id="calendar"><div class="phones" id="g-calendar"></div></section>
+  <section class="grp" id="calnav"><div class="phones" id="g-calnav"></div></section>
+
+  <div class="specbar">
+    <div>
+      <h3>日历单元格规格</h3>
+      <ul>
+        <li><code>46px</code> 列宽 · <code>58px</code> 格高 · 7 列等分 · 间距 3px · 圆角 13px</li>
+        <li><code>左上</code> 日期 14.5/700/tabular-nums　<code>右上</code> 休·班 8.5px 角标</li>
+        <li><code>下方</code> 头像 14px 圆形 + 次数；竖向最多 2 行，超出折为 +N 且与末行同行</li>
+        <li><code>今天</code> 焦糖 1.5px 内描边　<code>选中</code> 焦糖实心填充</li>
+      </ul>
+    </div>
+    <div>
+      <h3>图标：Lucide</h3>
+      <ul>
+        <li><code>ISC</code> 协议，可商用；2141 个图标，24px 网格，2px 描边</li>
+        <li><code>Flutter</code> 用 lucide_icons_flutter 3.1.25</li>
+        <li><code>规范</code> 全部走 currentColor，尺寸由 --s 驱动，禁止 emoji</li>
+        <li><code>备选</code> Phosphor（6 种字重）/ Material Symbols（7000+）</li>
+      </ul>
+    </div>
+    <div>
+      <h3>字体与形状</h3>
+      <ul>
+        <li><code>标题</code> 得意黑 Smiley Sans（SIL OFL 可商用）</li>
+        <li><code>正文</code> Noto Sans SC 400 / 600 / 700 / 800</li>
+        <li><code>圆角</code> 卡片 20 · 单元格 13 · 头像块 13–28 · 弹层顶 28 · 药丸 99</li>
+        <li><code>阴影</code> 暖调 rgba(94,66,42,·)，绝不用中性灰</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==================== 基础工具 ==================== */
+const IC = (n, s = 16) => `<svg class="ic" style="--s:${s}px"><use href="#i-${n}"></use></svg>`;
+
+const POOPERS = {
+  /* 首启自动创建的「我」。颜色要和其他人区分得开，因为首启页上只有它一个。 */
+  me:{ name:'我',    icon:'user',   c:'#E4EAF0', fg:'#4A6B85' },
+  a:{ name:'阿狗',   icon:'dog',    c:'#F7E5D2', fg:'#B4662F' },
+  b:{ name:'咪咪',   icon:'cat',    c:'#E1EDE5', fg:'#4E8C6A' },
+  c:{ name:'小土豆', icon:'rabbit', c:'#EFE4F1', fg:'#8A5FA8' },
+};
+const AV = (id, cls = 'av-md', size = 18) =>
+  `<i class="av ${cls}" style="--c:${POOPERS[id].c};--fg:${POOPERS[id].fg}">${IC(POOPERS[id].icon, size)}</i>`;
+
+const DATA = {
+  '2026-01-08':{b:1}, '2026-01-20':{a:1,b:1}, '2026-01-26':{a:2},
+  '2026-02-01':{a:2}, '2026-02-03':{a:1,b:2}, '2026-02-04':{b:1},
+  '2026-02-07':{a:3}, '2026-02-10':{a:1}, '2026-02-11':{a:2,b:1,c:1},
+  '2026-02-12':{c:2}, '2026-02-15':{a:2,b:1}, '2026-02-18':{a:1},
+  '2026-02-20':{b:2,c:1}, '2026-02-23':{a:1}, '2026-02-26':{a:2},
+  /* 8 月是拿来验日历行数的：2026-08-01 是周六，5+31=36 格，必须排 6 行 */
+  '2026-08-03':{a:1}, '2026-08-12':{a:1,c:1}, '2026-08-21':{b:2},
+};
+const OFF  = ['2026-02-15','2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-21','2026-02-22','2026-02-23'];
+const WORK = ['2026-02-14','2026-02-28'];
+const TODAY = '2026-02-11', SEL = '2026-02-11';
+const WD = ['一','二','三','四','五','六','日'];
+const k = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+function badges(map, max){
+  if(!map) return '';
+  const ids = Object.keys(map);
+  if(!ids.length) return '';
+  const shown = Math.min(ids.length, max);
+  let out = '';
+  for(let i = 0; i < shown; i++){
+    const id = ids[i];
+    let row = `<span class="bdg">${AV(id,'av-xs',9)}<b>${map[id]}</b></span>`;
+    if(i === shown - 1 && ids.length > max) row += `<span class="bdg more">+${ids.length - max}</span>`;
+    out += `<span class="brow">${row}</span>`;
+  }
+  return out;
+}
+
+/* ==================== 机身 ==================== */
+const STATUS = `<div class="statusbar"><span>9:41</span><div class="r">
+  <svg width="16" height="11" viewBox="0 0 16 11"><path d="M1 8h2v3H1zM5 5.5h2V11H5zM9 3h2v8H9zM13 0h2v11h-2z" fill="#2E2622"/></svg>
+  <svg width="14" height="11" viewBox="0 0 14 11"><rect x="0" y="1" width="12" height="9" rx="2.4" fill="none" stroke="#2E2622" stroke-width="1.3"/><rect x="2" y="3" width="7" height="5" rx="1.2" fill="#2E2622"/><path d="M13 4v3" stroke="#2E2622" stroke-width="1.4" stroke-linecap="round"/></svg>
+</div></div>`;
+
+function phone(inner, cap){
+  return `<div class="unit">
+    <div class="phone"><div class="screen">${STATUS}${inner}</div></div>
+    <div class="cap"><b>${cap[0]}</b><em>${cap[1]}</em></div>
+  </div>`;
+}
+
+const appbar = (h2, tools = '') =>
+  `<div class="appbar"><h2>${h2}</h2><div class="tools">${tools}</div></div>`;
+const appbarMid = (title, right = '') =>
+  `<div class="appbar">
+     <div class="tools"><div class="icobtn">${IC('chevron-left',18)}</div></div>
+     <span class="title-mid">${title}</span>
+     <div class="tools">${right || '<div class="icobtn plain"></div>'}</div>
+   </div>`;
+
+/* ==================== 日历卡 ====================
+ * ★ 行数必须按月份实算，不能写死 5 行。
+ *   早期版本写死 35 格，导致需要 6 行的月份（2026-08 就是）直接丢掉月底几天 ——
+ *   而视觉稿只画了 2 月（正好 5 行），这个 bug 一直没露头。
+ */
+function monthCard(y = 2026, m = 1, o = {}){
+  const first  = new Date(y, m, 1);
+  const offset = (first.getDay() + 6) % 7;              // 周一作首列
+  const days   = new Date(y, m + 1, 0).getDate();
+  const rows   = Math.ceil((offset + days) / 7);        // 5 或 6
+  const start  = new Date(y, m, 1 - offset);
+  const sel    = o.sel   !== undefined ? o.sel   : SEL;
+  const today  = o.today !== undefined ? o.today : TODAY;
+  /* 首启那天日历上什么都没有，所以要能传一个空数据源进来 —— 这跟 B4 的
+     「某天没记录」是两回事：那个日历是满的，只是那一天空。 */
+  const data   = o.data  !== undefined ? o.data  : DATA;
+  let cells = '';
+  for(let i=0;i<rows*7;i++){
+    const d = new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    const key = k(d), dim = d.getMonth()!==m, col = i%7;
+    const cls = ['cell'];
+    /* 非本月的日期是有意降级的：加了 a11y-dim-ok，对比度自检会把它归到
+       「已声明降级」而不是失败。否则每次跑检查都会被这些格子淹没。 */
+    if(dim) cls.push('dim','a11y-dim-ok');
+    if(col>=5) cls.push('we');
+    if(key===today) cls.push('today');
+    if(key===sel) cls.push('sel');
+    let tag = '';
+    if(OFF.includes(key))  tag = '<span class="tag off">休</span>';
+    if(WORK.includes(key)) tag = '<span class="tag work">班</span>';
+    cells += `<div class="${cls.join(' ')}">
+      <div class="cell-top"><span class="dnum">${d.getDate()}</span>${tag}</div>
+      <div class="cell-badges">${badges(data[key],2)}</div></div>`;
+  }
+  return `<div class="calcard">
+    <div class="calhead">
+      <div class="mtitle">
+        <button class="mtbtn"><b>${y}年${m+1}月</b>${IC('chevron-down',14)}</button>
+        <div class="nav2"><span>${IC('chevron-left',15)}</span><span>${IC('chevron-right',15)}</span></div>
+      </div>
+      <div class="seg"><span class="on">月</span><span>周</span></div>
+    </div>
+    <div class="weekhd">${WD.map((w,i)=>`<span class="${i>=5?'we':''}">${w}</span>`).join('')}</div>
+    <div class="grid">${cells}</div></div>`;
+}
+
+/* 周视图：标题显示这一周的日期区间，同样可点开周选择器 */
+function weekCard(o = {}){
+  const base  = o.start !== undefined ? o.start : new Date(2026,1,9);
+  const sel   = o.sel   !== undefined ? o.sel   : SEL;
+  const today = o.today !== undefined ? o.today : TODAY;
+  const days  = [];
+  for(let i=0;i<7;i++) days.push(new Date(base.getFullYear(),base.getMonth(),base.getDate()+i));
+  let cells = '';
+  days.forEach((d,i)=>{
+    const key = k(d);
+    const cls = ['wcell'];
+    if(i>=5) cls.push('we');
+    if(key===today) cls.push('today');
+    if(key===sel) cls.push('sel');
+    let tag = '';
+    if(OFF.includes(key))  tag = '<span class="tag off">休</span>';
+    if(WORK.includes(key)) tag = '<span class="tag work">班</span>';
+    cells += `<div class="${cls.join(' ')}">
+      <span class="wday">周${WD[i]}</span><span class="dnum">${d.getDate()}</span>
+      <div style="height:15px">${tag}</div>
+      <div class="cell-badges">${badges(DATA[key],3)}</div></div>`;
+  });
+  const a = days[0], b = days[6];
+  const label = a.getMonth()===b.getMonth()
+    ? `${a.getMonth()+1}月${a.getDate()}日 – ${b.getDate()}日`
+    : `${a.getMonth()+1}月${a.getDate()}日 – ${b.getMonth()+1}月${b.getDate()}日`;
+  return `<div class="calcard">
+    <div class="calhead">
+      <div class="mtitle">
+        <button class="mtbtn"><b>${label}</b>${IC('chevron-down',14)}</button>
+        <div class="nav2"><span>${IC('chevron-left',15)}</span><span>${IC('chevron-right',15)}</span></div>
+      </div>
+      <div class="seg"><span>月</span><span class="on">周</span></div>
+    </div>
+    <div class="weekhd">${WD.map((w,i)=>`<span class="${i>=5?'we':''}">${w}</span>`).join('')}</div>
+    <div class="wgrid">${cells}</div></div>`;
+}
+
+const parseKey = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+
+/* 日期栏 —— 不在今天时露出「回到今天」 */
+function daybar(selKey = SEL, count = 4){
+  const d = parseKey(selKey), isToday = selKey === TODAY;
+  return `<div class="daybar">
+      <div class="l"><b>${d.getMonth()+1}月${d.getDate()}日</b>
+        <span class="wd">周${WD[(d.getDay()+6)%7]}${isToday?' · 今天':''}</span></div>
+      <div class="r">
+        ${isToday ? '' : `<button class="todaybtn">${IC('calendar-check',12)}回到今天</button>`}
+        <span class="pill">${IC('chart-column',12)}共 ${count} 次</span>
+      </div>
+    </div>`;
+}
+
+/* ==================== 记录列表 ==================== */
+function recList(){
+  return `<div class="listwrap">
+    ${daybar()}
+    <div class="scroller">
+      <div class="rec">
+        ${AV('a')}
+        <div class="rec-main">
+          <div class="rec-head"><span class="rec-name">阿狗</span><span class="rec-dur">14 分钟</span></div>
+          <div class="rec-time">09:12 <span class="ar">${IC('arrow-right',12)}</span> 09:26</div>
+          <div class="rec-notes">
+            <div class="note"><span class="nt">09:14</span><span class="ntx">开冲，很顺畅</span></div>
+            <div class="note"><span class="nt">09:20</span><span class="ntx">昨晚火锅太辣了，有点拉肚子</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="rec">
+        ${AV('b')}
+        <div class="rec-main">
+          <div class="rec-head"><span class="rec-name">咪咪</span><span class="rec-dur">12 分钟</span></div>
+          <div class="rec-time">13:40 <span class="ar">${IC('arrow-right',12)}</span> 13:52</div>
+          <div class="chips-inline"><span class="tchip">带薪摸鱼</span><span class="tchip">玩手机</span></div>
+        </div>
+      </div>
+      <div class="rec live">
+        ${AV('c')}
+        <div class="rec-main">
+          <div class="rec-head"><span class="rec-name">小土豆</span><span class="rec-dur">已 6 分钟</span></div>
+          <div class="rec-time">21:05 <span class="ar">${IC('arrow-right',12)}</span> <span class="dotlive"></span><span class="livetxt">正在屙</span></div>
+          <div class="rec-notes">
+            <div class="note"><span class="nt">21:08</span><span class="ntx">刷手机忘了时间</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* 精简列表：给 E 组用，只放日期栏 + 几条记录，把版面让给日历 */
+function miniList(selKey, count, rows){
+  return `<div class="listwrap">
+    ${daybar(selKey, count)}
+    <div class="scroller">${rows}</div>
+  </div>`;
+}
+
+const fab = `<div class="fab">${IC('plus',17)}<span>现在开屙</span></div>`;
+
+/* ============================================================
+ *  A · 记录主流程
+ * ============================================================ */
+const A1 = () => appbar('屙了么',
+    `<div class="icobtn">${IC('search',17)}</div><div class="icobtn">${IC('settings',17)}</div>`) +
+  monthCard() + recList() + fab;
+
+const A2 = () => appbar('屙了么',
+    `<div class="icobtn">${IC('search',17)}</div><div class="icobtn">${IC('settings',17)}</div>`) +
+  weekCard() + recList() + fab;
+
+const A3 = () => appbar('屙了么') + `
+<div class="sheet-bg"><div class="sheet">
+  <div class="grab"></div>
+  <div class="sheet-hd"><b>记一次</b><div class="x">${IC('x',15)}</div></div>
+
+  <div class="field"><div class="lb">谁在屙</div>
+    <div class="porow">
+      <div class="po on"><span class="def">默认</span>${AV('a','av-md',18)}<b>阿狗</b></div>
+      <div class="po">${AV('b','av-md',18)}<b>咪咪</b></div>
+      <div class="po">${AV('c','av-md',18)}<b>小土豆</b></div>
+    </div>
+  </div>
+
+  <div class="field"><div class="lb">时间</div>
+    <div class="picker-row">
+      <div class="pcard"><span class="k">开始</span><span class="v">09:12</span><span class="now">现在</span></div>
+      <div class="pcard empty"><span class="k">结束</span><span class="v">未结束</span><span class="now">点此补填</span></div>
+    </div>
+  </div>
+
+  <div class="field"><div class="lb">备注<span class="opt">2 条</span></div>
+    <div class="qchips">
+      <span class="qchip">拉肚子</span><span class="qchip">很顺畅</span><span class="qchip">有点干</span>
+      <span class="qchip">带薪摸鱼</span><span class="qchip">玩手机</span>
+      <span class="qchip add">${IC('plus',12)}自定义</span>
+    </div>
+    <textarea class="ta" rows="3" placeholder="写点什么…快捷备注点一下会追加到这里"></textarea>
+    <div class="ta-foot"><span class="cnt">0/200</span><button class="ta-send">添加这条备注</button></div>
+    <div class="notelist" style="margin-top:11px">
+      <div class="nrow"><span class="nt">09:14</span><span class="nx">开冲，很顺畅</span></div>
+      <div class="nrow"><span class="nt">09:20</span><span class="nx">昨晚火锅太辣了，有点拉肚子</span></div>
+    </div>
+  </div>
+
+  <button class="btn-primary">${IC('notebook-pen',18)}存 档</button>
+</div></div>`;
+
+/* ④ 忘了点结束 —— 待确认
+ * 关键：「没有结束时间」≠「还在进行中」。超过阈值仍未结束的记录必须能一键收敛成
+ * 「未记结束」，否则会永远挂在进行中，还会因为唯一索引挡住下一次记录。 */
+const A4 = () => appbar('屙了么',
+    `<div class="icobtn">${IC('search',17)}</div><div class="icobtn">${IC('settings',17)}</div>`) +
+  monthCard() + recList() + `
+<div class="sheet-bg"><div class="sheet">
+  <div class="grab"></div>
+  <div class="warn-hd">
+    <div class="ww">${IC('triangle-alert',19)}</div>
+    <b>有一次还没结束</b>
+  </div>
+  <div class="poline">
+    ${AV('a','av-lg',20)}
+    <div class="txt">
+      <div class="t1">阿狗</div>
+      <div class="t2">今天 09:12 开始 · 已经 8 小时 23 分</div>
+    </div>
+  </div>
+  <div class="qbig">还在屙吗？</div>
+  <div class="btn-stack">
+    <button class="btn-primary">${IC('check',18)}刚刚结束</button>
+    <button class="btn-ghost">${IC('clock',16)}没记结束时间</button>
+    <button class="btn-ghost">${IC('circle-dot',16)}还在屙，先别管</button>
+  </div>
+  <div class="hint" style="display:flex;gap:6px;align-items:flex-start">
+    ${IC('info',12)}<span>超过 24 小时会自动记为「未记结束」，不会一直挂着。</span>
+  </div>
+</div></div>`;
+
+const A5 = () => appbarMid('编辑记录', `<div class="icobtn plain" style="color:var(--danger)">${IC('trash-2',17)}</div>`) + `
+<div class="sheet-bg"><div class="sheet">
+  <div class="grab"></div>
+  <div class="sheet-hd"><b>2026年2月11日</b><div class="x">${IC('x',15)}</div></div>
+
+  <div class="field"><div class="lb">谁在屙</div>
+    <div class="porow">
+      <div class="po on">${AV('a','av-md',18)}<b>阿狗</b></div>
+      <div class="po">${AV('b','av-md',18)}<b>咪咪</b></div>
+      <div class="po">${AV('c','av-md',18)}<b>小土豆</b></div>
+    </div>
+  </div>
+
+  <div class="field"><div class="lb">时间<span class="opt">时长 14 分钟</span></div>
+    <div class="picker-row">
+      <div class="pcard"><span class="k">开始</span><span class="v">09:12</span><span class="now">改日期</span></div>
+      <div class="pcard"><span class="k">结束</span><span class="v">09:26</span><span class="now">清除</span></div>
+    </div>
+  </div>
+
+  <div class="field"><div class="lb">备注<span class="opt">2 条</span></div>
+    <div class="notelist">
+      <div class="nrow"><span class="nt">09:14</span><span class="nx">开冲，很顺畅</span>
+        <span class="nact">${IC('pencil',13)}${IC('trash-2',13)}</span></div>
+      <div class="nrow"><span class="nt">09:20</span><span class="nx">昨晚火锅太辣了，有点拉肚子</span>
+        <span class="nact">${IC('pencil',13)}${IC('trash-2',13)}</span></div>
+    </div>
+    <div class="qchips" style="margin-top:11px">
+      <span class="qchip">拉肚子</span><span class="qchip">很顺畅</span><span class="qchip">有点干</span>
+    </div>
+    <textarea class="ta" rows="3" style="margin-top:8px">昨晚火锅太辣了，有点拉肚子</textarea>
+    <div class="ta-foot"><span class="cnt">12/200</span><button class="ta-send">添加这条备注</button></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-ghost btn-danger">${IC('trash-2',16)}删除</button>
+    <button class="btn-primary" style="flex:1.6">${IC('check',18)}保 存</button>
+  </div>
+</div></div>`;
+
+/* ============================================================
+ *  B · 历史与补录
+ * ============================================================ */
+const B1 = () => appbar('历史', `<div class="icobtn">${IC('search',17)}</div><div class="icobtn">${IC('calendar-range',17)}</div>`) + `
+<div class="scrollpage" style="padding-top:0">
+  <div class="fchips">
+    <span class="fchip on">全部</span>
+    <span class="fchip">${AV('a','av-xs',9)}阿狗</span>
+    <span class="fchip">${AV('b','av-xs',9)}咪咪</span>
+    <span class="fchip">${AV('c','av-xs',9)}小土豆</span>
+  </div>
+
+  <div>
+    <div class="tlhead"><b>2月12日 周四</b><span>2 次</span></div>
+    <div class="rec" style="margin-bottom:8px">${AV('c','av-md',18)}
+      <div class="rec-main">
+        <div class="rec-head"><span class="rec-name">小土豆</span><span class="rec-dur">11 分钟</span></div>
+        <div class="rec-time">21:05 <span class="ar">${IC('arrow-right',12)}</span> 21:16</div>
+      </div>
+      <div class="nact" style="color:var(--ink-3);align-self:center">${IC('chevron-right',16)}</div>
+    </div>
+    <div class="rec">${AV('c','av-md',18)}
+      <div class="rec-main">
+        <div class="rec-head"><span class="rec-name">小土豆</span><span class="rec-dur">时长不详</span></div>
+        <div class="rec-time">09:30 <span class="ar">${IC('arrow-right',12)}</span> <span class="unk">未记结束</span></div>
+      </div>
+      <div class="nact" style="color:var(--ink-3);align-self:center">${IC('chevron-right',16)}</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="tlhead"><b>2月11日 周三</b><span>4 次</span></div>
+    <div class="rec" style="margin-bottom:8px">${AV('a','av-md',18)}
+      <div class="rec-main">
+        <div class="rec-head"><span class="rec-name">阿狗</span><span class="rec-dur">14 分钟</span></div>
+        <div class="rec-time">09:12 <span class="ar">${IC('arrow-right',12)}</span> 09:26</div>
+        <div class="chips-inline"><span class="tchip">拉肚子</span></div>
+      </div>
+      <div class="nact" style="color:var(--ink-3);align-self:center">${IC('chevron-right',16)}</div>
+    </div>
+    <div class="rec">${AV('b','av-md',18)}
+      <div class="rec-main">
+        <div class="rec-head"><span class="rec-name">咪咪</span><span class="rec-dur">12 分钟</span></div>
+        <div class="rec-time">13:40 <span class="ar">${IC('arrow-right',12)}</span> 13:52</div>
+      </div>
+      <div class="nact" style="color:var(--ink-3);align-self:center">${IC('chevron-right',16)}</div>
+    </div>
+  </div>
+</div>
+<div class="fab">${IC('plus',17)}<span>补录一条</span></div>`;
+
+const B2 = () => appbarMid('历史', `<div class="icobtn plain" style="color:var(--brand-ink)">${IC('sliders-horizontal',17)}</div>`) + `
+<div class="scrollpage">
+  <div class="searchbar">${IC('search',15)}<span class="kw">拉肚子</span><span class="x" style="color:var(--ink-3)">${IC('x',14)}</span></div>
+
+  <div>
+    <div class="slab">时间范围</div>
+    <div class="fchips">
+      <span class="fchip">全部</span><span class="fchip on">本月</span>
+      <span class="fchip">近 7 天</span><span class="fchip">${IC('calendar-range',12)}自定义</span>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab">屙屎人（可多选）</div>
+    <div class="fchips">
+      <span class="fchip on">${AV('a','av-xs',9)}阿狗</span>
+      <span class="fchip">${AV('b','av-xs',9)}咪咪</span>
+      <span class="fchip on">${AV('c','av-xs',9)}小土豆</span>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab" style="display:flex;justify-content:space-between">
+      <span>结果</span><span style="color:var(--brand-ink)">找到 3 条</span></div>
+    <div class="rec" style="margin-bottom:8px">${AV('a','av-md',18)}
+      <div class="rec-main">
+        <div class="rec-head"><span class="rec-name">阿狗</span><span class="rec-dur">2月11日</span></div>
+        <div class="rec-time">09:12 <span class="ar">${IC('arrow-right',12)}</span> 09:26</div>
+        <div class="chips-inline"><span class="tchip">拉肚子</span></div>
+      </div>
+    </div>
+    <div class="rec" style="margin-bottom:8px">${AV('a','av-md',18)}
+      <div class="rec-main">
+        <div class="rec-head"><span class="rec-name">阿狗</span><span class="rec-dur">2月7日</span></div>
+        <div class="rec-time">20:41 <span class="ar">${IC('arrow-right',12)}</span> 20:55</div>
+        <div class="chips-inline"><span class="tchip">拉肚子</span></div>
+      </div>
+    </div>
+    <div class="rec">${AV('c','av-md',18)}
+      <div class="rec-main">
+        <div class="rec-head"><span class="rec-name">小土豆</span><span class="rec-dur">2月3日</span></div>
+        <div class="rec-time">07:20 <span class="ar">${IC('arrow-right',12)}</span> 07:31</div>
+        <div class="chips-inline"><span class="tchip">拉肚子</span></div>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+const B3 = () => appbarMid('历史') + `
+<div class="sheet-bg"><div class="sheet">
+  <div class="grab"></div>
+  <div class="sheet-hd"><b>补录一条</b><div class="x">${IC('x',15)}</div></div>
+
+  <div class="field"><div class="lb">哪一天</div>
+    <div class="inputrow">${IC('calendar-days',16)}<span class="val">2026年2月9日 · 周一</span>${IC('chevron-down',15)}</div>
+  </div>
+
+  <div class="field"><div class="lb">时间</div>
+    <div class="picker-row">
+      <div class="pcard"><span class="k">开始</span><span class="v">08:15</span><span class="now">改时间</span></div>
+      <div class="pcard empty"><span class="k">结束</span><span class="v">未填写</span><span class="now">非必填</span></div>
+    </div>
+  </div>
+
+  <div class="field"><div class="lb">谁在屙</div>
+    <div class="porow">
+      <div class="po">${AV('a','av-md',18)}<b>阿狗</b></div>
+      <div class="po on">${AV('b','av-md',18)}<b>咪咪</b></div>
+      <div class="po">${AV('c','av-md',18)}<b>小土豆</b></div>
+    </div>
+  </div>
+
+  <div class="field"><div class="lb">备注<span class="opt">可留空</span></div>
+    <div class="qchips">
+      <span class="qchip">拉肚子</span><span class="qchip">很顺畅</span><span class="qchip add">${IC('plus',12)}自定义</span>
+    </div>
+    <textarea class="ta" rows="3" style="margin-top:8px" placeholder="写点什么…快捷备注点一下会追加到这里"></textarea>
+    <div class="ta-foot"><span class="cnt">0/200</span><button class="ta-send">添加这条备注</button></div>
+  </div>
+
+  <div class="hint">${IC('info',12)} 补录不会影响默认屙屎人和当前进行中的记录。</div>
+  <button class="btn-primary">${IC('check',18)}存 档</button>
+</div></div>`;
+
+const B4 = () => appbar('屙了么',
+    `<div class="icobtn">${IC('search',17)}</div><div class="icobtn">${IC('settings',17)}</div>`) +
+  monthCard(2026, 1, { sel:'2026-02-05' }) + `
+<div class="listwrap">
+  ${daybar('2026-02-05', 0)}
+  <div class="emptystate">
+    <div class="ring">${IC('notebook-pen',32)}</div>
+    <div class="t1">这天还没有人屙过</div>
+    <div class="t2">要么是真的没屙，<br>要么是忘了记 —— 补一条吧</div>
+    <button class="btn-ghost" style="flex:none;padding:0 18px;height:42px;font-size:14px">${IC('plus',15)}补录到这天</button>
+  </div>
+</div>` + fab;
+
+/* ⑳ 首次打开
+ * ★ 首启的空日历和 B4「某天没记录」是两个完全不同的空状态：
+ *   B4 的月历是满的，只是那一天空；首启是连人都还没有。
+ * 这一屏同时验证三件事：静默自动建「我」、一次性加人提示条、完全空的月历。
+ *
+ * 定下来的方案：不弹引导页（会挡住「记一次」这个核心动作），
+ * 静默把「我」建好，用一条可关掉的提示条把「还能加人」说出来。 */
+const B5 = () => appbar('屙了么',
+    `<div class="icobtn">${IC('search',17)}</div><div class="icobtn">${IC('settings',17)}</div>`) +
+  monthCard(2026, 1, { data:{} }) + `
+<div class="firsthint">
+  <div class="iw">${IC('users',15)}</div>
+  <div class="txt">
+    <div class="t1">已自动创建「我」</div>
+    <div class="t2">家里还有别人要记？可以加多个屙屎人</div>
+  </div>
+  <button class="hbtn">去添加</button>
+  <span class="hx">${IC('x',13)}</span>
+</div>` +
+  miniList('2026-02-11', 0, `
+    <div class="emptystate" style="padding-bottom:26px">
+      <div class="ring">${IC('notebook-pen',32)}</div>
+      <div class="t1">还没有任何记录</div>
+      <div class="t2">点右下角「现在开屙」，<br>或者去历史页补一条以前的</div>
+    </div>`) + fab;
+
+/* ============================================================
+ *  C · 设置 · 人员与备注
+ * ============================================================ */
+const C1 = () => appbar('设置') + `
+<div class="scrollpage">
+  <div>
+    <div class="slab">屙屎人</div>
+    <div class="card">
+      <div class="rowitem"><div class="iw">${IC('users',17)}</div>
+        <div class="txt"><div class="t1">屙屎人管理</div><div class="t2">阿狗 · 咪咪 · 小土豆</div></div>
+        <span class="val">3 位</span><span class="chev">${IC('chevron-right',16)}</span></div>
+      <div class="rowitem"><div class="iw">${IC('dog',17)}</div>
+        <div class="txt"><div class="t1">默认屙屎人</div><div class="t2">新建记录时自动选中</div></div>
+        <span class="val">阿狗</span><span class="chev">${IC('chevron-right',16)}</span></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab">备注</div>
+    <div class="card">
+      <div class="rowitem"><div class="iw">${IC('tags',17)}</div>
+        <div class="txt"><div class="t1">默认备注</div><div class="t2">记录时一键插入</div></div>
+        <span class="val">6 个</span><span class="chev">${IC('chevron-right',16)}</span></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab">日历</div>
+    <div class="card">
+      <div class="rowitem"><div class="iw b">${IC('calendar-days',17)}</div>
+        <div class="txt"><div class="t1">节假日与调休</div><div class="t2">已内置 2024 – 2026</div></div>
+        <span class="chev">${IC('chevron-right',16)}</span></div>
+      <div class="rowitem"><div class="iw b">${IC('sun',17)}</div>
+        <div class="txt"><div class="t1">每周起始日</div></div>
+        <span class="val">星期一</span><span class="chev">${IC('chevron-right',16)}</span></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab">外观与数据</div>
+    <div class="card">
+      <div class="rowitem"><div class="iw">${IC('moon',17)}</div>
+        <div class="txt"><div class="t1">深色模式</div><div class="t2">跟随系统</div></div>
+        <div class="switch off"></div></div>
+      <div class="rowitem"><div class="iw g">${IC('download',17)}</div>
+        <div class="txt"><div class="t1">备份与导出</div><div class="t2">上次导出 2月1日</div></div>
+        <span class="chev">${IC('chevron-right',16)}</span></div>
+      <div class="rowitem"><div class="iw">${IC('info',17)}</div>
+        <div class="txt"><div class="t1">关于屙了么</div></div>
+        <span class="val">v1.0.0</span><span class="chev">${IC('chevron-right',16)}</span></div>
+    </div>
+  </div>
+</div>`;
+
+const C2 = () => appbar('屙屎人', `<div class="icobtn">${IC('user-plus',17)}</div>`) + `
+<div class="scrollpage">
+  <div class="hint">${IC('grip-vertical',12)} 长按拖动可调整顺序，列表顺序就是记录页的选择顺序。</div>
+
+  <div>
+    <div class="pcard2">${AV('a','av-lg',20)}
+      <div class="info">
+        <div class="nm">阿狗 <span class="def">默认</span></div>
+        <div class="rm">起床后、午饭后各一次</div>
+      </div>
+      <div class="grabic">${IC('grip-vertical',16)}</div>
+    </div>
+    <div class="pcard2">${AV('b','av-lg',20)}
+      <div class="info"><div class="nm">咪咪</div><div class="rm">不爱喝水</div></div>
+      <div class="grabic">${IC('grip-vertical',16)}</div>
+    </div>
+    <div class="pcard2">${AV('c','av-lg',20)}
+      <div class="info"><div class="nm">小土豆</div><div class="rm">晚上必去一次</div></div>
+      <div class="grabic">${IC('grip-vertical',16)}</div>
+    </div>
+  </div>
+
+  <button class="btn-ghost" style="height:46px;font-size:15px">${IC('user-plus',16)}添加屙屎人</button>
+
+  <div class="card">
+    <div class="rowitem"><div class="iw">${IC('clock',17)}</div>
+      <div class="txt"><div class="t1">关于正在进行的记录</div>
+      <div class="t2">同一个人同时只允许有一条未结束的记录</div></div></div>
+  </div>
+</div>`;
+
+const C3 = () => appbarMid('编辑屙屎人', `<div class="icobtn plain" style="color:var(--brand-ink)">保存</div>`) + `
+<div class="scrollpage">
+  <div class="av-preview">
+    <div class="wrap">${AV('a','av-xl',38)}<div class="cam">${IC('camera',15)}</div></div>
+    <div class="who">点头像可从相册选图</div>
+  </div>
+
+  <div>
+    <div class="slab">名称</div>
+    <div class="inputrow">${IC('user',16)}<span class="val">阿狗</span></div>
+  </div>
+
+  <div>
+    <div class="slab">备注</div>
+    <div class="inputrow">${IC('sticky-note',16)}<span class="val">起床后、午饭后各一次</span></div>
+  </div>
+
+  <div>
+    <div class="slab">或选一个图标头像</div>
+    <div class="avatar-grid">
+      <div class="av-opt on">${IC('dog',20)}</div>
+      <div class="av-opt">${IC('cat',20)}</div>
+      <div class="av-opt">${IC('rabbit',20)}</div>
+      <div class="av-opt">${IC('bird',20)}</div>
+      <div class="av-opt">${IC('turtle',20)}</div>
+      <div class="av-opt">${IC('fish',20)}</div>
+      <div class="av-opt">${IC('ghost',20)}</div>
+      <div class="av-opt">${IC('star',20)}</div>
+      <div class="av-opt">${IC('crown',20)}</div>
+      <div class="av-opt">${IC('rocket',20)}</div>
+      <div class="av-opt">${IC('leaf',20)}</div>
+      <div class="av-opt">${IC('zap',20)}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="rowitem"><div class="iw">${IC('check',17)}</div>
+      <div class="txt"><div class="t1">设为默认屙屎人</div><div class="t2">新建记录时自动选中</div></div>
+      <div class="switch"></div></div>
+  </div>
+
+  <button class="btn-ghost btn-danger" style="height:46px;font-size:15px;width:100%">${IC('trash-2',16)}删除这个屙屎人</button>
+</div>`;
+
+const C4 = () => appbar('默认备注', `<div class="icobtn">${IC('plus',18)}</div>`) + `
+<div class="scrollpage">
+  <div class="hint">记录时长按即可插入，插入时会自动带上当时的时刻。拖动可调整显示顺序。</div>
+
+  <div>
+    <div class="slab">常用（按使用频率排）</div>
+    <div class="card">
+      <div class="rowitem"><div class="iw">${IC('flame',17)}</div>
+        <div class="txt"><div class="t1">拉肚子</div><div class="t2">用过 12 次</div></div>
+        <span class="grabic" style="color:var(--ink-4);display:flex;gap:6px">${IC('grip-vertical',15)}${IC('trash-2',15)}</span></div>
+      <div class="rowitem"><div class="iw g">${IC('check',17)}</div>
+        <div class="txt"><div class="t1">很顺畅</div><div class="t2">用过 9 次</div></div>
+        <span class="grabic" style="color:var(--ink-4);display:flex;gap:6px">${IC('grip-vertical',15)}${IC('trash-2',15)}</span></div>
+      <div class="rowitem"><div class="iw">${IC('wind',17)}</div>
+        <div class="txt"><div class="t1">有点干</div><div class="t2">用过 4 次</div></div>
+        <span class="grabic" style="color:var(--ink-4);display:flex;gap:6px">${IC('grip-vertical',15)}${IC('trash-2',15)}</span></div>
+      <div class="rowitem"><div class="iw">${IC('smartphone',17)}</div>
+        <div class="txt"><div class="t1">玩手机</div><div class="t2">用过 3 次</div></div>
+        <span class="grabic" style="color:var(--ink-4);display:flex;gap:6px">${IC('grip-vertical',15)}${IC('trash-2',15)}</span></div>
+      <div class="rowitem"><div class="iw">${IC('briefcase',17)}</div>
+        <div class="txt"><div class="t1">带薪摸鱼</div><div class="t2">用过 2 次</div></div>
+        <span class="grabic" style="color:var(--ink-4);display:flex;gap:6px">${IC('grip-vertical',15)}${IC('trash-2',15)}</span></div>
+    </div>
+  </div>
+
+  <button class="btn-ghost" style="height:46px;font-size:15px">${IC('plus',16)}新增默认备注</button>
+</div>`;
+
+/* ============================================================
+ *  D · 设置 · 日历与数据
+ * ============================================================ */
+const D1 = () => appbarMid('节假日与日历') + `
+<div class="scrollpage">
+  <div>
+    <div class="slab">节假日数据</div>
+    <div class="card">
+      <div class="rowitem"><div class="iw b">${IC('calendar-days',17)}</div>
+        <div class="txt"><div class="t1">内置数据版本</div><div class="t2">来源：国务院办公厅公告</div></div>
+        <span class="val">2024 – 2026</span></div>
+      <div class="rowitem"><div class="iw b">${IC('download',17)}</div>
+        <div class="txt"><div class="t1">检查更新</div><div class="t2">上次同步 2026-01-06</div></div>
+        <span class="chev">${IC('chevron-right',16)}</span></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab">日期格显示</div>
+    <div class="card">
+      <div class="rowitem"><div class="txt"><div class="t1">显示头像与次数</div>
+        <div class="t2">关闭后只显示当天总次数</div></div><div class="switch"></div></div>
+      <div class="rowitem"><div class="txt"><div class="t1">显示休 / 班角标</div>
+        <div class="t2">法定假日与调休上班日</div></div><div class="switch"></div></div>
+      <div class="rowitem"><div class="txt"><div class="t1">周末数字用焦糖色</div></div><div class="switch"></div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab">每周起始日</div>
+    <div class="seg" style="align-self:flex-start">
+      <span class="on">周一</span><span>周日</span></div>
+  </div>
+
+  <div>
+    <div class="slab">日历字号</div>
+    <div class="card">
+      <div class="rowitem"><div class="txt"><div class="t1">日历字号</div>
+        <div class="t2">系统放大最多跟到 1.3× 为止</div></div>
+        <div class="seg" style="flex:none"><span>小</span><span class="on">中</span><span>大</span></div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab">跨零点归属</div>
+    <div class="card">
+      <div class="rowitem"><div class="txt"><div class="t1">按开始时间</div>
+        <div class="t2">23:50 开始、00:05 结束 → 算前一天</div></div><div class="switch"></div></div>
+      <div class="rowitem"><div class="txt"><div class="t1">按结束时间</div>
+        <div class="t2">关闭则按开始时间归属</div></div><div class="switch off"></div></div>
+    </div>
+  </div>
+</div>`;
+
+const D2 = () => appbarMid('统计') + `
+<div class="scrollpage">
+  <div class="seg" style="align-self:center"><span>周</span><span class="on">月</span><span>年</span></div>
+
+  <div class="card" style="padding:16px 16px 14px">
+    <div class="bignum"><span class="n">18</span><span class="u">次 · 2026年2月<br>平均每天 1.6 次</span></div>
+    <div class="chart">
+      ${[[38,'一'],[52,'二'],[30,'三'],[66,'四'],[44,'五'],[80,'六'],[58,'日']].map(([h,l],i)=>
+        `<div class="col"><div class="bar ${i===5?'hi':''}" style="height:${h}%"></div><span class="cl">${l}</span></div>`).join('')}
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px 14px">
+    <div class="slab" style="padding:0 0 4px">按屙屎人</div>
+    <div class="rankrow"><span class="rk">1</span>${AV('a','av-sm',13)}<span class="nm">阿狗</span>
+      <span class="track"><span class="fill" style="width:100%;background:#C8783C"></span></span><span class="ct">9</span></div>
+    <div class="rankrow"><span class="rk">2</span>${AV('b','av-sm',13)}<span class="nm">咪咪</span>
+      <span class="track"><span class="fill" style="width:55%;background:#4E8C6A"></span></span><span class="ct">5</span></div>
+    <div class="rankrow"><span class="rk">3</span>${AV('c','av-sm',13)}<span class="nm">小土豆</span>
+      <span class="track"><span class="fill" style="width:44%;background:#8A5FA8"></span></span><span class="ct">4</span></div>
+  </div>
+
+  <div class="card">
+    <div class="rowitem"><div class="iw">${IC('timer',17)}</div>
+      <div class="txt"><div class="t1">平均时长</div></div><span class="val">11 分 24 秒</span></div>
+    <div class="rowitem"><div class="iw">${IC('clock',17)}</div>
+      <div class="txt"><div class="t1">最常发生时段</div></div><span class="val">07:00 – 09:00</span></div>
+    <div class="rowitem"><div class="iw">${IC('flame',17)}</div>
+      <div class="txt"><div class="t1">最常出现的备注</div></div><span class="val">拉肚子</span></div>
+  </div>
+</div>`;
+
+const D3 = () => appbarMid('备份与导出') + `
+<div class="scrollpage">
+  <div>
+    <div class="slab">导出</div>
+    <div class="card">
+      <div class="rowitem"><div class="iw g">${IC('download',17)}</div>
+        <div class="txt"><div class="t1">导出为 JSON</div><div class="t2">完整备份，可再导回</div></div>
+        <span class="chev">${IC('chevron-right',16)}</span></div>
+      <div class="rowitem"><div class="iw g">${IC('notebook-pen',17)}</div>
+        <div class="txt"><div class="t1">导出为 CSV</div><div class="t2">用 Excel 打开看</div></div>
+        <span class="chev">${IC('chevron-right',16)}</span></div>
+      <div class="rowitem"><div class="iw">${IC('upload',17)}</div>
+        <div class="txt"><div class="t1">从备份恢复</div><div class="t2">会覆盖当前全部数据</div></div>
+        <span class="chev">${IC('chevron-right',16)}</span></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab">自动备份</div>
+    <div class="card">
+      <div class="rowitem"><div class="txt"><div class="t1">每周自动导出到本机</div>
+        <div class="t2">不联网，只写入应用私有目录</div></div><div class="switch"></div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab">数据</div>
+    <div class="card">
+      <div class="rowitem"><div class="iw">${IC('chart-column',17)}</div>
+        <div class="txt"><div class="t1">记录总数</div></div><span class="val">128 条</span></div>
+      <div class="rowitem"><div class="iw">${IC('users',17)}</div>
+        <div class="txt"><div class="t1">屙屎人</div></div><span class="val">3 位</span></div>
+      <div class="rowitem"><div class="iw">${IC('notebook-pen',17)}</div>
+        <div class="txt"><div class="t1">备注</div></div><span class="val">241 条</span></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="slab" style="color:var(--danger)">危险操作</div>
+    <div class="card" style="border-color:rgba(196,69,58,.25)">
+      <div class="rowitem"><div class="iw" style="background:rgba(196,69,58,.08);color:var(--danger)">${IC('triangle-alert',17)}</div>
+        <div class="txt"><div class="t1" style="color:var(--danger)">清空所有数据</div>
+        <div class="t2">不可撤销，建议先导出备份</div></div>
+        <span class="chev">${IC('chevron-right',16)}</span></div>
+    </div>
+  </div>
+</div>`;
+
+/* ============================================================
+ *  E · 日历快速切换
+ * ============================================================ */
+/* ⑰ 跳到哪个月
+ * 解决的问题：从 2026年2月 回到 2024年8月，靠 ‹ › 要点 18 次。
+ * 两个状态要分得开：焦糖实底 = 正在看的月，焦糖细环 = 今天所在的月。
+ * 这里画的是「人已经翻到 1 月、今天是 2 月」的瞬间。 */
+const E1 = () => appbar('屙了么',
+    `<div class="icobtn">${IC('search',17)}</div><div class="icobtn">${IC('settings',17)}</div>`) +
+  monthCard(2026, 0, { sel:'2026-01-20' }) +
+  miniList('2026-01-20', 2, `
+    <div class="rec">${AV('a')}<div class="rec-main">
+      <div class="rec-head"><span class="rec-name">阿狗</span><span class="rec-dur">11 分钟</span></div>
+      <div class="rec-time">08:40 <span class="ar">${IC('arrow-right',12)}</span> 08:51</div>
+    </div></div>
+    <div class="rec">${AV('b')}<div class="rec-main">
+      <div class="rec-head"><span class="rec-name">咪咪</span><span class="rec-dur">9 分钟</span></div>
+      <div class="rec-time">19:05 <span class="ar">${IC('arrow-right',12)}</span> 19:14</div>
+    </div></div>`) + `
+<div class="sheet-bg"><div class="sheet">
+  <div class="grab"></div>
+  <div class="sheet-hd"><b>跳到哪个月</b><div class="x">${IC('x',15)}</div></div>
+  <div class="ystrip">
+    <span class="yr">2023</span><span class="yr">2024</span><span class="yr">2025</span>
+    <span class="yr on">2026</span><span class="yr">2027</span>
+  </div>
+  <div class="mgrid">
+    ${['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'].map((t,i)=>{
+      const cls = ['mo'];
+      if(i === 0) cls.push('on');                          // 正在看的月
+      if(i === 1) cls.push('cur');                         // 今天所在的月
+      if([0,1,2,3,4,5,6,7,8,9,10,11].slice(0,9).includes(i)) cls.push('has'); // 有记录
+      return `<span class="${cls.join(' ')}">${t}<i class="dot"></i></span>`;
+    }).join('')}
+  </div>
+  <div class="hint" style="display:flex;gap:6px;align-items:flex-start">
+    ${IC('info',12)}<span>焦糖点 = 该月有记录。灰点月份点进去可直接补录，不用管「当前月份」。</span>
+  </div>
+  <button class="btn-ghost">${IC('calendar-check',16)}回到今天 · 2026年2月</button>
+</div></div>`;
+
+/* ⑱ 跳到哪一周
+ * 周视图下左右滑动逐周切换已经够快，但在「翻回上个月某一周」这种跨月场景里，
+ * 周列表比一格格滑要直接。 */
+const E2 = () => appbar('屙了么',
+    `<div class="icobtn">${IC('search',17)}</div><div class="icobtn">${IC('settings',17)}</div>`) +
+  weekCard() + recList() + `
+<div class="sheet-bg"><div class="sheet">
+  <div class="grab"></div>
+  <div class="sheet-hd"><b>跳到哪一周</b><div class="x">${IC('x',15)}</div></div>
+  <div class="slab" style="padding:0 3px 7px">2026年2月 · 共 4 周</div>
+  <div class="wlist">
+    <div class="wrow"><span class="wk">第 1 周</span><span class="rg">2/2 – 2/8</span><span class="ct">3 次</span></div>
+    <div class="wrow on"><span class="wk">第 2 周</span><span class="rg">2/9 – 2/15</span><span class="ct">7 次</span></div>
+    <div class="wrow"><span class="wk">第 3 周</span><span class="rg">2/16 – 2/22</span><span class="ct">5 次</span></div>
+    <div class="wrow"><span class="wk">第 4 周</span><span class="rg">2/23 – 3/1</span><span class="ct">2 次</span></div>
+  </div>
+  <div class="hint" style="display:flex;gap:6px;align-items:flex-start">
+    ${IC('info',12)}<span>跨月的那一周（第 4 周）会横跨到 3 月，点它会自动切到对应月份。</span>
+  </div>
+</div></div>`;
+
+/* ⑲ 6 行的月份
+ * 2026-08-01 是周六，5 + 31 = 36 格，必须排 6 行。
+ * 早期版本写死 35 格，这个月会直接丢掉 8/31 和 8/30 —— 视觉稿只画了 2 月（正好 5 行）
+ * 所以一直没暴露。这一屏就是拿来盯这个的。 */
+const E3 = () => appbar('屙了么',
+    `<div class="icobtn">${IC('search',17)}</div><div class="icobtn">${IC('settings',17)}</div>`) +
+  monthCard(2026, 7, { sel:'2026-08-12' }) +
+  miniList('2026-08-12', 2, `
+    <div class="rec">${AV('a')}<div class="rec-main">
+      <div class="rec-head"><span class="rec-name">阿狗</span><span class="rec-dur">10 分钟</span></div>
+      <div class="rec-time">07:50 <span class="ar">${IC('arrow-right',12)}</span> 08:00</div>
+    </div></div>
+    <div class="rec">${AV('c')}<div class="rec-main">
+      <div class="rec-head"><span class="rec-name">小土豆</span><span class="rec-dur">8 分钟</span></div>
+      <div class="rec-time">20:30 <span class="ar">${IC('arrow-right',12)}</span> 20:38</div>
+    </div></div>`) + fab;
+
+/* ==================== 组装 ==================== */
+document.getElementById('g-main').innerHTML =
+  phone(A1(), ['① 日历主页 · 月视图','核心页']) +
+  phone(A2(), ['② 日历主页 · 周视图','切换']) +
+  phone(A3(), ['③ 记一次 · 新建','录入']) +
+  phone(A4(), ['④ 忘了点结束 · 待确认','状态']) +
+  phone(A5(), ['⑤ 记录详情 · 编辑','修改']);
+
+document.getElementById('g-history').innerHTML =
+  phone(B1(), ['⑥ 历史记录 · 时间线','浏览']) +
+  phone(B2(), ['⑦ 搜索与筛选','检索']) +
+  phone(B3(), ['⑧ 补录历史记录','补记']) +
+  phone(B4(), ['⑨ 空状态 · 某天没记录','边界']) +
+  phone(B5(), ['⑳ 首次打开 · 空日历','首启']);
+
+document.getElementById('g-people').innerHTML =
+  phone(C1(), ['⑩ 设置主页','入口']) +
+  phone(C2(), ['⑪ 屙屎人管理','人员']) +
+  phone(C3(), ['⑫ 新增 / 编辑屙屎人','头像']) +
+  phone(C4(), ['⑬ 默认备注管理','备注']);
+
+document.getElementById('g-calendar').innerHTML =
+  phone(D1(), ['⑭ 节假日与日历','规则']) +
+  phone(D2(), ['⑮ 统计','可选']) +
+  phone(D3(), ['⑯ 备份与导出','数据']);
+
+document.getElementById('g-calnav').innerHTML =
+  phone(E1(), ['⑰ 跳到哪个月','快切']) +
+  phone(E2(), ['⑱ 跳到哪一周','快切']) +
+  phone(E3(), ['⑲ 6 行月份 · 8月','边界']);
+
+/* ==================== 分组切换 ====================
+ * 用 location.hash 驱动：'' -> main，#all -> 全部 19 屏。
+ * 出图脚本靠这个把 5 组分别渲染成独立 PNG。
+ */
+function applyGroup(){
+  var want = (location.hash || '').replace('#', '') || 'main';
+  [].slice.call(document.querySelectorAll('.grp')).forEach(function (g) {
+    g.style.display = (want === 'all' || g.id === want) ? 'block' : 'none';
+  });
+}
+applyGroup();
+window.addEventListener('hashchange', applyGroup);
+</script>
+</body>
+</html>
