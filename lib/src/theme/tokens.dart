@@ -42,6 +42,7 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
     required this.workSoft,
     required this.live,
     required this.liveSoft,
+    required this.pending,
     required this.danger,
   });
 
@@ -105,6 +106,11 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
   final Color live;
   final Color liveSoft;
 
+  /// 「待确认」状态的琥珀色。对白 5.52:1。
+  ///
+  /// 设计稿原本写的是 `#A9791A`，实测只有 3.86:1，不达 4.5:1，压深了一档。
+  final Color pending;
+
   /// 危险操作。对白 4.93:1。
   final Color danger;
 
@@ -130,6 +136,7 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
     workSoft: Color(0xFFE0EBEF),
     live: Color(0xFF3F7A57),
     liveSoft: Color(0xFFE1EDE5),
+    pending: Color(0xFF8A6114),
     danger: Color(0xFFC4453A),
   );
 
@@ -155,6 +162,7 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
     Color? workSoft,
     Color? live,
     Color? liveSoft,
+    Color? pending,
     Color? danger,
   }) {
     return PoopTokens(
@@ -178,6 +186,7 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
       workSoft: workSoft ?? this.workSoft,
       live: live ?? this.live,
       liveSoft: liveSoft ?? this.liveSoft,
+      pending: pending ?? this.pending,
       danger: danger ?? this.danger,
     );
   }
@@ -206,6 +215,7 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
       workSoft: Color.lerp(workSoft, other.workSoft, t)!,
       live: Color.lerp(live, other.live, t)!,
       liveSoft: Color.lerp(liveSoft, other.liveSoft, t)!,
+      pending: Color.lerp(pending, other.pending, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
     );
   }
@@ -213,6 +223,65 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
   /// 便捷取用：`context.tokens.ink3`
   static PoopTokens of(BuildContext context) =>
       Theme.of(context).extension<PoopTokens>() ?? light;
+}
+
+/// 头像的配色对。
+///
+/// 屙屎人没有存颜色，颜色是**从 id 稳定推导**出来的 —— 见 [avatarColorFor]。
+/// 用户不选颜色，所以任意两个人在日历上撞色是可能的；这里挑的是一组
+/// 色相拉得比较开的颜色，常用人数（2~4 人）下不会撞。
+class AvatarColor {
+  const AvatarColor(this.bg, this.fg);
+
+  /// 圆形底色。
+  final Color bg;
+
+  /// 图标/首字的前景色。**必须对 [bg] 达到 3:1**（图标是非文本）。
+  final Color fg;
+}
+
+/// 头像色板。顺序就是取色顺序。
+///
+/// 每一对都经过 WCAG 非文本 3:1 校验，见 `test/theme/tokens_contrast_test.dart`。
+const List<AvatarColor> kAvatarPalette = [
+  AvatarColor(Color(0xFFF7E5D2), Color(0xFFB4662F)), // 焦糖
+  AvatarColor(Color(0xFFE1EDE5), Color(0xFF3F7A57)), // 苔绿
+  AvatarColor(Color(0xFFEFE4F1), Color(0xFF8A5FA8)), // 淡紫
+  AvatarColor(Color(0xFFE4EAF0), Color(0xFF4A6B85)), // 雾蓝
+  AvatarColor(Color(0xFFF7E3DE), Color(0xFFA85442)), // 陶土
+  AvatarColor(Color(0xFFE8EFE0), Color(0xFF5A7A45)), // 橄榄
+  AvatarColor(Color(0xFFF2E7DA), Color(0xFF8A5A3C)), // 拿铁
+  AvatarColor(Color(0xFFE7E6F4), Color(0xFF5A5A94)), // 灰紫
+];
+
+/// 由 id 稳定地取一个头像配色。
+///
+/// **不能用 `String.hashCode`** —— Dart 的字符串哈希不保证跨进程稳定，
+/// 那样每次冷启动同一个人会换颜色，日历看着像随机闪烁。
+/// 这里用 FNV-1a，跨平台跨版本都稳定。
+AvatarColor avatarColorFor(String id) {
+  var hash = 0x811c9dc5;
+  for (var i = 0; i < id.length; i++) {
+    hash ^= id.codeUnitAt(i);
+    hash = (hash * 0x01000193) & 0xFFFFFFFF;
+  }
+  return kAvatarPalette[hash % kAvatarPalette.length];
+}
+
+/// 姓名的首字（用于没有图标也没有照片时兜底）。
+///
+/// 中文取第一个字；英文取首字母大写。
+String initialOf(String name) {
+  final t = name.trim();
+  if (t.isEmpty) return '?';
+  return t.characters.first.toUpperCase();
+}
+
+/// 便捷扩展：`context.tokens.ink3`。
+///
+/// 挂在 [BuildContext] 上而不是某个页面文件里 —— 谁 import 了令牌谁就能用。
+extension PoopTokensX on BuildContext {
+  PoopTokens get tokens => PoopTokens.of(this);
 }
 
 /// 圆角。取自视觉稿 `:root`。

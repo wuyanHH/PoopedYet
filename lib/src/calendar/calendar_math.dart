@@ -43,6 +43,22 @@ enum WeekStart {
 /// 跨夏令时会偏一小时，日期就错了。
 DateTime startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
 
+/// `yyyy-MM-dd` 的本地日期键。
+///
+/// 日历聚合、按天分组都用它做 map 的键。
+/// **必须用本地日期**：Drift 把 DateTime 存成 Unix 秒（UTC 基准），
+/// 直接对时间戳取模分组会按 UTC 切天，国内用户晚上 8 点之后的记录会被算到第二天。
+String dayKey(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
+
+/// [dayKey] 的逆运算。
+DateTime parseDayKey(String key) {
+  final p = key.split('-');
+  return DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+}
+
 /// 两个时刻是否落在同一天（本地时区）。
 bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;

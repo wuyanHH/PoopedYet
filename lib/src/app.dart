@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'theme/tokens.dart';
-import 'ui/boot_check_screen.dart';
+import 'ui/home_page.dart';
 
 /// 应用根组件。
 class PoopedYetApp extends StatelessWidget {
@@ -27,7 +27,7 @@ class PoopedYetApp extends StatelessWidget {
       locale: const Locale('zh', 'CN'),
 
       theme: _buildTheme(t),
-      home: const BootCheckScreen(),
+      home: const HomePage(),
     );
   }
 
@@ -67,9 +67,4 @@ class PoopedYetApp extends StatelessWidget {
       dividerTheme: DividerThemeData(color: t.line, thickness: 1, space: 1),
     );
   }
-}
-
-/// 便捷扩展：`context.tokens.ink3`
-extension PoopTokensX on BuildContext {
-  PoopTokens get tokens => PoopTokens.of(this);
 }

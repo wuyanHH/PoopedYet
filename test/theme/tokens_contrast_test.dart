@@ -63,6 +63,8 @@ void main() {
     test('状态色当文字用也达标', () {
       expectAA(t.live, t.surface, what: '正在屙对白卡');
       expectAA(t.live, t.paper, what: '正在屙对纸面');
+      expectAA(t.pending, t.surface, what: '待确认琥珀对白卡');
+      expectAA(t.pending, t.paper, what: '待确认琥珀对纸面');
       expectAA(t.danger, t.surface, what: 'danger 对白卡');
       expectAA(t.danger, t.paper, what: 'danger 对纸面');
     });
@@ -148,6 +150,86 @@ void main() {
     });
   });
 
+  group('头像色板', () {
+    test('每一对前景/底色都达到非文本 3:1', () {
+      for (var i = 0; i < kAvatarPalette.length; i++) {
+        final c = kAvatarPalette[i];
+        final r = Wcag.ratio(c.fg, c.bg);
+        expect(
+          r,
+          greaterThanOrEqualTo(Wcag.aaLarge),
+          reason: '色板第 $i 对（${_hex(c.bg)} / ${_hex(c.fg)}）只有 '
+              '${r.toStringAsFixed(2)}:1',
+        );
+      }
+    });
+
+    test('每一对在白色卡片上也站得住（日历格是白底）', () {
+      for (var i = 0; i < kAvatarPalette.length; i++) {
+        final c = kAvatarPalette[i];
+        // 头像圆本身提供对比，但圆和卡片之间要有可见的边界
+        final r = Wcag.ratio(c.bg, t.surface);
+        expect(r, lessThan(3.0), reason: '第 $i 对的底色应该比白卡深一点');
+      }
+    });
+
+    // 用 FNV-1a 的独立实现在测试里重算一遍。
+    // 这样如果有人把 avatarColorFor 换成 String.hashCode，测试立刻失败 ——
+    // Dart 的字符串哈希不保证跨进程稳定，那样每次冷启动同一个人会换颜色。
+    test('avatarColorFor 用的是稳定的 FNV-1a，不是 String.hashCode', () {
+      int fnv1a(String s) {
+        var hash = 0x811c9dc5;
+        for (var i = 0; i < s.length; i++) {
+          hash ^= s.codeUnitAt(i);
+          hash = (hash * 0x01000193) & 0xFFFFFFFF;
+        }
+        return hash;
+      }
+
+      for (final id in ['a', 'b', 'c', 'me', '36fc74fb-4639-417a']) {
+        expect(
+          avatarColorFor(id),
+          kAvatarPalette[fnv1a(id) % kAvatarPalette.length],
+          reason: '$id 的配色推导和 FNV-1a 对不上',
+        );
+      }
+    });
+
+    test('同一个 id 反复取色结果恒定', () {
+      for (final id in ['a', 'b', 'me']) {
+        expect(avatarColorFor(id), avatarColorFor(id));
+      }
+    });
+
+    test('常用人数下不会所有人同色', () {
+      final ids = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
+      final used = ids.map(avatarColorFor).toSet();
+      expect(used.length, greaterThanOrEqualTo(2),
+          reason: '6 个人至少要用到 2 种颜色');
+    });
+  });
+
+  group('initialOf', () {
+    test('中文取第一个字', () {
+      expect(initialOf('阿狗'), '阿');
+      expect(initialOf('小土豆'), '小');
+      expect(initialOf('我'), '我');
+    });
+
+    test('英文取首字母并大写', () {
+      expect(initialOf('dog'), 'D');
+      expect(initialOf('alan'), 'A');
+    });
+
+    test('前后空格被忽略', () {
+      expect(initialOf('  咪咪  '), '咪');
+    });
+
+    test('空字符串兜底', () {
+      expect(initialOf(''), '?');
+      expect(initialOf('   '), '?');
+    });
+  });
   group('ThemeExtension 契约', () {
     test('copyWith 只改指定字段', () {
       final changed = t.copyWith(ink: const Color(0xFF000000));

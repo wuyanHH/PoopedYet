@@ -59,6 +59,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # 节假日数据打包进 APK。每年国务院发公告后需要更新，见 docs/review.md P2-4。
-  # assets:
-  #   - assets/holidays/
+  # 节假日数据打包进 APK（来源：国务院办公厅公告，经 NateScarlet/holiday-cn 整理）。
+  # 9 年共约 18 KB，压进包里的成本几乎为零。
+  #
+  # ⚠ 每年国务院发公告后要补新一年的文件并重新发版 ——
+  #   这是"打包"这个选择的固有代价，见 docs/review.md P2-4。
+  #   缓解手段是设置页留一个「导入节假日 JSON」入口。
+  assets:
+    - assets/holidays/
