@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.poopedyet.pooped_yet"
+    namespace = "com.poopedyet.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.poopedyet.pooped_yet"
+        applicationId = "com.poopedyet.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

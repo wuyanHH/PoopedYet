@@ -213,3 +213,56 @@ AGP 和 Kotlin 在 `android/settings.gradle.kts` 的 `plugins` 块。
 注意 `android/gradle.properties` 里已经被 Flutter 自动加了
 `android.builtInKotlin=false` 和 `android.newDsl=false`，
 说明 Flutter 自己正在往 AGP 9 过渡 —— 跟着它的节奏走就行。
+
+---
+
+## 七、模拟器与真机验证
+
+本机 AVD：**`Medium_Phone_API_36.1`**（Android 16 / API 36 / x86_64 / 1080×2400 / 420dpi）。
+Android Studio 的 GUI 不在标准路径，但 SDK、emulator、AVD 都齐。
+
+```powershell
+# 启动
+Start-Process "E:\Development\AndroidSdk\emulator\emulator.exe" `
+  -ArgumentList '-avd','Medium_Phone_API_36.1','-no-boot-anim'
+# 等待
+adb wait-for-device; adb shell getprop sys.boot_completed   # 等到 1
+```
+
+### 验证过什么
+
+`flutter build apk --debug --target-platform android-x64` → `adb install -r` → 启动，
+然后**直接拉出设备上的数据库用 sqlite3 核对**（不靠看截图）：
+
+| 检查项 | 结果 |
+|---|---|
+| 5 张表 | ✅ poopers / poop_records / poop_notes / note_templates / holidays |
+| 两个部分唯一索引的 WHERE 子句 | ✅ `ux_active_record ... WHERE ended_at IS NULL AND end_unknown = 0`<br>✅ `ux_default_pooper ... WHERE is_default = 1` |
+| 外键动作 | ✅ `ON DELETE RESTRICT`（不是 CASCADE） |
+| 首启自动建档 | ✅ `fresh=true`，建出「我」并设为默认 |
+| 备注模板种子 | ✅ 7 条 |
+| `schemaVersion` | ✅ `user_version = 1` |
+| 重启幂等 | ✅ 仍是 1 个人、7 条模板，DB 文件 mtime 未变（复用而非重建） |
+| **真实连接上的 `PRAGMA foreign_keys`** | ✅ **`true`** |
+
+最后一条是**只有真机能验**的：SQLite 的 `PRAGMA foreign_keys` 是 per-connection、
+默认关闭，而 `drift_flutter` 可能把数据库跑在后台 isolate 里。
+单元测试用的是内存库，验不到那条真实连接。所以自检页会把 PRAGMA 读出来：
+
+```
+[BOOT-CHECK] default=我 poopers=1 records=0 templates=7 foreign_keys=true fresh=false
+```
+
+Flutter 画在 canvas 上，`uiautomator` 读不到界面文字 —— 所以自检结果同时打进日志，
+CI / adb 这类没有 GUI 的环境也能核对。
+
+### 拉库核对的方法
+
+设备上没有 `sqlite3`，但 **Android platform-tools 里自带了一个**：
+
+```powershell
+cmd /c "adb exec-out run-as com.poopedyet.app cat app_flutter/pooped_yet.sqlite > $env:TEMP\db.sqlite"
+& "E:\Development\AndroidSdk\platform-tools\sqlite3.exe" "$env:TEMP\db.sqlite" ".tables"
+```
+
+注意数据库在 `app_flutter/`（`drift_flutter` 用的是 documents 目录），**不是 `databases/`**。

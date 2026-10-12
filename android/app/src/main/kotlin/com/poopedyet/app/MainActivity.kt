@@ -1,4 +1,4 @@
-package com.poopedyet.pooped_yet
+package com.poopedyet.app
 
 import io.flutter.embedding.android.FlutterActivity
 
