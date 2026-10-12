@@ -284,6 +284,36 @@ extension PoopTokensX on BuildContext {
   PoopTokens get tokens => PoopTokens.of(this);
 }
 
+/// 展示型字体族（得意黑 / Smiley Sans）。
+///
+/// **只用于标题类文字**：应用栏标题、月份标题、日期栏、FAB、弹层标题、大数字。
+/// 它是个斜体展示字体，字形宽、字重单一 —— 塞进正文会立刻显得廉价。
+///
+/// 正文**不打包字体**：安卓自带 Noto Sans CJK，中文渲染够好，
+/// 为它多背 5~10 MB 不值得。
+const String kDisplayFont = 'SmileySans';
+
+/// 展示型文字样式。
+///
+/// **刻意不接受 fontWeight 参数**：得意黑只有一个字重，
+/// 传 `FontWeight.w700` 不会让它变粗，只会让安卓去**合成假粗体** ——
+/// 笔画会糊成一团，比不加粗更难看。所有展示型文字都用它自带的字重。
+TextStyle displayStyle({
+  required double size,
+  Color? color,
+  double? letterSpacing,
+  double height = 1.0,
+}) {
+  return TextStyle(
+    fontFamily: kDisplayFont,
+    fontSize: size,
+    fontWeight: FontWeight.w400,
+    color: color,
+    letterSpacing: letterSpacing,
+    height: height,
+  );
+}
+
 /// 圆角。取自视觉稿 `:root`。
 abstract final class PoopRadii {
   static const double card = 20;

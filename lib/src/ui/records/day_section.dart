@@ -40,9 +40,8 @@ class DaySection extends ConsumerWidget {
             children: [
               Text(
                 '${day.month}月${day.day}日',
-                style: TextStyle(
-                  fontSize: 17.5,
-                  fontWeight: FontWeight.w800,
+                style: displayStyle(
+                  size: 17.5,
                   letterSpacing: 0.4,
                   color: t.ink,
                 ),

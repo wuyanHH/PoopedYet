@@ -230,11 +230,10 @@ class _Body extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       alignment: Alignment.center,
-                      child: const Text(
+                      child: Text(
                         '完 成',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
+                        style: displayStyle(
+                          size: 15,
                           letterSpacing: 2,
                           color: Colors.white,
                         ),

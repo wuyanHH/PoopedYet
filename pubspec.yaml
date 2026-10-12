@@ -67,3 +67,21 @@ flutter:
   #   缓解手段是设置页留一个「导入节假日 JSON」入口。
   assets:
     - assets/holidays/
+    # 第三方许可证文本。OFL 要求随分发附上 ——
+    # 放这里而不是 assets/fonts/，否则字体文件会被当作普通资源再打包一遍（白多 2.5 MB）。
+    - assets/licenses/
+
+  # 得意黑 Smiley Sans —— 只用于展示型文字（标题、日期栏、FAB、大数字）。
+  #
+  # 它是个**斜体展示字体**，正文用它必错；而且它字形宽、字重单一，
+  # 塞进正文会立刻显得廉价。设计规范里 `--f-disp` 的角色就是这么分的。
+  #
+  # 正文不打包字体：安卓自带 Noto Sans CJK，中文渲染够好，
+  # 为它多背 5~10 MB 不值得。
+  #
+  # 许可：SIL OFL 1.1，允许商用与再分发，但保留字体名（不得改名后分发）。
+  # 许可证文本随包附上，见 assets/fonts/SmileySans-OFL.txt。
+  fonts:
+    - family: SmileySans
+      fonts:
+        - asset: assets/fonts/SmileySans-Oblique.ttf

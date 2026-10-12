@@ -90,11 +90,10 @@ class SheetShell extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: t.ink,
+                          style: displayStyle(
+                            size: 16,
                             letterSpacing: 0.4,
+                            color: t.ink,
                           ),
                         ),
                         if (subtitle != null) ...[

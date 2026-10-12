@@ -96,9 +96,8 @@ class _YearMonthPickerState extends ConsumerState<_YearMonthPicker> {
                     ),
                     child: Text(
                       '$y',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                      style: displayStyle(
+                        size: 15,
                         letterSpacing: 0.4,
                         color: on ? Colors.white : t.ink2,
                       ),
@@ -207,12 +206,7 @@ class _MonthCell extends StatelessWidget {
           children: [
             Text(
               '$month月',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.4,
-                color: fg,
-              ),
+              style: displayStyle(size: 15, letterSpacing: 0.4, color: fg),
             ),
             const SizedBox(height: 5),
             Container(
@@ -349,9 +343,8 @@ class _WeekRow extends StatelessWidget {
               width: 50,
               child: Text(
                 '第 $index 周',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
+                style: displayStyle(
+                  size: 14,
                   letterSpacing: 0.4,
                   color: isCurrent ? t.brandInk : t.ink2,
                 ),

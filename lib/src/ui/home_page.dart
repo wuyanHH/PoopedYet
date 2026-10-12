@@ -152,12 +152,7 @@ class _AppBar extends ConsumerWidget {
             onLongPress: kDebugMode ? () => _devMenu(context, ref) : null,
             child: Text(
               '屙了么',
-              style: TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-                color: t.ink,
-              ),
+              style: displayStyle(size: 21, letterSpacing: 1, color: t.ink),
             ),
           ),
           const Spacer(),
@@ -282,16 +277,15 @@ class _Fab extends StatelessWidget {
             ),
           ],
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(LucideIcons.plus, size: 17, color: Colors.white),
-            SizedBox(width: 8),
+            const Icon(LucideIcons.plus, size: 17, color: Colors.white),
+            const SizedBox(width: 8),
             Text(
               '现在开屙',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+              style: displayStyle(
+                size: 15,
                 letterSpacing: 1,
                 color: Colors.white,
               ),

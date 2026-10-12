@@ -167,9 +167,8 @@ class _Header extends StatelessWidget {
                     child: Text(
                       title,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
+                      style: displayStyle(
+                        size: 19,
                         letterSpacing: 0.5,
                         color: t.ink,
                       ),
