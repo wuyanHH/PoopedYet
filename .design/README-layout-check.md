@@ -164,3 +164,33 @@ script 源码里也含有 `<pre id="DIAG">` 这个字符串，取第一个会匹
 于是这个 bug 藏了很久，实际 2026 年有 3 个月（3/8/11 月）需要 6 行、会各丢一星期。
 
 **边界值要专门造一屏去盯**——第 ⑲ 屏画的就是 8 月，纯为了这个。
+
+---
+
+## 5. 设备端定位：`find_regions.py`
+
+模拟器上做 UI 自动化时要 `adb shell input tap x y`，但 **Flutter 画在 canvas 上，
+`uiautomator` 读不到界面结构**，只能猜坐标 —— 我猜错过好几次，试了四个位置全落空。
+
+这个脚本用另一条路：**从截图里找特定颜色的连通区域，取包围盒反推元素位置**。
+
+```powershell
+$py = "<bundled python>"
+adb exec-out screencap -p > $env:TEMP\screen.png
+& $py .design\find_regions.py $env:TEMP\screen.png A85F29 FFFFFF FAF5EC
+```
+
+设计令牌的每个颜色都只用在少数几个元素上，所以颜色就是可靠的"锚点"：
+
+| 颜色 | 出现在 |
+|---|---|
+| `#A85F29` brandFill | FAB / 完成 / 添加这条备注（禁用时是 40% 透明，找不到） |
+| `#FFFFFF` surface | 时间卡 / 备注输入框 / 次要按钮 / 未选中的 chip |
+| `#F7E5D2` brandSoft | 选中的 chip / 快捷备注 chip / 主线按钮 |
+| `#FAF5EC` paper | 弹层底色、页面底色 |
+
+实测精度到 1~2 逻辑像素。用白色区域一次就把时间卡（y 389–471）和
+「重新打开」按钮（y 483–523）的位置定下来了，一次点中。
+
+**注意**：`Opacity` 小于 1 的元素颜色会被混合，匹配不上 ——
+这反而是个特性（可以据此判断按钮是不是禁用态）。

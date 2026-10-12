@@ -10,6 +10,7 @@ import '../../state/calendar_view.dart';
 import '../../state/settings.dart';
 import '../../theme/tokens.dart';
 import 'calendar_grid.dart';
+import 'swipe_to_navigate.dart';
 import 'year_month_picker.dart';
 
 /// 日历卡：头部 + 星期头 + 网格。
@@ -74,19 +75,26 @@ class CalendarCard extends ConsumerWidget {
             weekStart: settings.weekStart,
             weekendBrandColor: settings.weekendBrandColor,
           ),
-          CalendarGrid(
-            days: days,
-            monthAnchor: isMonth ? view.visibleMonth : null,
-            view: view,
-            settings: settings,
-            badges: badges,
-            holidays: holidays,
-            today: today,
-            weekMode: !isMonth,
-            onSelectDay: (d) {
-              // 点邻格的降级日期时把日历翻过去，否则用户点了没反应。
-              nav.selectDay(d);
-            },
+          // 左右滑动切月/切周。包住**网格 + 星期头以上**的整块，
+          // 但**不包头部** —— 头部有自己的按钮和分段控件，
+          // 把它们的横向手势也吃掉会让点击变得迟钝。
+          SwipeToNavigate(
+            onPrev: isMonth ? nav.prevMonth : nav.prevWeek,
+            onNext: isMonth ? nav.nextMonth : nav.nextWeek,
+            child: CalendarGrid(
+              days: days,
+              monthAnchor: isMonth ? view.visibleMonth : null,
+              view: view,
+              settings: settings,
+              badges: badges,
+              holidays: holidays,
+              today: today,
+              weekMode: !isMonth,
+              onSelectDay: (d) {
+                // 点邻格的降级日期时把日历翻过去，否则用户点了没反应。
+                nav.selectDay(d);
+              },
+            ),
           ),
         ],
       ),

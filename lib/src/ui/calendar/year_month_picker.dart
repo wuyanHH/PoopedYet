@@ -6,6 +6,7 @@ import '../../calendar/calendar_math.dart';
 import '../../state/calendar_data.dart';
 import '../../state/settings.dart';
 import '../../theme/tokens.dart';
+import '../widgets/sheet_shell.dart';
 
 /// 年月快速选择。
 ///
@@ -67,7 +68,7 @@ class _YearMonthPickerState extends ConsumerState<_YearMonthPicker> {
     final withRecords =
         ref.watch(monthsWithRecordsProvider(_year)).value ?? const <int>{};
 
-    return _SheetShell(
+    return SheetShell(
       title: '跳到哪个月',
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -150,7 +151,7 @@ class _YearMonthPickerState extends ConsumerState<_YearMonthPicker> {
           const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _GhostButton(
+            child: SheetGhostButton(
               icon: LucideIcons.calendarCheck,
               label: '回到今天 · ${today.year}年${today.month}月',
               onTap: () => Navigator.of(context).pop(DateTime(today.year, today.month)),
@@ -258,7 +259,7 @@ class _WeekPicker extends ConsumerWidget {
     final month = DateTime(current.year, current.month);
     final weeks = weeksOfMonth(month.year, month.month, settings.weekStart);
 
-    return _SheetShell(
+    return SheetShell(
       title: '跳到哪一周',
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -373,117 +374,6 @@ class _WeekRow extends StatelessWidget {
                 child: Icon(LucideIcons.calendarRange, size: 13, color: t.ink3),
               ),
             Icon(LucideIcons.chevronRight, size: 15, color: t.ink4),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 两个选择器共用的外壳。
-class _SheetShell extends StatelessWidget {
-  const _SheetShell({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-
-    return SafeArea(
-      top: false,
-      child: Container(
-        decoration: BoxDecoration(
-          color: t.paper,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(PoopRadii.sheet),
-          ),
-          boxShadow: PoopShadows.s3,
-        ),
-        padding: const EdgeInsets.only(top: 10, bottom: 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: t.line,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: t.ink,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(LucideIcons.x, size: 18, color: t.ink2),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
-            ),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GhostButton extends StatelessWidget {
-  const _GhostButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 44,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: t.line),
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 15, color: t.ink2),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: t.ink2,
-              ),
-            ),
           ],
         ),
       ),

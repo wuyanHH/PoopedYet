@@ -171,6 +171,26 @@ extension CalendarQueries on AppDatabase {
     return details;
   }
 
+  /// 按 id 取一条完整记录（含人与备注）。记录详情弹层用。
+  ///
+  /// 记录可能已经被删了，所以返回可空 —— 弹层开着的时候别的地方删掉它
+  /// 是完全可能的（比如撤销）。
+  Future<RecordDetail?> recordById(String id) async {
+    final r = await (select(poopRecords)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    if (r == null) return null;
+
+    final p = await (select(poopers)..where((t) => t.id.equals(r.pooperId)))
+        .getSingleOrNull();
+    if (p == null) return null;
+
+    final notes = await (select(poopNotes)
+          ..where((t) => t.recordId.equals(id))
+          ..orderBy([(t) => OrderingTerm(expression: t.notedAt)]))
+        .get();
+
+    return RecordDetail(record: r, pooper: p, notes: notes);
+  }
   /// 当前所有"挂着的"记录（进行中或待确认），用于启动时扫一遍。
   ///
   /// 返回时已顺便把超过 24 小时的收敛成 [PoopRecord.endUnknown] 落库。

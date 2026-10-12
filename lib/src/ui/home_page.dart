@@ -10,6 +10,7 @@ import '../state/calendar_data.dart';
 import '../theme/tokens.dart';
 import 'calendar/calendar_card.dart';
 import 'records/day_section.dart';
+import 'records/record_detail_sheet.dart';
 import 'widgets/first_run_hint.dart';
 
 /// 日历主页（视觉稿 ①）。
@@ -39,10 +40,8 @@ class HomePage extends ConsumerWidget {
             const CalendarCard(),
             Expanded(
               child: DaySection(
-                onTapRecord: (_) {
-                  // 记录详情弹层（视觉稿 ⑤）还没做。
-                  // 先什么都不做，比弹一个空壳出来好。
-                },
+                onTapRecord: (id) =>
+                    showRecordDetailSheet(context, recordId: id),
               ),
             ),
           ],

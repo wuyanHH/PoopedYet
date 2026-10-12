@@ -140,3 +140,27 @@ final bootstrapProvider = FutureProvider<void>((ref) async {
   // 不做的话，用户第二天打开会看到一条"正在屙"挂了 20 小时。
   await db.settleStaleRecords();
 });
+
+/// 单条记录的完整详情。记录详情弹层用。
+///
+/// `autoDispose`：弹层关掉就该释放。
+/// 每次编辑之后调用方要 `ref.invalidate(recordDetailProvider(id))` 让它重读 ——
+/// 比在内存里维护一份可变副本安全得多（那份副本迟早和库里不一致）。
+final recordDetailProvider =
+    FutureProvider.autoDispose.family<RecordDetail?, String>(
+  (ref, id) => ref.watch(databaseProvider).recordById(id),
+);
+
+/// 默认备注模板（「拉肚子」「很顺畅」…），按用户排的顺序。
+///
+/// 备注输入框上那一排快捷 chip 靠它。用户手打的新备注也会沉淀成模板
+/// （见 `RecordActions.bumpNoteTemplate`），所以这个列表会自己长大。
+final noteTemplatesProvider = FutureProvider<List<NoteTemplate>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return (db.select(db.noteTemplates)
+        ..orderBy([
+          (t) => OrderingTerm(expression: t.sortOrder),
+          (t) => OrderingTerm(expression: t.createdAt),
+        ]))
+      .get();
+});
