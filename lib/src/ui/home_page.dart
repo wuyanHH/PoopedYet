@@ -11,6 +11,7 @@ import '../theme/tokens.dart';
 import 'calendar/calendar_card.dart';
 import 'records/day_section.dart';
 import 'records/record_detail_sheet.dart';
+import 'settings/settings_page.dart';
 import 'widgets/first_run_hint.dart';
 
 /// 日历主页（视觉稿 ①）。
@@ -157,7 +158,12 @@ class _AppBar extends ConsumerWidget {
           ),
           const Spacer(),
           _IconButton(icon: LucideIcons.search, onTap: () {}),
-          _IconButton(icon: LucideIcons.settings, onTap: () {}),
+          _IconButton(
+            icon: LucideIcons.settings,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
+            ),
+          ),
         ],
       ),
     );

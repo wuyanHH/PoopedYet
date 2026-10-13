@@ -9,6 +9,7 @@ import '../../state/calendar_data.dart';
 import '../../state/calendar_view.dart';
 import '../../state/settings.dart';
 import '../../theme/tokens.dart';
+import '../records/backfill_sheet.dart';
 import 'calendar_grid.dart';
 import 'swipe_to_navigate.dart';
 import 'year_month_picker.dart';
@@ -94,6 +95,9 @@ class CalendarCard extends ConsumerWidget {
                 // 点邻格的降级日期时把日历翻过去，否则用户点了没反应。
                 nav.selectDay(d);
               },
+              // 长按直接补录到那天 —— 翻到某天发现漏记了，
+              // 不用先点选再找入口，少两步。
+              onLongPressDay: (d) => showBackfillSheet(context, day: d),
             ),
           ),
         ],

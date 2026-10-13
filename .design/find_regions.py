@@ -70,16 +70,15 @@ def main():
                for h in (sys.argv[2:] or ['A85F29'])]
 
     img = Image.open(path).convert('RGB')
-    print(f'图片 {img.size[0]}x{img.size[1]}')
+    print(f'image {img.size[0]}x{img.size[1]}')
 
     for t in targets:
         hexc = '#%02X%02X%02X' % t
         rs = regions(img, t)
-        print(f'\n颜色 {hexc} 找到 {len(rs)} 个区域（面积前 8）：')
+        print(f'\ncolor {hexc}: {len(rs)} regions (top 8 by area)')
         for minx, miny, maxx, maxy, n in rs[:8]:
             cx, cy = (minx + maxx) // 2, (miny + maxy) // 2
-            print(f'  bbox=({minx},{miny})-({maxx},{maxy})  '
-                  f'中心=({cx},{cy})  尺寸={maxx-minx+1}x{maxy-miny+1}  面积={n}')
+            print(f'  bbox=({minx},{miny})-({maxx},{maxy})  center=({cx},{cy})  size={maxx-minx+1}x{maxy-miny+1}  area={n}')
 
 
 if __name__ == '__main__':

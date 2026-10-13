@@ -23,6 +23,7 @@ class CalendarGrid extends StatelessWidget {
     required this.holidays,
     required this.today,
     required this.onSelectDay,
+    this.onLongPressDay,
     this.monthAnchor,
     this.weekMode = false,
   });
@@ -47,6 +48,9 @@ class CalendarGrid extends StatelessWidget {
 
   final DateTime today;
   final ValueChanged<DateTime> onSelectDay;
+
+  /// 长按某一天（用来快速补录到那天）。
+  final ValueChanged<DateTime>? onLongPressDay;
 
   /// 周视图：格子更高、能放更多行徽标。
   final bool weekMode;
@@ -122,6 +126,7 @@ class CalendarGrid extends StatelessWidget {
       weekendBrandColor: settings.weekendBrandColor,
       maxBadgeRows: badgeRows,
       onTap: () => onSelectDay(date),
+      onLongPress: onLongPressDay == null ? null : () => onLongPressDay!(date),
     );
   }
 }

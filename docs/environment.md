@@ -266,3 +266,44 @@ cmd /c "adb exec-out run-as com.poopedyet.app cat app_flutter/pooped_yet.sqlite 
 ```
 
 注意数据库在 `app_flutter/`（`drift_flutter` 用的是 documents 目录），**不是 `databases/`**。
+
+---
+
+## 八、查库时的时区陷阱（踩过一次）
+
+**模拟器的时区是 `GMT`，而开发主机是 `China Standard Time (UTC+8)`。**
+
+把设备上的数据库拉到主机上用 `sqlite3` 查时，如果用
+`date(started_at,'unixepoch','localtime')`，**`localtime` 用的是主机的时区**，
+结果会比设备上显示的时间**早 8 小时**。
+
+我第一次就因此以为补录写错了时间（看到 16:00，实际是 08:00）。
+
+正确做法：设备是 GMT 时，直接不加 localtime 修饰符才是它的本地时间。
+
+```powershell
+# 模拟器是 GMT，这样读才对
+sqlite3 db.sqlite "SELECT datetime(started_at,'unixepoch') FROM poop_records;"
+
+# 或者先确认设备时区
+adb shell getprop persist.sys.timezone
+adb shell date
+```
+
+顺带一提，这条也解释了为什么应用侧要**按本地日分组**而不是在 SQL 里用
+`localtime` —— 那会依赖执行查询的设备时区，而 Dart 侧的 `dayKey` 用的是
+设备本地日期。两边各算一次时区，迟早分叉。
+
+---
+
+## 九、模拟器屏幕会自动休眠
+
+跑长时间的设备自动化时，屏幕休眠会让**截图整体变暗**，
+看起来像"弹窗把界面压灰了"或"渲染坏了"。
+
+```powershell
+adb shell svc power stayon true   # 常亮
+adb shell input keyevent KEYCODE_WAKEUP
+```
+
+判断依据：连**状态栏**都变暗（正常时状态栏是亮的），那就是休眠而不是遮罩。
