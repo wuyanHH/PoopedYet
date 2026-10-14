@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="splash_background">#FAF8F5</color>
+    <color name="primary_caramel">#5C4033</color>
+    <color name="accent_yellow">#E4B34F</color>
+    <color name="accent_sage">#76A08A</color>
+
+    <!-- 桌面小组件 (AppWidget) 原生主题色与质感色彩体系 -->
+    <color name="widget_paper">#FAF8F5</color>
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_surface_2">#F5F1EB</color>
+    <color name="widget_line">#E8E2D8</color>
+    <color name="widget_ink">#2D1B0D</color>
+    <color name="widget_ink_2">#5C4033</color>
+    <color name="widget_ink_3">#8C7A6B</color>
+    <color name="widget_brand_fill">#9E521E</color>
+    <color name="widget_brand_ink">#803E14</color>
+    <color name="widget_brand_soft">#FFF0D4</color>
+    <color name="widget_live">#2E7D32</color>
+</resources>

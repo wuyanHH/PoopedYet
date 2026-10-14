@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../../calendar/calendar_math.dart';
@@ -76,9 +78,10 @@ class CalendarGrid extends StatelessWidget {
   }
 
   Widget _grid(BuildContext context, double scale) {
-    final badgeRows = weekMode ? 3 : 2;
-    final cellHeight =
-        weekMode ? 126.0 : cellHeightFor(scale, badgeRows: badgeRows);
+    final t = context.tokens;
+    const badgeRows = 2;
+    final baseHeight = cellHeightFor(scale, badgeRows: badgeRows);
+    final cellHeight = weekMode ? baseHeight + 4.0 : baseHeight;
     final rows = days.length ~/ 7;
 
     return Padding(
@@ -94,6 +97,12 @@ class CalendarGrid extends StatelessWidget {
                 child: Row(
                   spacing: 3,
                   children: [
+                    // 左侧周次列标识（采用整周统一的周四归属权威周数算法）
+                    _WeekNumBadge(
+                      weekNum: weekNumberOfRow(days.sublist(r * 7, r * 7 + 7)),
+                      isCurrentWeek: _rowContains(r, view.selectedDate),
+                      t: t,
+                    ),
                     for (var c = 0; c < 7; c++)
                       Expanded(
                         child: _cell(days[r * 7 + c], badgeRows),
@@ -105,6 +114,13 @@ class CalendarGrid extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  bool _rowContains(int rowIndex, DateTime target) {
+    for (var c = 0; c < 7; c++) {
+      if (isSameDay(days[rowIndex * 7 + c], target)) return true;
+    }
+    return false;
   }
 
   Widget _cell(DateTime date, int badgeRows) {
@@ -173,15 +189,29 @@ class WeekdayHeader extends StatelessWidget {
       child: Row(
         spacing: 3,
         children: [
+          // 与下方周次序号对齐的微型周数列头
+          SizedBox(
+            width: 20,
+            child: Text(
+              'W',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+                color: t.ink4.withValues(alpha: 0.7),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
           for (final label in ordered)
             Expanded(
               child: Text(
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
+                  letterSpacing: 0.5,
                   color: weekendBrandColor && (label == '六' || label == '日')
                       ? t.brandInk
                       : t.ink3,
@@ -189,6 +219,42 @@ class WeekdayHeader extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// 每周开头的微型周次序号徽章（如 14、15、16）。
+class _WeekNumBadge extends StatelessWidget {
+  const _WeekNumBadge({
+    required this.weekNum,
+    required this.isCurrentWeek,
+    required this.t,
+  });
+
+  final int weekNum;
+  final bool isCurrentWeek;
+  final PoopTokens t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20,
+      alignment: Alignment.center,
+      decoration: isCurrentWeek
+          ? BoxDecoration(
+              color: t.brandSoft,
+              borderRadius: BorderRadius.circular(5),
+            )
+          : null,
+      child: Text(
+        '$weekNum',
+        style: TextStyle(
+          fontSize: 9.0,
+          fontWeight: isCurrentWeek ? FontWeight.w800 : FontWeight.w500,
+          color: isCurrentWeek ? t.brandInk : t.ink4.withValues(alpha: 0.65),
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
       ),
     );
   }

@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PoopedYetAndroidSQLiteSchema",
+  "description": "Core SQLite tables and entity definitions for PoopedYet Android App",
+  "tables": {
+    "pooper_profiles": {
+      "description": "屙屎人配置表（支持多人切换与默认人设定）",
+      "columns": {
+        "id": "TEXT PRIMARY KEY (UUID)",
+        "name": "TEXT NOT NULL (名称，如：本尊、小号、室友)",
+        "avatar": "TEXT NOT NULL (本地头像路径或预设 Emoji/Avatar 标识)",
+        "remark": "TEXT (个人备注)",
+        "is_default": "INTEGER NOT NULL DEFAULT 0 (1=默认选中, 0=非默认，全局唯一为1)",
+        "created_at": "INTEGER NOT NULL (毫秒时间戳)"
+      }
+    },
+    "poop_records": {
+      "description": "拉屎主记录表（支持开启时间、非必填结束时间、多条实时时间打点备注）",
+      "columns": {
+        "id": "TEXT PRIMARY KEY (UUID)",
+        "profile_id": "TEXT NOT NULL (外键关联 pooper_profiles.id)",
+        "start_time": "INTEGER NOT NULL (开启拉屎的毫秒时间戳，默认当前时间)",
+        "end_time": "INTEGER NULL (结束拉屎的毫秒时间戳，非必填；为 NULL 代表正在进行中或仅记录开启)",
+        "notes_json": "TEXT NOT NULL DEFAULT '[]' (JSON 数组序列化存储 RecordNote 列表)",
+        "created_at": "INTEGER NOT NULL (创建毫秒时间戳)"
+      }
+    },
+    "preset_tags": {
+      "description": "默认/自定义快捷备注词条表",
+      "columns": {
+        "id": "TEXT PRIMARY KEY (UUID)",
+        "label": "TEXT NOT NULL (如：拉肚子、顺畅、黄金香蕉、腿麻了、带薪拉屎)",
+        "is_system": "INTEGER NOT NULL DEFAULT 0 (1=内置，0=用户手动增添)",
+        "sort_order": "INTEGER NOT NULL DEFAULT 0"
+      }
+    }
+  },
+  "json_structures": {
+    "RecordNote": {
+      "id": "string (UUID)",
+      "timestamp": "integer (添加该条备注时的实时毫秒时间戳)",
+      "content": "string (备注正文内容)",
+      "tag": "string | null (选中的预设标签名称)"
+    }
+  }
+}

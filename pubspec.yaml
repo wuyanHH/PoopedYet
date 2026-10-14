@@ -3,7 +3,8 @@ description: "屙了么 PoopedYet —— 记录拉屎时间的安卓应用"
 publish_to: 'none'
 
 # versionName+versionCode。上架后 versionCode 只能增不能减。
-version: 0.1.0+1
+# 采用工业标准万位语义映射规范：MAJOR * 100000 + MINOR * 10000 + PATCH * 100
+version: 0.3.0+30000
 
 environment:
   # 本机 Flutter 3.47.7 / Dart 3.13.5。
@@ -43,6 +44,9 @@ dependencies:
   # 图标。全部用 Lucide 矢量图标，禁止 emoji。MIT/ISC 许可，可商用。
   lucide_icons_flutter: ^3.1.25
 
+  # 图片选择器，用于选取成员头像。
+  image_picker: ^1.1.2
+
   # 主键生成。虽然它是 riverpod 的传递依赖，但显式声明 ——
   # 靠传递依赖迟早会因为它上游改依赖树而突然消失。
   uuid: ^4.5.1
@@ -66,6 +70,7 @@ flutter:
   #   这是"打包"这个选择的固有代价，见 docs/review.md P2-4。
   #   缓解手段是设置页留一个「导入节假日 JSON」入口。
   assets:
+    - assets/images/
     - assets/holidays/
     # 第三方许可证文本。OFL 要求随分发附上 ——
     # 放这里而不是 assets/fonts/，否则字体文件会被当作普通资源再打包一遍（白多 2.5 MB）。

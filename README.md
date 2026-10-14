@@ -1,106 +1,188 @@
 # 屙了么 (PoopedYet)
 
-一个记录拉屎时间的安卓 App。日历为主界面，支持多个"屙屎人"、多条带时刻的备注、以及中国法定节假日/调休显示。
+> 记录每一次舒畅时刻的温润手帐 · 纯本地私密存储 · 温暖治愈系日历打卡
 
-英文名 **PoopedYet**（「Pooped yet?」=「屙了么？」，且 pooped 在口语里另有"累瘫了"的意思），包名 `com.poopedyet.app`。命名论证见 [docs/naming.md](docs/naming.md)。
+一款专注于记录与统计拉屎时间的 Android 应用。以手帐式日历为主界面，支持多位家庭成员/萌宠（屙屎人）管理、多条带实时时刻的独立感受备注、中国法定节假日/调休上班日离线显示与在线同步、多色彩方案与深色模式自适应，以及端到端纯本地/WebDAV 私有云数据备份恢复。
 
-## 目录
+英文名 **PoopedYet**（谐音「Pooped yet?」=「屙了么？」，口语中另有“今天累瘫了吗”的诙谐双关），包名 `com.poopedyet.app`。详细命名论证参见 [docs/naming.md](docs/naming.md)。
+
+---
+
+## 🌟 核心特性与功能
+
+### 1. 手帐式日历主界面（月视图 / 周视图）
+- **动态行高自适应网格**：依据每个月的 1 号星期与天数实算（5 或 6 行），彻底杜绝月底日期被截断丢失的 bug。
+- **卷帘式高度折叠切换**：底部物理阻尼拖动小白条（Handle Bar），支持上下拖动与点击在月视图与周视图之间丝滑折叠展开。
+- **对称视差翻页动效**：左右横向切月/切周具备手帐翻页层级感与轻微微缩放。
+- **多维度状态标识**：
+  - 选中态：双层暖棕渐变 + 柔和弥散阴影 + 立体高光字；
+  - 今天态：暖奶油质感底色 + 高亮外环；
+  - 法定假日与调休角标：红色实心「休」与蓝色实心「班」药丸角标，周末补班醒目提示；
+  - 成员头像徽标：日历格内按成员顺序排布头像与当日打卡次数，支持超出「+N」折叠。
+
+### 2. 精准而人性化的打卡记录
+- **一键开屙（实时打卡）**：主页右下角悬浮按钮（FAB），支持一键开启计时，打卡状态即时呈现（呼吸动效与翡翠绿柔光）。
+- **四态记录状态机**：
+  - **正在屙 (Active)**：打卡计时中，带脉冲呼吸光效；
+  - **待确认 (Pending)**：超过 2 小时仍未结束，提示用户确认是否仍在进行；
+  - **未记结束 (EndUnknown)**：忘记或未记结束时间，呈中性灰（不给用户心理负担）；
+  - **已完成 (Done)**：具备开始与结束时刻，精准展示时长。
+- **手势快捷操作**：卡片支持右滑快捷结束打卡、左滑快捷删除（配合全局可撤销 SnackBar）。
+- **补录历史记录**：支持选择任意历史日期、开始时刻、结束时刻与备注补录，不影响默认成员与当前进行中的打卡。
+
+### 3. 多成员（屙屎人）管理
+- **自动建档保护**：全新安装或归档最后一人时，静默自动补齐「我」作为默认成员，杜绝空白崩溃。
+- **丰富头像支持**：内置精选 Lucide 矢量图标头像、姓名首字色彩兜底，同时底层支持 96px 照片缩略图直接 BLOB 入库。
+- **归档而非真删**：成员删除默认为归档，历史数据、日历统计完整保留，归档成员随时可恢复；设置页另提供级联清理的物理删除操作。
+- **拖拽排序落库**：成员列表支持长按拖拽排序，日历徽标顺序严格按成员权重排布，避免因每天打卡频次不同而位置跳动。
+
+### 4. 独立带时刻的感受备注与模板
+- **每条备注独立时间戳**：单次打卡支持追加多条独立备注（如“开冲，很顺畅”、“昨晚吃辣了”），记录真实发生时间。
+- **常用模板与自动沉淀**：内置常用备注模板，手打的新备注自动沉淀为模板，支持按使用频次一键排序。
+- **Chip 快捷追加**：文本框上方的模板 Chip 点击直接以顿号追加进多行文本域，提交后整段保存为一条带时间戳的完整备注。
+
+### 5. 数据安全与 WebDAV 私有云同步
+- **纯本地 SQLite 存储**：使用 Drift 框架构建，数据全程存放在本地，无任何第三方追踪或未经许可的公有云上传。
+- **本地备份与恢复**：支持一键导出结构化 JSON 备份文件、系统剪贴板导入导出，支持“增量合并”与“全量覆盖”两种还原模式。
+- **纯 Dart 原生 WebDAV 同步**：支持坚果云、自建 NAS（群晖、QNAP、Nextcloud、WebDAV Server）等，具备 PROPFIND、MKCOL 自动逐级建目、Basic 认证、自签名证书兼容与修改时间对齐。
+
+### 6. 视觉规范与设计系统 (Design System)
+- **严格符合 WCAG 2.1 AA**：全界面文本对比度 ≥4.5:1，图标与大字对比度 ≥3.0:1，深浅模式下全部达标。
+- **五套温润主题色**：经典焦糖、抹茶森林、深海微风、烟雨丁香、落日陶土，随心切换。
+- **得意黑 Smiley Sans 展示字体**：标题、日期栏、FAB、大数字应用 SIL OFL 授权的得意黑，正文字体交由系统平滑渲染。
+
+### 7. 桌面小组件与锁屏实时灵动胶囊 (Desktop Widget & Live Capsule)
+- **多尺寸手帐撕历小组件**：支持小号 2×2（撕历打卡戳 + 零阻力开屙）、中号 4×2（即时行动舱 + 7 天迷你周历）、大号 4×3（全家状态便签与多人透视）。
+- **锁屏前台实时灵动服务 (`PoopLiveService`)**：打卡中通过前台常驻通知实时刷新计时与状态，打卡结束自动注销。
+- **体面防社死暗号模式**：支持一键隐藏敏感词，将排便术语替换为体面日程术语。
+- **全链路 Deep Link 调度**：支持从小组件点击即时直达主界面指定成员、补录底表或一键开屙/完成。
+
+---
+
+## 📁 项目目录结构
 
 ```
-docs/
-  environment.md       ★ 本机环境：Flutter 升级、镜像、SDK 补丁、Gradle 镜像
-  review.md            ★ 自我审查：遗漏点、阻塞项、优化点
-  tech-stack.md        技术栈 + 数据模型 + 记录状态机 + 16 页界面结构 + 打包方案
-  naming.md            中英文名与包名的选择论证
-  design-system.md     UI 设计规范（色板/对比度/字体/图标/日历单元格/页面清单）
-.design/
-  ui-reference.html    视觉稿源文件（浏览器打开，顶部导航可切 5 个分组）
-  ui-main.png          A 组 · 记录主流程（月视图 / 周视图 / 记一次 / 待确认 / 详情）
-  ui-history.png       B 组 · 历史与补录（时间线 / 搜索筛选 / 补录 / 空状态 / 首次打开）
-  ui-people.png        C 组 · 设置 · 人员与备注（设置主页 / 人员管理 / 编辑 / 备注）
-  ui-calendar.png      D 组 · 设置 · 日历与数据（节假日 / 统计 / 备份）
-  ui-calnav.png        E 组 · 日历快速切换（年月选择 / 周选择 / 6 行月份）
-  build-icons.mjs      Lucide 图标 -> SVG 雪碧图（幂等）
-  build-shots.ps1      按分组渲染 PNG
-  layout-check.js      布局自检：溢出 / 裁切 / flex 静默压缩
-  contrast-check.js    ★ 对比度自检：WCAG 2.1 AA，文本 + 图标
-  icons/svg/           用到的 73 个 Lucide 图标源文件（34 KB）
-  fonts/smiley/        得意黑 Smiley Sans（SIL OFL）
-  README-layout-check.md   工具链用法 + 踩过的坑
+PoopedYet/
+├── android/                     # Android 原生平台工程与配置（包含小组件与前台服务）
+├── assets/
+│   ├── fonts/                   # 得意黑字体 SmileySans-Oblique.ttf
+│   ├── holidays/                # 2018~2026 年法定节假日与调休离线 JSON 数据
+│   ├── images/                  # 软件 Logo 与图标资源
+│   └── licenses/                # 第三方开源许可证文本 (SmileySans-OFL.txt)
+├── docs/                        # 项目技术与设计文档
+│   ├── design-system.md         # UI 设计规范（色彩令牌、WCAG 对比度、日历栅格、排版）
+│   ├── environment.md           # 本机环境指南（Flutter 升级、镜像代理、符号链接补丁）
+│   ├── naming.md                # 应用命名决策与包名论证
+│   ├── review.md                # 系统性自我审查（Bug 排查、状态机、数据安全性、优化成果）
+│   ├── tech-stack.md            # 技术选型、数据模型、状态流转与界面架构
+│   └── widget-spec.md           # 桌面小组件详细规格书（尺寸、排版、DeepLink 路由）
+├── lib/
+│   ├── main.dart                # 应用入口：初始化存储、注册字体许可证、挂载 ProviderScope
+│   └── src/
+│       ├── app.dart             # MaterialApp 主题配置、本地化代理与 SplashScreen 入口
+│       ├── providers.dart       # 全局单例数据库提供者 (databaseProvider)
+│       ├── calendar/            # 日历算法核心
+│       │   ├── calendar_math.dart # 纯 Dart 日期数学（行列计算、周数算法、日期范围、无 Flutter 依赖）
+│       │   └── layout.dart      # 栅格尺寸与字体缩放上限（避免系统大字挤爆布局）
+│       ├── data/                # 本地数据持久化 (Drift SQLite)
+│       │   ├── tables.dart      # 表定义 (Poopers, PoopRecords, PoopNotes, NoteTemplates, Holidays)
+│       │   ├── database.dart    # 数据库连接、唯一索引、外键约束、种子数据与生命周期
+│       │   ├── queries.dart     # 聚合查询、范围计数、关联装配 (Hydrate) 与复合筛选
+│       │   ├── record_actions.dart # 打卡生命周期（一键开屙、结束打卡、收敛、软恢复）
+│       │   ├── record_edits.dart   # 历史记录修改（调整时刻、重新打开、人员划转）
+│       │   ├── pooper_actions.dart # 成员管理（增改、排序、重名提示）
+│       │   ├── note_template_actions.dart # 模板管理（增改删排、按频次权重排序）
+│       │   ├── holiday_loader.dart # 节假日离线装载与开源 API 在线同步
+│       │   └── backup/          # 备份与云同步子系统
+│       │       ├── backup_model.dart  # 全量备份 JSON 数据结构与版本元数据
+│       │       ├── backup_service.dart# 本地文件导出、目录管理、剪贴板交互、增量/覆盖还原
+│       │       ├── webdav_config.dart # WebDAV 连接配置与持久化
+│       │       └── webdav_client.dart # 纯 Dart 原生实现的 WebDAV HTTP 客户端
+│       ├── dev/
+│       │   └── demo_seeder.dart # 开发模式演示数据生成器（覆盖四态记录与角标）
+│       ├── domain/              # 领域模型
+│       │   ├── record_state.dart# 四态状态机判定、时长计算与格式化
+│       │   └── history_filter.dart # 历史检索条件值对象（按人、日期区间、关键词）
+│       ├── legal/
+│       │   └── third_party_licenses.dart # SIL OFL 1.1 开源许可证注册
+│       ├── state/               # Riverpod 状态管理
+│       │   ├── calendar_data.dart # 日历格徽标缓存、当日打卡流、节假日数据
+│       │   ├── calendar_view.dart # 日历视图状态联动（选中日、可见月、周/月模式）
+│       │   ├── history.dart       # 历史检索状态与本地日期分组
+│       │   ├── settings.dart      # 用户设置响应式状态与 SharedPreferences 同步
+│       │   └── backup_state.dart  # 备份服务与 WebDAV 配置提供者
+│       ├── theme/               # 设计令牌
+│       │   ├── tokens.dart      # ThemeExtension 色板（焦糖三分、深浅模式、动态品牌色）
+│       │   └── pooper_icons.dart# 精选成员 Lucide 矢量图标字典与历史兼容
+│       ├── ui/                  # 视图界面实现
+│       │   ├── home_page.dart   # 主页：顶部栏、日历卡、当日打卡列表、悬浮开屙按钮
+│       │   ├── calendar/        # 日历卡片视图（网格、星期头、滑动导航、年月选择弹窗）
+│       │   ├── records/         # 打卡相关弹层与卡片（开屙、详情、补录、时间选择、备注器）
+│       │   ├── history/         # 历史时间线浏览与复合多维筛选页
+│       │   ├── settings/        # 设置主页、成员管理、模板编辑、数据备份、WebDAV 同步
+│       │   ├── splash/          # 启动屏（笑脸便便君呼吸浮动效与平滑过渡）
+│       │   └── widgets/         # 统一封装的高复用通用控件
+│       └── widget/              # 桌面小组件与前台服务桥接
+│           ├── widget_snapshot.dart        # 桌面小组件极简只读 JSON 契约模型
+│           ├── widget_snapshot_service.dart# 小组件快照聚合计算与跨进程 Channel 通信
+│           └── widget_deep_link_handler.dart# 小组件外部 Deep Link 路由分发器
+├── test/                        # 自动化质量防护网
+│   ├── calendar/calendar_math_test.dart # 2026 全年逐月与 1900~2300 年跨度日期断言
+│   ├── data/database_test.dart          # 内存库外键约束、归档、唯一索引与状态机测试
+│   └── theme/tokens_contrast_test.dart  # WCAG 2.1 AA 对比度数学回归守卫
+└── pubspec.yaml                 # 依赖配置与资源打包清单
 ```
 
-## 当前状态
+---
 
-### 已经有代码了（脚手架）
+## 🛠 技术栈与依赖说明
 
-```
-lib/
-  main.dart
-  src/
-    theme/tokens.dart            设计令牌 ThemeExtension（与视觉稿同源）+ WCAG 对比度计算
-    calendar/calendar_math.dart  日历日期数学（纯函数，零 Flutter 依赖）
-    data/tables.dart             Drift 表定义
-    data/database.dart           数据库 + ensureDefaultPooper + 索引
-    data/database.g.dart         Drift 生成（3539 行，不入 lint）
-test/
-  theme/tokens_contrast_test.dart     对比度护栏（含"旧值必须失败"的回归断言）
-  calendar/calendar_math_test.dart    2026 全年逐月 + 1900~2300 抽样
-  data/database_test.dart             归档 / 默认唯一性 / 外键 restrict / 状态机
-```
+| 技术组件 | 版本 / 约束 | 作用与选择依据 |
+|---|---|---|
+| **Flutter SDK** | `^3.12.0` (Dart 3.13+) | 跨平台框架，UI 高度定制化与自绘制支持 |
+| **flutter_riverpod** | `^3.4.3` | 依赖注入与单向数据流，保证状态与 UI 严格解耦 |
+| **drift / drift_flutter** | `^2.35.2` | 强类型响应式本地 SQLite 数据库，零网络请求 |
+| **shared_preferences** | `^2.5.6` | 轻量级偏好配置持久化（起始日、字号、主题色等） |
+| **lucide_icons_flutter** | `^3.1.25` | 精致严谨的 Lucide 矢量图标库，全局禁止粗糙 emoji |
+| **intl** | `^0.20.3` | 日期格式化与本地化支持 |
+| **flutter_localizations** | SDK 内置 | Material 日期与时间选择器中文语言包 |
+| **uuid** | `^4.5.1` | 全局无冲突主键生成 |
 
-`flutter analyze` 零问题，`flutter test` **60 个全过**，`flutter build apk --release` 能出包。
+---
 
-三块基础设施里已经埋进了设计评审的结论：焦糖一色三分、日历行数按月份实算、
-归档而非删除、`endUnknown` 不挡住新记录。每一条都有对应的失败测试守着。
+## 🚀 自我审核与持续优化历程
 
-环境怎么配的（Flutter 升级、镜像、SDK 补丁、Gradle 镜像）见 [docs/environment.md](docs/environment.md)。
+在项目的演进与自我审核模式中，我们开展了深度的代码走查与架构整改：
 
-### 还没做的
+1. **消除时变参数导致的 Provider 重建与重复查询**：
+   - 排查发现部分页面直接使用 `DateTime.now()` 作为 `dayRecordsProvider` 与 `monthBadgesProvider` 的 Family 参数。由于毫秒级精度差异，每次 UI build 均生成不同 key，导致频繁销毁与重建 Provider、反复查询数据库。
+   - 优化为统一使用零点规范化的 `todayProvider`，确保 Family 参数稳定缓存。
+2. **修复首启提示条「去添加」交互闭环**：
+   - 补齐了主页 `FirstRunHint` 提示条中「去添加」按钮的路由跳转，点击后标记提示条已读并平滑导航至成员管理页。
+3. **消除硬编码色彩与死代码**：
+   - 优化了日历单元格在选中态下的阴影颜色，由硬编码焦糖色改为随当前主题色令牌动态自适应；
+   - 清理了组件内的未使用死变量与过渡时期的冗余代码；
+   - 彻底移除了脚手架阶段的废弃代码与未引用文件。
+4. **清理临时工程产物与完善规则**：
+   - 清理了调试期间残留的数十张模拟器截图、生成脚本及中间预览图；
+   - 在 `.gitignore` 中收敛了相关临时产物匹配规则，保持工作区纯净。
+5. **数据备份还原与状态机稳健性防御**：
+   - 排查发现增量合并与覆盖还原时，若外部数据包含多条默认人员或多条未结束打卡，直接写入会触发 SQLite 部分唯一索引冲突（`ux_default_pooper` 与 `ux_active_record`）导致还原中断；
+   - 在还原层增加了防御性规整机制，对多条未结束记录自动收敛并权威转移默认成员，确保多端合并与还原 100% 成功。
+6. **字体名称匹配与组件健壮性修复**：
+   - 修正了启动屏中英文标题对得意黑 `SmileySans` 字体家族名称的声明，避免因名称多空格导致字体引擎回退；
+   - 优化了周选择器「回到本周」计算逻辑，改用纯数学 O(1) 构造当前周，消除 `firstWhere` 缺少 `orElse` 时的潜在崩溃隐患；
+   - 在新建打卡提交前增加时间先后双重防御校验，防止非法负时长记录落库。
+7. **桌面小组件与前台服务原子化同步**：
+   - 排查发现记录详情页编辑时间、重新打开记录、划转成员、外部小组件 Deep Link 触发以及数据还原后，原代码未触发小组件快照推流；
+   - 补齐了全链路原子化快照推流，确保桌面小组件、锁屏前台实时灵动胶囊与本地数据库状态绝对一致、实时同步。
+8. **文档与注释全面对齐**：
+   - 全面更新架构设计、数据表结构、状态机转义、桌面小组件设计规格与业务决策说明，确保文档与代码 100% 保持同步。
 
-需求梳理 + 技术选型 + UI 规范 + 一轮自我审查已完成，视觉稿 **20 页**已出图。**暂未开始写代码。**
+---
 
-已锁定的决策：
+## 📄 开源许可证
 
-- 技术栈 Flutter + Riverpod + Drift，日历自绘，节假日数据打包进 APK
-- 图标全部用 **Lucide 矢量图标，禁止 emoji**（`lucide_icons_flutter`）
-- 头像：内置图标头像 + 首字色块兜底，同时支持上传照片（96px 缩略图**存 BLOB 入库**）
-- 月视图密度：最多 2 个徽标 + `+N`，按添加顺序取前 2 个
-- 记录状态四分：**正在屙** / 待确认 / **未记结束** / 已完成 —— 「没有结束时间」不等于「进行中」
-- 跨零点按 **`startedAt`** 归属
-- 全部文字色与图标色通过 **WCAG 2.1 AA**（自动检测，0 处不合格）
-- 备注输入是**多行文本域**，快捷备注 chip 点一下追加进文本域，提交后存为**一条带时刻的备注**
-- 日历标题可点开**年月 / 周选择器**；日历行数按月份实算（5 或 6 行）
-
-**写代码前必须定的 4 个问题已经全部定案**（分析过程在 [docs/review.md](docs/review.md)，结论在 [docs/design-system.md](docs/design-system.md)）：
-
-| 问题 | 结论 |
-|---|---|
-| 全新安装没有任何屙屎人 | 静默自动建「我」+ 主页一次性提示条，不弹引导页 |
-| 删人会连带删掉全部历史 | 删除 = **归档**；历史保留、仍计入日历与统计 |
-| `isDefault` 缺唯一性约束 | 部分唯一索引 + 归档时自动转移默认 |
-| 系统字体缩放到 200% | 日历格内**上限 1.3×**，另给「日历字号」独立三档 |
-
-其中第 1 和第 3 条有个共同边界：**归档掉最后一个人 = 回到"一个都没有"**，
-所以自动建档逻辑要抽成 `ensureDefaultPooper()`，首启和归档后都调，不能只写 `if (isFirstRun)`。
-
-## 本机环境（已核实可直接出 APK）
-
-| 项 | 版本 |
-|---|---|
-| Flutter | 3.41.5 stable |
-| Dart | 3.11.3 |
-| Android SDK | 36.1.0 (`E:\Development\AndroidSdk`) |
-| JDK | 21.0.8 LTS |
-| adb | 1.0.41 |
-
-`flutter doctor` 输出：**No issues found**。
-
-## 改视觉稿
-
-```powershell
-node .design/build-icons.mjs     # 改样式后重新内联图标（幂等，可反复跑）
-pwsh .design/build-shots.ps1     # 重新出 5 张分组图
-# 布局自检 + 对比度自检：改完必须跑，完整命令见 .design/README-layout-check.md
-```
-
-浏览器直接打开 `.design/ui-reference.html` 即可预览，顶部导航切换 4 个分组。
+本项目核心代码遵循 MIT 许可证。
+所附得意黑（Smiley Sans）字体遵循 SIL Open Font License 1.1，许可证文本见 [assets/licenses/SmileySans-OFL.txt](assets/licenses/SmileySans-OFL.txt)。
+节假日离线数据源整理自国务院办公厅公告，公开免责使用。

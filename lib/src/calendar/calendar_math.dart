@@ -217,3 +217,43 @@ List<WeekRange> weeksOfMonth(int year, int month, WeekStart weekStart) {
 /// 整月网格的总格数（35 或 42）。写测试时用它比写 35 安全。
 int monthCellCount(int year, int month, WeekStart weekStart) =>
     monthGridRows(year, month, weekStart) * 7;
+
+/// 计算给定日期在所属年份中是第几周（1~53，ISO-8601 标准）。
+int weekOfYear(DateTime date) {
+  final d = DateTime(date.year, date.month, date.day);
+  // ISO-8601：周四所在的年份即为该周归属年份
+  final thursday = d.add(Duration(days: 4 - (d.weekday == 0 ? 7 : d.weekday)));
+  final jan1 = DateTime(thursday.year, 1, 1);
+  final daysDiff = thursday.difference(jan1).inDays;
+  return (daysDiff ~/ 7) + 1;
+}
+
+/// 计算给定日期在其当月网格中是第几周（1~6）。
+int weekOfMonth(DateTime date, WeekStart weekStart) {
+  final weeks = weeksOfMonth(date.year, date.month, weekStart);
+  for (var i = 0; i < weeks.length; i++) {
+    if (weeks[i].contains(date)) return i + 1;
+  }
+  return 1;
+}
+
+/// 计算整周（7天）的标准 ISO-8601 周数。
+///
+/// 遵循 ISO-8601 国际标准：一周的周数归属由该周内的周四（Thursday）决定。
+/// 无论当前视图设置以周一还是周日作为首列，整行 7 天中均有且仅有一个周四，
+/// 整行必须共享同一个且唯一确定的周数，彻底避免首末日期因跨年/跨周计算不一致导致的周数冲突。
+int weekNumberOfRow(List<DateTime> weekDays) {
+  for (final d in weekDays) {
+    if (d.weekday == DateTime.thursday) {
+      return weekOfYear(d);
+    }
+  }
+  // 兜底：取中间日
+  return weekOfYear(weekDays[weekDays.length ~/ 2]);
+}
+
+/// 计算包含给定日期的整周标准周数（按给定 weekStart 规整成该周后由周四决定）。
+int weekNumberOfDate(DateTime date, WeekStart weekStart) {
+  final days = weekDaysOf(date, weekStart);
+  return weekNumberOfRow(days);
+}

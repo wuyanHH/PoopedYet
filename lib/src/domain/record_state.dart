@@ -66,15 +66,36 @@ bool shouldAutoConverge(
   return now.difference(r.startedAt) >= after;
 }
 
+/// 将时间对齐截断到分钟精度（清除秒与毫秒）。
+///
+/// 业务规则：拉屎时间一律按分钟来计算（例如 12:00 - 12:00 是 0 分钟，12:00 - 12:01 是 1 分钟）。
+DateTime toMinutePrecision(DateTime dt) =>
+    DateTime(dt.year, dt.month, dt.day, dt.hour, dt.minute);
+
+/// 按分钟维度计算两个时间点之间的历时（分钟数）。
+///
+/// 严格满足：
+/// - 12:00 到 12:00 为 0 分钟
+/// - 12:00 到 12:01 为 1 分钟
+/// 若 [end] 早于 [start] 则安全返回 0。
+int minutesBetween(DateTime start, DateTime end) {
+  final s = toMinutePrecision(start);
+  final e = toMinutePrecision(end);
+  final diff = e.difference(s).inMinutes;
+  return diff < 0 ? 0 : diff;
+}
+
 /// 这条记录的时长；没有结束时间时返回 null。
 ///
 /// **`endUnknown` 的记录时长是"不详"，不是 0** —— 统计时必须排除它们，
 /// 否则平均值会被这些 0 拉偏。
+///
+/// 业务规则：时长一律按分钟精度计算（如 12:00 - 12:00 为 0 分钟，12:00 - 12:01 为 1 分钟）。
 Duration? durationOf(PoopRecord r) {
   final end = r.endedAt;
   if (end == null) return null;
-  final d = end.difference(r.startedAt);
-  return d.isNegative ? Duration.zero : d;
+  final m = minutesBetween(r.startedAt, end);
+  return Duration(minutes: m);
 }
 
 /// 把时长格式化成界面文案。
@@ -97,7 +118,8 @@ String formatDuration(Duration d) {
 String durationLabel(PoopRecord r, {required DateTime now}) {
   switch (recordStateOf(r, now: now)) {
     case RecordState.active:
-      return '已 ${formatDuration(now.difference(r.startedAt))}';
+      final m = minutesBetween(r.startedAt, now);
+      return '已 ${formatDuration(Duration(minutes: m))}';
     case RecordState.pending:
       // 停住，不报真实经过时间 —— 报"已 8 小时"会让人焦虑且没有信息量
       return '已超过 ${formatDuration(kPendingAfter)}';

@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:drift/drift.dart';
 
+import '../widget/widget_snapshot_service.dart';
 import 'database.dart';
 
 /// 屙屎人的增删改。
@@ -18,6 +21,7 @@ extension PooperActions on AppDatabase {
   Future<Pooper> createPooper({
     required String name,
     String? iconKey,
+    Uint8List? avatarBlob,
     String? remark,
     bool makeDefault = false,
   }) async {
@@ -26,7 +30,7 @@ extension PooperActions on AppDatabase {
       throw ArgumentError('屙屎人名字不能为空');
     }
 
-    return transaction(() async {
+    final res = await transaction(() async {
       final alive = await activePoopers();
       final shouldBeDefault = makeDefault || alive.isEmpty;
 
@@ -43,12 +47,15 @@ extension PooperActions on AppDatabase {
         PoopersCompanion.insert(
           name: trimmed,
           iconKey: Value(iconKey),
+          avatarBlob: Value(avatarBlob),
           remark: Value(remark),
           isDefault: Value(shouldBeDefault),
           sortOrder: Value(nextSort),
         ),
       );
     });
+    unawaited(WidgetSyncManager.sync(this));
+    return res;
   }
 
   /// 改资料。只改传进来的字段，没传的保持原样。
@@ -78,6 +85,7 @@ extension PooperActions on AppDatabase {
           : (remark == null ? const Value.absent() : Value(remark.trim())),
     );
     await (update(poopers)..where((t) => t.id.equals(id))).write(companion);
+    unawaited(WidgetSyncManager.sync(this));
   }
 
   /// 按给定顺序重排（拖拽排序落库）。
@@ -90,6 +98,7 @@ extension PooperActions on AppDatabase {
             .write(PoopersCompanion(sortOrder: Value(i)));
       }
     });
+    unawaited(WidgetSyncManager.sync(this));
   }
 
   /// 名字是否已经被别人用了（管理页用来提示，不强制阻止）。

@@ -13,6 +13,7 @@ class SettingsScaffold extends StatelessWidget {
     required this.title,
     required this.child,
     this.actions = const [],
+    this.bottomBar,
   });
 
   final String title;
@@ -21,12 +22,46 @@ class SettingsScaffold extends StatelessWidget {
   /// 应用栏右侧的动作（新增、排序等）。
   final List<Widget> actions;
 
+  /// 固定在底部的操作条（筛选页的「应用」就挂在这里）。
+  ///
+  /// 用 `bottomNavigationBar` 而不是 Stack 叠一层：
+  /// 叠的话内容会滚到底条下面，得给列表补底部内边距，很容易忘。
+  final Widget? bottomBar;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
+
     return Scaffold(
       backgroundColor: t.paper,
+      bottomNavigationBar: bottomBar == null
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                color: t.paper,
+                border: Border(
+                  top: BorderSide(color: t.lineSoft, width: 1.0),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    8,
+                    16,
+                    viewInsetsBottom > 0
+                        ? 10.0
+                        : (bottomInset > 0 ? 8.0 : 12.0),
+                  ),
+                  child: bottomBar,
+                ),
+              ),
+            ),
       body: SafeArea(
+        // 让滚动内容在全面屏下自然铺满至底部，避免在手势小白条处形成生硬的截断缝隙
         bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -53,6 +88,76 @@ class SettingsScaffold extends StatelessWidget {
             ),
             Expanded(child: child),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 主操作按钮（「应用」「存档」这类）。
+class PrimaryButton extends StatefulWidget {
+  const PrimaryButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final IconData? icon;
+
+  /// null = 禁用（降透明度）。
+  final VoidCallback? onTap;
+
+  @override
+  State<PrimaryButton> createState() => _PrimaryButtonState();
+}
+
+class _PrimaryButtonState extends State<PrimaryButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final enabled = widget.onTap != null;
+
+    return GestureDetector(
+      onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: enabled ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: PoopMotions.pressDuration,
+        curve: PoopMotions.pressCurve,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.4,
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: t.brandGradient,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: enabled ? t.brandShadow : null,
+            ),
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (widget.icon != null) ...[
+                  Icon(widget.icon, size: 17, color: Colors.white),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  widget.label,
+                  style: displayStyle(
+                    size: 15,
+                    letterSpacing: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -108,24 +213,62 @@ class SettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final cardRadius = BorderRadius.circular(PoopRadii.card);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: t.surface,
-        borderRadius: BorderRadius.circular(PoopRadii.card),
+        borderRadius: cardRadius,
         border: Border.all(color: t.lineSoft),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0)
-              Divider(height: 1, thickness: 1, color: t.lineSoft, indent: 16),
-            children[i],
-          ],
+        boxShadow: [
+          BoxShadow(
+            color: t.isDark
+                ? Colors.black.withValues(alpha: 0.2)
+                : const Color(0x082D1B0D),
+            blurRadius: 4,
+            offset: const Offset(0, 1.5),
+          ),
         ],
       ),
+      child: Material(
+        color: t.surface,
+        shape: RoundedRectangleBorder(borderRadius: cardRadius),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0)
+                Container(
+                  height: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  color: t.lineSoft,
+                ),
+              _wrapChild(children[i], i, children.length),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _wrapChild(Widget child, int index, int total) {
+    final r = PoopRadii.card;
+    BorderRadius radius;
+    if (total == 1) {
+      radius = BorderRadius.circular(r);
+    } else if (index == 0) {
+      radius = BorderRadius.vertical(top: Radius.circular(r));
+    } else if (index == total - 1) {
+      radius = BorderRadius.vertical(bottom: Radius.circular(r));
+    } else {
+      radius = BorderRadius.zero;
+    }
+
+    if (radius == BorderRadius.zero) return child;
+    return ClipRRect(
+      borderRadius: radius,
+      child: child,
     );
   }
 }
@@ -143,6 +286,7 @@ class SettingsRow extends StatelessWidget {
     this.leadingBackground,
     this.trailing,
     this.onTap,
+    this.borderRadius,
     this.danger = false,
   });
 
@@ -153,6 +297,7 @@ class SettingsRow extends StatelessWidget {
   final Color? leadingBackground;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final BorderRadius? borderRadius;
 
   /// 危险操作（删除、清空）用红字。
   final bool danger;
@@ -161,6 +306,9 @@ class SettingsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final titleColor = danger ? t.danger : t.ink;
+    final effectiveBackground = leadingBackground ??
+        (danger ? t.danger.withValues(alpha: 0.12) : t.brandSoft);
+    final effectiveColor = leadingColor ?? (danger ? t.danger : t.brandInk);
 
     final row = Padding(
       padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
@@ -171,11 +319,11 @@ class SettingsRow extends StatelessWidget {
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color: leadingBackground ?? t.paperDeep,
+                color: effectiveBackground,
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
-              child: Icon(leading, size: 16, color: leadingColor ?? t.ink2),
+              child: Icon(leading, size: 16, color: effectiveColor),
             ),
             const SizedBox(width: 12),
           ],
@@ -212,7 +360,11 @@ class SettingsRow extends StatelessWidget {
     );
 
     if (onTap == null) return row;
-    return InkWell(onTap: onTap, child: row);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: borderRadius,
+      child: row,
+    );
   }
 }
 
@@ -272,6 +424,11 @@ class SettingsSwitch extends StatelessWidget {
 }
 
 /// 一排分段选项（每周起始日、日历字号、统计范围）。
+///
+/// 视觉与交互规范统一：
+/// - 采用统一的 [PoopMotions] 动效令牌（滑块平移 240ms easeOutCubic、文字过渡 180ms easeOutCubic）
+/// - 底层为平滑物理平移的焦糖渐变滑块与柔和暖调阴影，消除突兀生硬的生切感
+/// - 支持按压微缩放手感反馈，与全应用标杆控件对齐
 class SettingsSegmented<T> extends StatelessWidget {
   const SettingsSegmented({
     super.key,
@@ -285,40 +442,121 @@ class SettingsSegmented<T> extends StatelessWidget {
   final T value;
   final ValueChanged<T> onChanged;
 
+  static const double _itemHeight = 26.0;
+  static const double _padding = 2.5;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final n = options.length;
+    final selectedIndex = options.indexWhere((e) => e.$2 == value);
+    final validIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
+    // 根据最长字符长度调整每个 tab 的固定宽度，确保排版整洁且不抖动
+    final maxChars = options.fold<int>(
+      0,
+      (max, e) => e.$1.length > max ? e.$1.length : max,
+    );
+    final itemWidth = maxChars >= 2 ? 44.0 : 36.0;
+    final alignmentX = n <= 1 ? 0.0 : -1.0 + (2.0 * validIndex / (n - 1));
+
     return Container(
-      padding: const EdgeInsets.all(3),
+      width: itemWidth * n + _padding * 2,
+      height: _itemHeight + _padding * 2,
+      padding: const EdgeInsets.all(_padding),
       decoration: BoxDecoration(
         color: t.paperDeep,
         borderRadius: BorderRadius.circular(PoopRadii.pill),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 2,
+      child: Stack(
         children: [
-          for (final (label, v) in options)
-            GestureDetector(
-              onTap: () => onChanged(v),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: v == value ? t.brandFill : Colors.transparent,
-                  borderRadius: BorderRadius.circular(PoopRadii.pill),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: v == value ? Colors.white : t.ink3,
-                  ),
-                ),
+          // 统一的平移胶囊滑块
+          AnimatedAlign(
+            duration: PoopMotions.switchDuration,
+            curve: PoopMotions.switchCurve,
+            alignment: Alignment(alignmentX, 0),
+            child: Container(
+              width: itemWidth,
+              height: _itemHeight,
+              decoration: BoxDecoration(
+                gradient: t.brandGradient,
+                borderRadius: BorderRadius.circular(PoopRadii.pill),
+                boxShadow: t.brandShadow,
               ),
             ),
+          ),
+          // 上层点击与文字层
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < n; i++)
+                _SettingsSegmentedItem(
+                  label: options[i].$1,
+                  selected: i == validIndex,
+                  width: itemWidth,
+                  height: _itemHeight,
+                  onTap: () => onChanged(options[i].$2),
+                ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _SettingsSegmentedItem extends StatefulWidget {
+  const _SettingsSegmentedItem({
+    required this.label,
+    required this.selected,
+    required this.width,
+    required this.height,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final double width;
+  final double height;
+  final VoidCallback onTap;
+
+  @override
+  State<_SettingsSegmentedItem> createState() => _SettingsSegmentedItemState();
+}
+
+class _SettingsSegmentedItemState extends State<_SettingsSegmentedItem> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.92 : 1.0,
+        duration: PoopMotions.pressDuration,
+        curve: PoopMotions.pressCurve,
+        child: SizedBox(
+          width: widget.width,
+          height: widget.height,
+          child: Center(
+            child: AnimatedDefaultTextStyle(
+              duration: PoopMotions.colorDuration,
+              curve: PoopMotions.colorCurve,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: widget.selected ? FontWeight.w800 : FontWeight.w700,
+                letterSpacing: 0.5,
+                color: widget.selected ? Colors.white : t.ink3,
+              ),
+              child: Text(widget.label),
+            ),
+          ),
+        ),
       ),
     );
   }

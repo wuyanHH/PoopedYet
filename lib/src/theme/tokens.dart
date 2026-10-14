@@ -2,6 +2,37 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+/// 深浅主题模式选项。
+enum AppThemeMode {
+  system('跟随系统'),
+  light('浅色'),
+  dark('深色');
+
+  const AppThemeMode(this.label);
+
+  final String label;
+
+  ThemeMode toFlutterThemeMode() => switch (this) {
+        AppThemeMode.system => ThemeMode.system,
+        AppThemeMode.light => ThemeMode.light,
+        AppThemeMode.dark => ThemeMode.dark,
+      };
+}
+
+/// 主题色彩方案。
+enum AppThemeColor {
+  caramel('经典焦糖', Color(0xFFA85F29)),
+  matcha('抹茶森林', Color(0xFF3F7A57)),
+  ocean('深海微风', Color(0xFF376C8E)),
+  lavender('烟雨丁香', Color(0xFF764E8C)),
+  terracotta('落日陶土', Color(0xFFA14333));
+
+  const AppThemeColor(this.label, this.primaryColor);
+
+  final String label;
+  final Color primaryColor;
+}
+
 /// 设计令牌 —— 与 `.design/ui-reference.html` 的 `:root` **同源**。
 ///
 /// 改这里的任何颜色，必须同时改视觉稿的 `:root`，并且两边都通过对比度自检。
@@ -44,7 +75,11 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
     required this.liveSoft,
     required this.pending,
     required this.danger,
+    this.isDark = false,
   });
+
+  /// 是否为深色模式。
+  final bool isDark;
 
   // ---- 底 ----
   /// 页面底色，暖米纸。
@@ -114,7 +149,7 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
   /// 危险操作。对白 4.93:1。
   final Color danger;
 
-  /// 浅色主题的唯一实例。
+  /// 浅色主题的默认实例（经典焦糖）。
   static const PoopTokens light = PoopTokens(
     paper: Color(0xFFFAF5EC),
     paperDeep: Color(0xFFF2E9DA),
@@ -138,7 +173,109 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
     liveSoft: Color(0xFFE1EDE5),
     pending: Color(0xFF8A6114),
     danger: Color(0xFFC4453A),
+    isDark: false,
   );
+
+  /// 深色主题的默认实例（暖咖暗夜焦糖）。
+  static const PoopTokens dark = PoopTokens(
+    paper: Color(0xFF191614),
+    paperDeep: Color(0xFF24201C),
+    surface: Color(0xFF231E1B),
+    surface2: Color(0xFF2E2925),
+    ink: Color(0xFFECE4D9),
+    ink2: Color(0xFFBFB09F),
+    ink3: Color(0xFF968878),
+    ink4: Color(0xFF6A5C4F),
+    line: Color(0xFF352D26),
+    lineSoft: Color(0xFF29221C),
+    brand: Color(0xFFDC8C4F),
+    brandInk: Color(0xFFF09A55),
+    brandFill: Color(0xFFB36730),
+    brandSoft: Color(0xFF3D2717),
+    off: Color(0xFFDE5547),
+    offSoft: Color(0xFF3C1D1A),
+    work: Color(0xFF5E9EB3),
+    workSoft: Color(0xFF1C2E35),
+    live: Color(0xFF4E9A6F),
+    liveSoft: Color(0xFF182D20),
+    pending: Color(0xFFDCA02C),
+    danger: Color(0xFFE3594D),
+    isDark: true,
+  );
+
+  /// 依据主题色彩方案和明暗度生成设计令牌。
+  factory PoopTokens.create({
+    required AppThemeColor color,
+    required bool isDark,
+  }) {
+    if (!isDark) {
+      // ---- 浅色模式 ----
+      return switch (color) {
+        AppThemeColor.caramel => light,
+        AppThemeColor.matcha => light.copyWith(
+            brand: const Color(0xFF4D885B),
+            brandInk: const Color(0xFF30623A),
+            brandFill: const Color(0xFF3F7A57),
+            brandSoft: const Color(0xFFE0ECE3),
+            isDark: false,
+          ),
+        AppThemeColor.ocean => light.copyWith(
+            brand: const Color(0xFF4B7E9F),
+            brandInk: const Color(0xFF2B5B78),
+            brandFill: const Color(0xFF386D8F),
+            brandSoft: const Color(0xFFE0EBF2),
+            isDark: false,
+          ),
+        AppThemeColor.lavender => light.copyWith(
+            brand: const Color(0xFF8A659E),
+            brandInk: const Color(0xFF654079),
+            brandFill: const Color(0xFF764E8C),
+            brandSoft: const Color(0xFFEFE4F3),
+            isDark: false,
+          ),
+        AppThemeColor.terracotta => light.copyWith(
+            brand: const Color(0xFFBD5D4C),
+            brandInk: const Color(0xFF8F392A),
+            brandFill: const Color(0xFFA14333),
+            brandSoft: const Color(0xFFF8E3DF),
+            isDark: false,
+          ),
+      };
+    } else {
+      // ---- 深色模式 ----
+      return switch (color) {
+        AppThemeColor.caramel => dark,
+        AppThemeColor.matcha => dark.copyWith(
+            brand: const Color(0xFF5AA36E),
+            brandInk: const Color(0xFF74BD87),
+            brandFill: const Color(0xFF3B7752),
+            brandSoft: const Color(0xFF183120),
+            isDark: true,
+          ),
+        AppThemeColor.ocean => dark.copyWith(
+            brand: const Color(0xFF5898BF),
+            brandInk: const Color(0xFF72B1D7),
+            brandFill: const Color(0xFF356A8C),
+            brandSoft: const Color(0xFF172B38),
+            isDark: true,
+          ),
+        AppThemeColor.lavender => dark.copyWith(
+            brand: const Color(0xFFA57EBC),
+            brandInk: const Color(0xFFBE97D5),
+            brandFill: const Color(0xFF724A88),
+            brandSoft: const Color(0xFF2F1D38),
+            isDark: true,
+          ),
+        AppThemeColor.terracotta => dark.copyWith(
+            brand: const Color(0xFFD7715F),
+            brandInk: const Color(0xFFEB8472),
+            brandFill: const Color(0xFF9E3E2E),
+            brandSoft: const Color(0xFF3D1B15),
+            isDark: true,
+          ),
+      };
+    }
+  }
 
   @override
   PoopTokens copyWith({
@@ -164,6 +301,7 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
     Color? liveSoft,
     Color? pending,
     Color? danger,
+    bool? isDark,
   }) {
     return PoopTokens(
       paper: paper ?? this.paper,
@@ -188,6 +326,7 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
       liveSoft: liveSoft ?? this.liveSoft,
       pending: pending ?? this.pending,
       danger: danger ?? this.danger,
+      isDark: isDark ?? this.isDark,
     );
   }
 
@@ -217,12 +356,29 @@ class PoopTokens extends ThemeExtension<PoopTokens> {
       liveSoft: Color.lerp(liveSoft, other.liveSoft, t)!,
       pending: Color.lerp(pending, other.pending, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
+      isDark: t < 0.5 ? isDark : other.isDark,
     );
   }
 
   /// 便捷取用：`context.tokens.ink3`
   static PoopTokens of(BuildContext context) =>
       Theme.of(context).extension<PoopTokens>() ?? light;
+
+  /// 随当前主题色动态派生的品牌渐变（用于主按钮、分段胶囊滑块等）。
+  LinearGradient get brandGradient => LinearGradient(
+        colors: [brand, brandFill],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+
+  /// 随当前主题色动态派生的品牌投影。
+  List<BoxShadow> get brandShadow => [
+        BoxShadow(
+          color: brandFill.withValues(alpha: isDark ? 0.40 : 0.25),
+          blurRadius: 5,
+          offset: const Offset(0, 1.5),
+        ),
+      ];
 }
 
 /// 头像的配色对。
@@ -314,10 +470,14 @@ TextStyle displayStyle({
   );
 }
 
-/// 圆角。取自视觉稿 `:root`。
+/// 圆角体系规范。
 abstract final class PoopRadii {
-  static const double card = 20;
-  static const double cell = 13;
+  /// 卡片外框圆角：收敛曲率（由20微调为15），骨架利落干练，彻底消除臃肿膨胀感
+  static const double card = 15;
+
+  /// 日期单元格圆角：由13微调为9，与外层大卡片形成自然和谐的嵌套比例
+  static const double cell = 9;
+
   static const double sheet = 28;
   static const double pill = 99;
 }
@@ -375,4 +535,44 @@ abstract final class Wcag {
     final lo = math.min(la, lb);
     return (hi + 0.05) / (lo + 0.05);
   }
+}
+
+/// 动效与组件样式规范令牌。
+///
+/// 统一整套应用中的微交互、按压反馈、分段控件滑块过渡、状态切换时钟与曲线，
+/// 确保同类组件手感一致、节奏统一。
+abstract final class PoopMotions {
+  /// 轻量按压缩放反馈时长（按钮、卡片、单元格点击）。
+  static const Duration pressDuration = Duration(milliseconds: 120);
+
+  /// 轻量按压曲线。
+  static const Curve pressCurve = Curves.easeOutCubic;
+
+  /// 滑块平移与尺寸形变切换时长（Tab、分段控件）。
+  static const Duration switchDuration = Duration(milliseconds: 240);
+
+  /// 控件切换缓动曲线。
+  static const Curve switchCurve = Curves.easeOutCubic;
+
+  /// 颜色、文字高亮过渡时长（文字颜色、背景渐变、描边）。
+  static const Duration colorDuration = Duration(milliseconds: 180);
+
+  /// 颜色过渡缓动曲线。
+  static const Curve colorCurve = Curves.easeOutCubic;
+
+  /// 分段控件与高亮滑块统一的焦糖渐变背景。
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [Color(0xFFB05F2C), Color(0xFF9A5219)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// 焦糖滑块与高亮胶囊统一的柔和焦糖投影。
+  static const List<BoxShadow> brandShadow = [
+    BoxShadow(
+      color: Color(0x38A85F29),
+      blurRadius: 5,
+      offset: Offset(0, 1.5),
+    ),
+  ];
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">屙了么</string>
+    <string name="widget_small_name">屙了么 · 撕历打卡 (2×2)</string>
+    <string name="widget_small_desc">桌面撕历印章与极速开屙/掐表</string>
+    <string name="widget_medium_name">屙了么 · 手帐周历 (4×2)</string>
+    <string name="widget_medium_desc">即时行动舱与7天迷你手帐周历</string>
+    <string name="widget_large_name">屙了么 · 健康工作台 (4×4)</string>
+    <string name="widget_large_desc">全家健康手帐看板、近期便签流水与快捷工作台</string>
+    <string name="widget_btn_start">🧻 现在开屙</string>
+    <string name="widget_btn_finish">完成并记录</string>
+    <string name="widget_live_recording">正在屙...</string>
+    <string name="widget_today_empty">今天尚未记录</string>
+</resources>

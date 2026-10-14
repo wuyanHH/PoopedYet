@@ -58,6 +58,20 @@ extension NoteTemplateActions on AppDatabase {
     await (delete(noteTemplates)..where((t) => t.id.equals(id))).go();
   }
 
+  /// 恢复/还原一条模板（用于撤销删除）。
+  Future<void> restoreNoteTemplate(NoteTemplate tpl) async {
+    await into(noteTemplates).insert(
+      NoteTemplatesCompanion(
+        id: Value(tpl.id),
+        content: Value(tpl.content),
+        useCount: Value(tpl.useCount),
+        sortOrder: Value(tpl.sortOrder),
+        createdAt: Value(tpl.createdAt),
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+
   /// 按给定顺序重排。
   Future<void> reorderNoteTemplates(List<String> idsInOrder) async {
     await transaction(() async {

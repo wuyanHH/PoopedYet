@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../data/database.dart';
+import '../../data/note_template_actions.dart';
 import '../../data/queries.dart';
 import '../../data/record_actions.dart';
 import '../../data/record_edits.dart';
@@ -11,6 +13,7 @@ import '../../domain/record_state.dart';
 import '../../providers.dart';
 import '../../state/calendar_data.dart';
 import '../../theme/tokens.dart';
+import '../widgets/poop_button_icon.dart';
 import '../widgets/pooper_picker.dart';
 import '../widgets/sheet_shell.dart';
 import 'note_composer.dart';
@@ -95,17 +98,48 @@ class _Body extends ConsumerWidget {
     final state = recordStateOf(r, now: now);
     final dur = durationOf(r);
 
+    // 快捷标签模板与已有备注的分类匹配
+    final templates =
+        ref.watch(noteTemplatesProvider).value ?? const <NoteTemplate>[];
+    final templateSet = templates.map((tpl) => tpl.content).toSet();
+    final existingTagNotes = {
+      for (final n in detail.notes.where((n) => templateSet.contains(n.content)))
+        n.content: n,
+    };
+    final customNotes =
+        detail.notes.where((n) => !templateSet.contains(n.content)).toList();
+
     return SheetShell(
       title: '${r.startedAt.year}年${r.startedAt.month}月${r.startedAt.day}日',
       subtitle: _stateHint(state),
       scrollable: true,
+      maxHeightFactor: 0.92,
+      bottomBar: Row(
+        spacing: 10,
+        children: [
+          Expanded(
+            child: SheetGhostButton(
+              icon: LucideIcons.trash2,
+              label: '删除',
+              danger: true,
+              onTap: () => _deleteRecord(context, ref),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: _DetailDoneButton(
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ---------------- 谁在屙 ----------------
-            const SheetFieldLabel(text: '谁在屙'),
+            // ---------------- 记录对象 ----------------
+            const SheetFieldLabel(text: '记录对象'),
             PooperPickerRow(
               selectedId: r.pooperId,
               // 这条记录可能属于一个已归档的人，得把他放出来，
@@ -113,7 +147,7 @@ class _Body extends ConsumerWidget {
               includeArchived: true,
               onPick: (p) => _changePooper(context, ref, p),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
             // ---------------- 时间 ----------------
             SheetFieldLabel(
@@ -121,21 +155,87 @@ class _Body extends ConsumerWidget {
               trailing: dur == null ? null : '时长 ${formatDuration(dur)}',
             ),
             Row(
-              spacing: 10,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
+                  flex: 10,
                   child: _TimeCard(
                     label: '开始',
                     value: hhmm(r.startedAt),
-                    action: '改日期',
+                    action: '改时间',
+                    icon: LucideIcons.clock,
                     onTap: () => _editStart(context, ref),
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: dur == null
+                              ? (state == RecordState.active ? t.liveSoft : t.paperDeep)
+                              : t.brandSoft,
+                          borderRadius: BorderRadius.circular(PoopRadii.pill),
+                          border: Border.all(
+                            color: dur == null
+                                ? (state == RecordState.active
+                                    ? t.live.withValues(alpha: 0.35)
+                                    : t.lineSoft)
+                                : t.brand.withValues(alpha: 0.3),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (dur == null && state == RecordState.active) ...[
+                              Container(
+                                width: 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: t.live,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            Text(
+                              dur == null ? '进行中' : formatDuration(dur),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: dur == null
+                                    ? (state == RecordState.active ? t.live : t.ink3)
+                                    : t.brandInk,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Icon(
+                        LucideIcons.arrowRight,
+                        size: 14,
+                        color: dur == null ? t.ink4 : t.brandInk,
+                      ),
+                    ],
+                  ),
+                ),
                 Expanded(
+                  flex: 10,
                   child: _TimeCard(
                     label: '结束',
-                    value: r.endedAt == null ? _endPlaceholder(state) : hhmm(r.endedAt!),
+                    value: r.endedAt == null
+                        ? _endPlaceholder(state)
+                        : hhmm(r.endedAt!),
                     action: r.endedAt == null ? '补填' : '清除',
+                    icon: LucideIcons.flag,
                     empty: r.endedAt == null,
                     onTap: r.endedAt == null
                         ? () => _editEnd(context, ref)
@@ -144,104 +244,108 @@ class _Body extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
 
-            // 进行中的记录给两个明确的出口，而不是让用户猜要怎么"结束"。
-            if (state == RecordState.active || state == RecordState.pending)
-              Row(
-                spacing: 10,
-                children: [
-                  Expanded(
-                    child: _MiniAction(
-                      icon: LucideIcons.check,
-                      label: '现在结束',
-                      primary: true,
-                      onTap: () => _endNow(context, ref),
-                    ),
-                  ),
-                  Expanded(
-                    child: _MiniAction(
-                      icon: LucideIcons.clock,
-                      label: '没记结束时间',
-                      onTap: () => _markUnknown(context, ref),
-                    ),
-                  ),
-                ],
-              ),
-            if (state == RecordState.endUnknown || state == RecordState.done)
-              _MiniAction(
-                icon: LucideIcons.play,
-                label: '重新打开（变回正在屙）',
-                onTap: () => _reopen(context, ref),
-              ),
-            const SizedBox(height: 18),
-
-            // ---------------- 备注 ----------------
-            SheetFieldLabel(
-              text: '备注',
-              trailing: '${detail.notes.length} 条',
-            ),
-            if (detail.notes.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(
-                  '还没有备注',
-                  style: TextStyle(fontSize: 12.5, color: t.ink3),
+            // ---------------- 便便感受 ----------------
+            Row(
+              children: [
+                const SheetFieldLabel(
+                  text: '便便感受',
+                  trailing: '点选添加便便感受 · 点击取消',
                 ),
-              )
-            else
-              for (final n in detail.notes)
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => _promptNewTopicForDetail(context, ref, r.id),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: t.brandSoft,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(LucideIcons.plus, size: 12, color: t.brandInk),
+                        const SizedBox(width: 3),
+                        Text(
+                          '自定义感受',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: t.brandInk,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (templates.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _DetailTopicGrid(
+                templates: templates,
+                existingTagNotes: existingTagNotes,
+                onToggleTag: (item) async {
+                  HapticFeedback.selectionClick();
+                  final existing = existingTagNotes[item.content];
+                  if (existing != null) {
+                    // 已有该主题，再次点击卸下
+                    await ref.read(databaseProvider).deleteNote(existing.id);
+                  } else {
+                    // 点击立即为记录打上该主题
+                    await ref.read(databaseProvider).addNote(r.id, item.content);
+                    await ref.read(databaseProvider).bumpNoteTemplate(item.content);
+                  }
+                  _refresh(ref);
+                },
+              ),
+            ],
+            const SizedBox(height: 14),
+
+            // ---------------- 详细文字备注 ----------------
+            SheetFieldLabel(
+              text: '详细文字备注',
+              trailing: customNotes.isEmpty ? '可选填' : '${customNotes.length} 条',
+            ),
+            // 已添加的备注列表排在上方
+            if (customNotes.isNotEmpty) ...[
+              for (final n in customNotes)
                 _NoteRow(
                   note: n,
                   onEdit: () => _editNote(context, ref, n),
                   onDelete: () => _deleteNote(context, ref, n),
                 ),
-            const SizedBox(height: 10),
-            NoteComposer(
-              onSubmit: (text) async {
-                await ref.read(databaseProvider).addNote(r.id, text);
-                // 手打的备注沉淀成模板，下次一句话都不用打。
-                await ref.read(databaseProvider).bumpNoteTemplate(text);
-                _refresh(ref);
-              },
-            ),
-            const SizedBox(height: 18),
-
-            // ---------------- 底部动作 ----------------
-            Row(
-              spacing: 10,
-              children: [
-                Expanded(
-                  child: SheetGhostButton(
-                    icon: LucideIcons.trash2,
-                    label: '删除',
-                    danger: true,
-                    onTap: () => _deleteRecord(context, ref),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: t.brandFill,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '完 成',
-                        style: displayStyle(
-                          size: 15,
-                          letterSpacing: 2,
-                          color: Colors.white,
-                        ),
-                      ),
+              const SizedBox(height: 10),
+            ],
+            // 加备注输入框始终位于最底部，并在提交后自动平滑滚动对齐到底部
+            Builder(
+              builder: (composerCtx) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    NoteComposer(
+                      onSubmit: (text) async {
+                        await ref.read(databaseProvider).addNote(r.id, text);
+                        _refresh(ref);
+                        // 提交后下一帧自动平滑滚动到底部，保证最新添加的备注和输入框始终可见
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (composerCtx.mounted) {
+                            Scrollable.ensureVisible(
+                              composerCtx,
+                              alignment: 1.0,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOutCubic,
+                            );
+                          }
+                        });
+                      },
                     ),
-                  ),
-                ),
-              ],
+                    // 底部避让间距充足留白，保证滚动到底部时「添加备注」整个按钮完整舒展，绝不被吸底栏紧贴或遮挡
+                    const SizedBox(height: 38),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -347,24 +451,102 @@ class _Body extends ConsumerWidget {
     if (_handle(context, res, ref)) _toast(context, '已清除结束时间，变回正在屙');
   }
 
-  Future<void> _endNow(BuildContext context, WidgetRef ref) async {
-    await ref.read(databaseProvider).endPoop(recordId);
-    if (!context.mounted) return;
-    _refresh(ref);
-    _toast(context, '已结束');
-  }
+  Future<void> _promptNewTopicForDetail(
+    BuildContext context,
+    WidgetRef ref,
+    String recordId,
+  ) async {
+    final t = context.tokens;
+    final controller = TextEditingController();
 
-  Future<void> _markUnknown(BuildContext context, WidgetRef ref) async {
-    await ref.read(databaseProvider).markEndUnknown(recordId);
-    if (!context.mounted) return;
-    _refresh(ref);
-    _toast(context, '记为「未记结束」');
-  }
+    final text = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: t.paper,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: t.lineSoft),
+        ),
+        title: Text(
+          '自定义便便感受',
+          style: displayStyle(
+            size: 17.5,
+            letterSpacing: 0.5,
+            color: t.ink,
+          ),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 20,
+          style: TextStyle(fontSize: 14.5, color: t.ink),
+          decoration: InputDecoration(
+            hintText: '比如：很顺畅、拉肚子、干硬',
+            hintStyle: TextStyle(fontSize: 13, color: t.ink3),
+            filled: true,
+            fillColor: t.surface,
+            counterText: '',
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.lineSoft),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.lineSoft),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.brandInk, width: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              '取消',
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: t.ink3,
+              ),
+            ),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: t.brandFill,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            onPressed: () {
+              final val = controller.text.trim();
+              Navigator.of(ctx).pop(val.isEmpty ? null : val);
+            },
+            child: const Text(
+              '添加并选用',
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
 
-  Future<void> _reopen(BuildContext context, WidgetRef ref) async {
-    final res = await ref.read(databaseProvider).reopenRecord(recordId);
-    if (!context.mounted) return;
-    _handle(context, res, ref);
+    if (text == null || !context.mounted) return;
+    await ref.read(databaseProvider).createNoteTemplate(text);
+    await ref.read(databaseProvider).addNote(recordId, text);
+    ref.invalidate(noteTemplatesProvider);
+    _refresh(ref);
   }
 
   Future<void> _editNote(
@@ -459,14 +641,15 @@ Future<String?> _promptText(
   );
 }
 
-/// 开始 / 结束那两个方卡。
-class _TimeCard extends StatelessWidget {
+/// 精致手帐质感的「开始 / 结束」时间卡片。
+class _TimeCard extends StatefulWidget {
   const _TimeCard({
     required this.label,
     required this.value,
     required this.action,
     required this.onTap,
     this.empty = false,
+    this.icon = LucideIcons.clock,
   });
 
   final String label;
@@ -474,97 +657,114 @@ class _TimeCard extends StatelessWidget {
   final String action;
   final VoidCallback onTap;
   final bool empty;
+  final IconData icon;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        decoration: BoxDecoration(
-          color: t.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: empty ? t.line : t.lineSoft),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(fontSize: 11, color: t.ink3, letterSpacing: 0.6),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: empty ? t.ink3 : t.ink,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              action,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: t.brandInk,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  State<_TimeCard> createState() => _TimeCardState();
 }
 
-/// 一行宽的次要动作按钮。
-class _MiniAction extends StatelessWidget {
-  const _MiniAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.primary = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool primary;
+class _TimeCardState extends State<_TimeCard> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final isDone = !widget.empty;
+
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 42,
-        decoration: BoxDecoration(
-          color: primary ? t.brandSoft : t.surface,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: primary ? t.brandInk : t.lineSoft),
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 14, color: primary ? t.brandInk : t.ink2),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: primary ? t.brandInk : t.ink2,
-                ),
-              ),
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: PoopMotions.pressDuration,
+        curve: PoopMotions.pressCurve,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(13, 11, 13, 11),
+          decoration: BoxDecoration(
+            color: t.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: widget.empty ? t.line : t.lineSoft,
+              width: widget.empty ? 1.2 : 1.0,
             ),
-          ],
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A2D1B0D),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 顶部行：图标 + 标签 + 右侧操作小胶囊
+              Row(
+                children: [
+                  Icon(
+                    widget.icon,
+                    size: 13,
+                    color: widget.empty ? t.ink4 : t.brandInk,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: t.ink3,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const Spacer(),
+                  // 右侧动作胶囊（替代干瘪文字超链接）
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: widget.empty ? t.brandSoft : t.paperDeep,
+                      borderRadius: BorderRadius.circular(PoopRadii.pill),
+                    ),
+                    child: Text(
+                      widget.action,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: widget.empty ? t.brandInk : t.ink3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // 主时间文字（得意黑展示大数字 / 空态标题）
+              if (isDone)
+                Text(
+                  widget.value,
+                  style: displayStyle(
+                    size: 23,
+                    letterSpacing: 0.5,
+                    color: t.ink,
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.5),
+                  child: Text(
+                    widget.value,
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      color: t.ink3,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -627,6 +827,286 @@ class _NoteRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DetailDoneButton extends StatefulWidget {
+  const _DetailDoneButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_DetailDoneButton> createState() => _DetailDoneButtonState();
+}
+
+class _DetailDoneButtonState extends State<_DetailDoneButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: PoopMotions.pressDuration,
+        curve: PoopMotions.pressCurve,
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            gradient: t.brandGradient,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: t.brandShadow,
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const PoopButtonIcon.finish(size: 19, onDarkButton: true),
+              const SizedBox(width: 8),
+              Text(
+                '完 成',
+                style: displayStyle(
+                  size: 15,
+                  letterSpacing: 2,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 详情与修改弹窗中的排便主题胶囊（与新建页保持 100% 视觉语言一致）。
+class _DetailTopicChip extends StatefulWidget {
+  const _DetailTopicChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_DetailTopicChip> createState() => _DetailTopicChipState();
+}
+
+class _DetailTopicChipState extends State<_DetailTopicChip> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final isSelected = widget.selected;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.94 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: isSelected
+                ? LinearGradient(
+                    colors: [t.brand, t.brandFill],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: isSelected ? null : t.paperDeep,
+            borderRadius: BorderRadius.circular(PoopRadii.pill),
+            border: isSelected
+                ? null
+                : Border.all(color: t.lineSoft, width: 1.0),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: t.brandFill.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isSelected) ...[
+                const Icon(LucideIcons.check, size: 13, color: Colors.white),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  color: isSelected ? Colors.white : t.ink,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 支持已选置顶、默认紧凑折叠（最多 8 项）与平滑展开收起的排便主题网格。
+class _DetailTopicGrid extends StatefulWidget {
+  const _DetailTopicGrid({
+    required this.templates,
+    required this.existingTagNotes,
+    required this.onToggleTag,
+  });
+
+  final List<NoteTemplate> templates;
+  final Map<String, PoopNote> existingTagNotes;
+  final Future<void> Function(NoteTemplate item) onToggleTag;
+
+  @override
+  State<_DetailTopicGrid> createState() => _DetailTopicGridState();
+}
+
+class _DetailTopicGridState extends State<_DetailTopicGrid> {
+  bool _expanded = false;
+  static const int kDefaultVisibleCount = 8;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    // 排序策略：已选中的标签置顶排在前面，其余按原顺序排列，保证已选标签不被折叠掩盖
+    final sortedTemplates = [...widget.templates]..sort((a, b) {
+        final aSelected = widget.existingTagNotes.containsKey(a.content);
+        final bSelected = widget.existingTagNotes.containsKey(b.content);
+        if (aSelected && !bSelected) return -1;
+        if (!aSelected && bSelected) return 1;
+        return a.sortOrder.compareTo(b.sortOrder);
+      });
+
+    final hasOverflow = sortedTemplates.length > 7;
+
+    Widget wrapWidget = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final item in sortedTemplates)
+          _DetailTopicChip(
+            label: item.content,
+            selected: widget.existingTagNotes.containsKey(item.content),
+            onTap: () => widget.onToggleTag(item),
+          ),
+      ],
+    );
+
+    if (!hasOverflow) {
+      return wrapWidget;
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              ConstrainedBox(
+                constraints: _expanded
+                    ? const BoxConstraints()
+                    : const BoxConstraints(maxHeight: 78),
+                child: ClipRect(
+                  child: wrapWidget,
+                ),
+              ),
+              // 折叠状态下底部平滑渐隐遮罩（如被底色自然遮盖）
+              if (!_expanded)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 38,
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            t.paper.withValues(alpha: 0.0),
+                            t.paper.withValues(alpha: 0.96),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _expanded = !_expanded);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: _expanded ? t.paperDeep : t.brandSoft,
+              borderRadius: BorderRadius.circular(PoopRadii.pill),
+              border: Border.all(
+                color: _expanded
+                    ? t.lineSoft
+                    : t.brand.withValues(alpha: 0.22),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _expanded
+                      ? '收起感受'
+                      : '展开全部感受（共 ${sortedTemplates.length} 个）',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: _expanded ? t.ink2 : t.brandInk,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _expanded
+                      ? LucideIcons.chevronUp
+                      : LucideIcons.chevronDown,
+                  size: 14,
+                  color: _expanded ? t.ink2 : t.brandInk,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

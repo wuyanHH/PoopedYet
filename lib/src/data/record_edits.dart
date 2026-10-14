@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 
+import '../widget/widget_snapshot_service.dart';
 import 'database.dart';
 
 /// 编辑一条记录的结果。
@@ -69,6 +72,7 @@ extension RecordEdits on AppDatabase {
 
     await (update(poopRecords)..where((t) => t.id.equals(id)))
         .write(PoopRecordsCompanion(startedAt: Value(at)));
+    unawaited(WidgetSyncManager.sync(this));
     return const EditOk();
   }
 
@@ -86,6 +90,7 @@ extension RecordEdits on AppDatabase {
         endUnknown: const Value(false),
       ),
     );
+    unawaited(WidgetSyncManager.sync(this));
     return const EditOk();
   }
 
@@ -106,6 +111,7 @@ extension RecordEdits on AppDatabase {
         endUnknown: Value(false),
       ),
     );
+    unawaited(WidgetSyncManager.sync(this));
     return const EditOk();
   }
 
@@ -124,6 +130,7 @@ extension RecordEdits on AppDatabase {
 
     await (update(poopRecords)..where((t) => t.id.equals(id)))
         .write(PoopRecordsCompanion(pooperId: Value(pooperId)));
+    unawaited(WidgetSyncManager.sync(this));
     return const EditOk();
   }
 
@@ -135,6 +142,7 @@ extension RecordEdits on AppDatabase {
     if (text.isEmpty) return false;
     final n = await (update(poopNotes)..where((t) => t.id.equals(noteId)))
         .write(PoopNotesCompanion(content: Value(text)));
+    if (n > 0) unawaited(WidgetSyncManager.sync(this));
     return n > 0;
   }
 
@@ -145,6 +153,7 @@ extension RecordEdits on AppDatabase {
   Future<bool> updateNoteTime(String noteId, DateTime at) async {
     final n = await (update(poopNotes)..where((t) => t.id.equals(noteId)))
         .write(PoopNotesCompanion(notedAt: Value(at)));
+    if (n > 0) unawaited(WidgetSyncManager.sync(this));
     return n > 0;
   }
 }

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ (API 31+) 专属全新 SplashScreen 规范主题 -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <!-- 启动背景色严格锁定为品牌暖纸色，杜绝系统白屏 -->
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <!-- 使用完全透明图标，彻底消除系统强制在正中心贴出桌面图标导致的“双重启动页”闪烁 -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_transparent_icon</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <!-- Flutter 引擎加载与首帧绘制阶段的主题：背景严格锁定为暖纸色，彻底消除进入软件时的白屏闪烁 -->
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+</resources>

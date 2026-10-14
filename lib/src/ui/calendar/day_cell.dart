@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../data/queries.dart';
 import '../../theme/tokens.dart';
@@ -15,12 +16,12 @@ enum HolidayKind {
 
 /// 日历里的一格。
 ///
-/// 规格取自视觉稿 `.cell`：高 58、圆角 13、内边距 3/3/2。
-/// 里面的东西自上而下是：日期数字（+ 休/班角标）→ 头像徽标（最多 2 行 + `+N`）。
-///
-/// **它不自己读 provider**，全部数据靠参数传进来 ——
-/// 这样它能被 widget test 单独渲染，也能在周视图里复用（只是尺寸不同）。
-class DayCell extends StatelessWidget {
+/// 视觉全面升级：
+///   - 选中态：双层暖棕渐变 + 柔和焦糖弥散阴影 + 立体高光字
+///   - 今天态：暖奶油质感微底 + 焦糖高亮环 + 小指示点
+///   - 徽标药丸：精致微阴影和饱满头像排版
+///   - 按压弹性反馈，提升交互流畅感
+class DayCell extends StatefulWidget {
   const DayCell({
     super.key,
     required this.date,
@@ -39,130 +40,187 @@ class DayCell extends StatelessWidget {
   });
 
   final DateTime date;
-
-  /// 是否属于当前显示的月份。false 时整格降级显示。
   final bool inMonth;
-
   final bool isToday;
   final bool isSelected;
-
-  /// 周六/周日。
   final bool isWeekend;
-
-  /// 这一天每人的次数，**已按屙屎人顺序排好**（见 `_orderBadges`）。
   final List<PooperCount> badges;
-
   final HolidayKind? holiday;
-
   final bool showBadges;
   final bool showHolidayTags;
   final bool weekendBrandColor;
-
-  /// 月视图 2 行，周视图可以放 3 行。
   final int maxBadgeRows;
-
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
   @override
+  State<DayCell> createState() => _DayCellState();
+}
+
+class _DayCellState extends State<DayCell> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final isSelected = widget.isSelected;
+    final isToday = widget.isToday;
+    final isWeekend = widget.isWeekend;
+    final inMonth = widget.inMonth;
 
-    // ---- 底色 ----
-    // 选中 > 今天 > 无。选中态必须压过今天态，否则点今天那一格看不出被选中。
-    Color? bg;
-    if (isSelected) {
-      bg = t.brandFill;
-    } else if (isToday) {
-      bg = const Color(0xFFFFFBF5);
-    }
+    final isOffDay = widget.holiday == HolidayKind.off;
+    final isWorkDay = widget.holiday == HolidayKind.work;
+
+    // ---- 渐变 / 背景色（区分法定假日 / 调休补班 / 普通双休 / 工作日） ----
+    final Gradient? gradient = isSelected
+        ? LinearGradient(
+            colors: [t.brand, t.brandFill],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : null;
+
+    final Color? bg = isSelected
+        ? null
+        : (isToday
+            ? (isOffDay
+                ? t.offSoft.withValues(alpha: 0.5)
+                : (isWorkDay
+                    ? t.workSoft.withValues(alpha: 0.5)
+                    : (t.isDark
+                        ? t.brandSoft.withValues(alpha: 0.35)
+                        : const Color(0xFFFFF9F2))))
+            : (isOffDay
+                ? t.offSoft.withValues(alpha: 0.42)
+                : (isWorkDay
+                    ? t.workSoft.withValues(alpha: 0.42)
+                    : (isWeekend
+                        ? (t.isDark ? t.surface2 : const Color(0xFFFAF6F0))
+                        : null))));
 
     // ---- 日期数字颜色 ----
     Color numColor = t.ink;
     if (isSelected) {
       numColor = Colors.white;
     } else if (isToday) {
-      numColor = t.brandInk;
-    } else if (isWeekend && weekendBrandColor) {
+      numColor = isOffDay ? t.off : (isWorkDay ? t.work : t.brandInk);
+    } else if (isOffDay) {
+      numColor = t.off;
+    } else if (isWorkDay) {
+      numColor = t.work;
+    } else if (isWeekend && widget.weekendBrandColor) {
       numColor = t.brandInk;
     }
 
-    // ---- 今天：一道焦糖细环 ----
-    // 用 foregroundDecoration 而不是 border —— border 会占掉 1.5px 布局空间，
-    // 让格子里的内容整体位移；foregroundDecoration 只画在上面，不动布局。
-    final BoxDecoration? ring = isToday
-        ? BoxDecoration(
-            borderRadius: BorderRadius.circular(PoopRadii.cell),
-            border: Border.all(color: t.brand, width: 1.5),
+    // 今天态微边框
+    final Border? border = !isSelected && isToday
+        ? Border.all(
+            color: isOffDay
+                ? t.off.withValues(alpha: 0.7)
+                : (isWorkDay
+                    ? t.work.withValues(alpha: 0.7)
+                    : t.brandInk.withValues(alpha: 0.65)),
+            width: 1.5,
           )
         : null;
 
-    // 非本月的格子整体降级。这是**有意的**降级，不是对比度不达标。
     final dim = !inMonth;
 
     return Semantics(
-      // 读屏不能只念一个"11"。整个 App 的语义标签都还没系统设计过，
-      // 这里先给日历格一个能用的最小版本。
       label: _semanticLabel(),
       button: true,
       selected: isSelected,
       child: GestureDetector(
-        onTap: onTap,
-        onLongPress: onLongPress,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap == null
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                widget.onTap!();
+              },
+        onLongPress: widget.onLongPress == null
+            ? null
+            : () {
+                HapticFeedback.mediumImpact();
+                widget.onLongPress!();
+              },
         behavior: HitTestBehavior.opaque,
-        child: Container(
-          height: 58,
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(PoopRadii.cell),
-            boxShadow: isSelected
-                ? const [
-                    BoxShadow(
-                      color: Color(0x57A85F29),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ]
-                : null,
-          ),
-          foregroundDecoration: ring,
-          padding: const EdgeInsets.fromLTRB(3, 3, 3, 2),
-          child: Opacity(
-            opacity: dim ? 0.45 : 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 1),
-                      child: Text(
-                        '${date.day}',
-                        style: TextStyle(
-                          color: numColor,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                          height: 1,
-                          letterSpacing: -0.3,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+        child: AnimatedScale(
+          scale: _pressed ? 0.94 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topLeft,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              gradient: gradient,
+              color: bg,
+              borderRadius: BorderRadius.circular(9),
+              border: border,
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: t.brandFill.withValues(alpha: 0.28),
+                        blurRadius: 8,
+                        spreadRadius: -1,
+                        offset: const Offset(0, 2.5),
+                      ),
+                    ]
+                  : null,
+            ),
+            padding: const EdgeInsets.fromLTRB(4, 3, 4, 2),
+            child: Opacity(
+              opacity: dim ? 0.38 : 1.0,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 1, top: 1),
+                        child: Text(
+                          '${widget.date.day}',
+                          style: TextStyle(
+                            color: numColor,
+                            fontSize: 14.5,
+                            fontWeight: isSelected || isToday
+                                ? FontWeight.w800
+                                : FontWeight.w700,
+                            height: 1,
+                            letterSpacing: -0.3,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ),
-                    ),
-                    const Spacer(),
-                    if (showHolidayTags && holiday != null)
-                      _HolidayTag(kind: holiday!, onSelected: isSelected, t: t),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                if (showBadges && badges.isNotEmpty)
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _badgeRows(t, isSelected),
-                    ),
+                      if (widget.showHolidayTags && widget.holiday != null)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 1, top: 1),
+                          child: _HolidayTag(
+                            kind: widget.holiday!,
+                            onSelected: isSelected,
+                            t: t,
+                          ),
+                        ),
+                    ],
                   ),
-              ],
+                  if (widget.showBadges && widget.badges.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: _badgeRows(t, isSelected),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
@@ -170,55 +228,81 @@ class DayCell extends StatelessWidget {
     );
   }
 
-  /// 最多 [maxBadgeRows] 行，放不下的用 `+N` 收在最后一行末尾。
-  ///
-  /// 每一行都套了 `FittedBox(scaleDown)`：格子只有 46px 宽，
-  /// 次数涨到两位数（`14`）时 头像+数字+`+N` 会超宽。
-  /// 让它等比缩一点，好过溢出画到隔壁格子上。
   List<Widget> _badgeRows(PoopTokens t, bool isSelected) {
-    final shown = badges.take(maxBadgeRows).toList();
-    final extra = badges.length - shown.length;
+    final shown = widget.badges.take(widget.maxBadgeRows).toList();
+    final extra = widget.badges.length - shown.length;
 
     return [
       for (var i = 0; i < shown.length; i++)
         Padding(
           padding: EdgeInsets.only(top: i == 0 ? 0 : 2),
           child: SizedBox(
-            height: 14,
+            height: 15,
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  PooperAvatar.xs(
-                    shown[i].pooper,
-                    dimmed: shown[i].pooper.archivedAt != null,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSelected ? 3.5 : 2.5,
+                  vertical: 1.2,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.22)
+                      : (t.isDark
+                          ? t.surface.withValues(alpha: 0.8)
+                          : t.paperDeep.withValues(alpha: 0.75)),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isSelected
+                        ? Colors.white.withValues(alpha: 0.28)
+                        : t.lineSoft.withValues(alpha: 0.7),
+                    width: 0.8,
                   ),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${shown[i].count}',
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : t.ink2,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  if (i == shown.length - 1 && extra > 0) ...[
-                    const SizedBox(width: 2),
-                    Text(
-                      '+$extra',
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : t.ink3,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: t.isDark
+                          ? Colors.black.withValues(alpha: 0.2)
+                          : const Color(0x0C2D1B0D),
+                      blurRadius: 2,
+                      offset: const Offset(0, 0.8),
                     ),
                   ],
-                ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PooperAvatar.xs(
+                      shown[i].pooper,
+                      dimmed: shown[i].pooper.archivedAt != null,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${shown[i].count}',
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : t.ink,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    if (i == shown.length - 1 && extra > 0) ...[
+                      const SizedBox(width: 2.5),
+                      Text(
+                        '+$extra',
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.9)
+                              : t.brandInk,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -229,27 +313,24 @@ class DayCell extends StatelessWidget {
   String _semanticLabel() {
     const wd = ['一', '二', '三', '四', '五', '六', '日'];
     final parts = <String>[
-      '${date.month}月${date.day}日',
-      '周${wd[date.weekday - 1]}',
+      '${widget.date.month}月${widget.date.day}日',
+      '周${wd[widget.date.weekday - 1]}',
     ];
-    if (!inMonth) parts.add('非本月');
-    if (isToday) parts.add('今天');
-    if (holiday == HolidayKind.off) parts.add('休息日');
-    if (holiday == HolidayKind.work) parts.add('调休上班');
-    if (badges.isEmpty) {
+    if (!widget.inMonth) parts.add('非本月');
+    if (widget.isToday) parts.add('今天');
+    if (widget.holiday == HolidayKind.off) parts.add('休息日');
+    if (widget.holiday == HolidayKind.work) parts.add('调休上班');
+    if (widget.badges.isEmpty) {
       parts.add('无记录');
     } else {
-      parts.add(badges.map((b) => '${b.pooper.name} ${b.count} 次').join('，'));
+      parts.add(
+        widget.badges.map((b) => '${b.pooper.name} ${b.count} 次').join('，'),
+      );
     }
     return parts.join('，');
   }
 }
 
-/// 休 / 班 角标。
-///
-/// 早期版本是「浅底 + 彩色文字」，8.5px 时对比度只有 3.27:1，而且小到认不出。
-/// 改成**实心药丸 + 白字**：白字对 `off` 是 6.01:1、对 `work` 是 4.61:1，
-/// 字号还能从 8.5px 提到 10px。
 class _HolidayTag extends StatelessWidget {
   const _HolidayTag({
     required this.kind,
@@ -264,23 +345,35 @@ class _HolidayTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOff = kind == HolidayKind.off;
-    // 选中格里改成白底 + 原色字，否则红药丸压在焦糖底上会糊成一团。
-    final bg = onSelected ? Colors.white : (isOff ? t.off : t.work);
-    final fg = onSelected ? (isOff ? t.off : t.work) : Colors.white;
+
+    // 选中态：在焦糖渐变上使用半透明白底与高对比度文字
+    // 普通态：使用精巧的柔和轻彩底与清晰主题色文字，去除粗硬边框，杜绝尺寸溢出
+    final bg = onSelected
+        ? Colors.white.withValues(alpha: 0.22)
+        : (isOff
+            ? t.offSoft.withValues(alpha: 0.75)
+            : t.workSoft.withValues(alpha: 0.75));
+
+    final fg = onSelected
+        ? Colors.white
+        : (isOff ? t.off : t.work);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      width: 14,
+      height: 14,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(3.5),
       ),
       child: Text(
         isOff ? '休' : '班',
         style: TextStyle(
           color: fg,
-          fontSize: 10,
+          fontSize: 9.0,
           fontWeight: FontWeight.w800,
           height: 1,
+          letterSpacing: 0,
         ),
       ),
     );

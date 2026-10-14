@@ -126,6 +126,14 @@ final holidaysProvider = FutureProvider<Map<String, Holiday>>((ref) async {
   return {for (final h in rows) h.date: h};
 });
 
+/// 节假日数据统计（年份范围与记录条数，设置页展示用）。
+final holidayStatsProvider =
+    FutureProvider<({List<int> years, int totalCount})>((ref) async {
+  await ref.watch(_holidaySeedProvider.future);
+  final db = ref.watch(databaseProvider);
+  return getHolidayDatabaseStats(db);
+});
+
 /// 启动时要做的事。
 ///
 /// **`ensureDefaultPooper()` 的调用点在这里** —— 不能在 UI 里"用到的时候再说"。

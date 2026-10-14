@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/database.dart';
+import 'widget/widget_snapshot_service.dart';
 
 /// 应用数据库。全局单例，随 ProviderContainer 一起销毁。
 ///
@@ -80,6 +83,8 @@ final bootReportProvider = FutureProvider<BootReport>((ref) async {
     'templates=${report.noteTemplateCount} '
     'foreign_keys=${report.foreignKeysOn} fresh=${report.createdFresh}',
   );
+
+  unawaited(WidgetSyncManager.sync(db));
 
   return report;
 });

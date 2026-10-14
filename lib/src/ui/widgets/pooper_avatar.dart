@@ -6,6 +6,60 @@ import '../../data/database.dart';
 import '../../theme/pooper_icons.dart';
 import '../../theme/tokens.dart';
 
+/// 屙屎人头像内存图片稳定缓存池。
+///
+/// **为什么需要它**：
+/// 默认 [MemoryImage] 在 Dart 中仅通过 `Uint8List` 的指针内存地址比对相等性 (`identical`)。
+/// 列表滚动触发 item 重建或数据刷新时，若每次传入新生成的列表或者对象引用，
+/// 会导致 Flutter 图片管道误判为全新图片，反复触发异步解码并在解码空档期置空图像，
+/// 从而引起肉眼可见的头像闪烁。
+///
+/// 通过此缓存池，只要该成员的图片长度与指纹未变，全局**始终复用同一个 [MemoryImage] 实例**，
+/// 彻底根除页面滚动时的头像闪烁，同时省去无谓的重复 CPU/GPU 纹理重解码。
+class _CachedAvatarEntry {
+  const _CachedAvatarEntry({
+    required this.image,
+    required this.length,
+    required this.fingerprint,
+  });
+
+  final MemoryImage image;
+  final int length;
+  final int fingerprint;
+
+  bool matches(Uint8List blob) {
+    if (blob.length != length) return false;
+    return _calcFingerprint(blob) == fingerprint;
+  }
+
+  static int _calcFingerprint(Uint8List blob) {
+    if (blob.isEmpty) return 0;
+    final len = blob.length;
+    final b0 = blob[0];
+    final bMid = blob[len ~/ 2];
+    final bEnd = blob[len - 1];
+    return Object.hash(len, b0, bMid, bEnd);
+  }
+}
+
+class _AvatarImageCache {
+  static final Map<String, _CachedAvatarEntry> _entries = {};
+
+  static MemoryImage resolve(String pooperId, Uint8List blob) {
+    final cached = _entries[pooperId];
+    if (cached != null && cached.matches(blob)) {
+      return cached.image;
+    }
+    final image = MemoryImage(blob);
+    _entries[pooperId] = _CachedAvatarEntry(
+      image: image,
+      length: blob.length,
+      fingerprint: _CachedAvatarEntry._calcFingerprint(blob),
+    );
+    return image;
+  }
+}
+
 /// 屙屎人头像。
 ///
 /// 三层兜底，从上到下依次退化：
@@ -61,12 +115,14 @@ class PooperAvatar extends StatelessWidget {
     if (blob != null && blob.isNotEmpty) {
       child = ClipRRect(
         borderRadius: BorderRadius.circular(r),
-        child: Image.memory(
-          Uint8List.fromList(blob),
+        child: Image(
+          image: _AvatarImageCache.resolve(pooper.id, blob),
           width: size,
           height: size,
           fit: BoxFit.cover,
-          // 库里的是 96px 缩略图，放大时别糊成马赛克
+          gaplessPlayback: true,
+          excludeFromSemantics: true,
+          // 库里的是 96px 缩略图，放大时保持平滑抗锯齿
           filterQuality: FilterQuality.medium,
           errorBuilder: (_, _, _) => _iconOrInitial(scheme, r),
         ),
@@ -75,8 +131,10 @@ class PooperAvatar extends StatelessWidget {
       child = _iconOrInitial(scheme, r);
     }
 
-    if (!dimmed) return child;
-    return Opacity(opacity: 0.45, child: child);
+    if (!dimmed) return RepaintBoundary(child: child);
+    return RepaintBoundary(
+      child: Opacity(opacity: 0.45, child: child),
+    );
   }
 
   Widget _iconOrInitial(AvatarColor scheme, double r) {

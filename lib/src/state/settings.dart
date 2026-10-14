@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../calendar/calendar_math.dart';
+import '../theme/tokens.dart';
+import 'calendar_view.dart';
 
 /// `SharedPreferences` 实例。**必须在 `main()` 里用 override 注入** ——
 /// 它的初始化是异步的，而在 build 里 await 会让每一帧都可能 rebuild。
@@ -43,6 +45,9 @@ class Settings {
     this.weekendBrandColor = true,
     this.hideArchivedPoopers = false,
     this.calendarTextSize = CalendarTextSize.medium,
+    this.themeMode = AppThemeMode.system,
+    this.themeColor = AppThemeColor.caramel,
+    this.defaultCalendarMode = CalendarMode.month,
   });
 
   /// 每周起始日。日历网格的偏移量直接依赖它。
@@ -65,6 +70,15 @@ class Settings {
 
   final CalendarTextSize calendarTextSize;
 
+  /// 深浅色主题模式（跟随系统 / 浅色 / 深色）。
+  final AppThemeMode themeMode;
+
+  /// 主题色彩方案（经典焦糖 / 抹茶森林 / 深海微风 / 烟雨丁香 / 落日陶土）。
+  final AppThemeColor themeColor;
+
+  /// 默认展示视图（打开软件时默认以月历或周历展示）。
+  final CalendarMode defaultCalendarMode;
+
   Settings copyWith({
     WeekStart? weekStart,
     bool? showBadges,
@@ -72,6 +86,9 @@ class Settings {
     bool? weekendBrandColor,
     bool? hideArchivedPoopers,
     CalendarTextSize? calendarTextSize,
+    AppThemeMode? themeMode,
+    AppThemeColor? themeColor,
+    CalendarMode? defaultCalendarMode,
   }) {
     return Settings(
       weekStart: weekStart ?? this.weekStart,
@@ -80,6 +97,9 @@ class Settings {
       weekendBrandColor: weekendBrandColor ?? this.weekendBrandColor,
       hideArchivedPoopers: hideArchivedPoopers ?? this.hideArchivedPoopers,
       calendarTextSize: calendarTextSize ?? this.calendarTextSize,
+      themeMode: themeMode ?? this.themeMode,
+      themeColor: themeColor ?? this.themeColor,
+      defaultCalendarMode: defaultCalendarMode ?? this.defaultCalendarMode,
     );
   }
 }
@@ -90,6 +110,9 @@ const _kShowHolidayTags = 'settings.showHolidayTags';
 const _kWeekendBrand = 'settings.weekendBrandColor';
 const _kHideArchived = 'settings.hideArchivedPoopers';
 const _kCalTextSize = 'settings.calendarTextSize';
+const _kThemeMode = 'settings.themeMode';
+const _kThemeColor = 'settings.themeColor';
+const _kDefaultCalMode = 'settings.defaultCalendarMode';
 
 /// 首启的「已自动创建『我』」提示条是否已被关掉。
 /// 关过就永不再出现。
@@ -105,6 +128,9 @@ class SettingsNotifier extends Notifier<Settings> {
     final p = ref.watch(sharedPrefsProvider);
     final ws = p.getString(_kWeekStart);
     final ts = p.getString(_kCalTextSize);
+    final tm = p.getString(_kThemeMode);
+    final tc = p.getString(_kThemeColor);
+    final dcm = p.getString(_kDefaultCalMode);
 
     return Settings(
       weekStart: WeekStart.values.firstWhere(
@@ -119,10 +145,27 @@ class SettingsNotifier extends Notifier<Settings> {
         (e) => e.name == ts,
         orElse: () => CalendarTextSize.medium,
       ),
+      themeMode: AppThemeMode.values.firstWhere(
+        (e) => e.name == tm,
+        orElse: () => AppThemeMode.system,
+      ),
+      themeColor: AppThemeColor.values.firstWhere(
+        (e) => e.name == tc,
+        orElse: () => AppThemeColor.caramel,
+      ),
+      defaultCalendarMode: CalendarMode.values.firstWhere(
+        (e) => e.name == dcm,
+        orElse: () => CalendarMode.month,
+      ),
     );
   }
 
   SharedPreferences get _p => ref.read(sharedPrefsProvider);
+
+  void setDefaultCalendarMode(CalendarMode v) {
+    state = state.copyWith(defaultCalendarMode: v);
+    _p.setString(_kDefaultCalMode, v.name);
+  }
 
   void setWeekStart(WeekStart v) {
     state = state.copyWith(weekStart: v);
@@ -152,6 +195,16 @@ class SettingsNotifier extends Notifier<Settings> {
   void setCalendarTextSize(CalendarTextSize v) {
     state = state.copyWith(calendarTextSize: v);
     _p.setString(_kCalTextSize, v.name);
+  }
+
+  void setThemeMode(AppThemeMode v) {
+    state = state.copyWith(themeMode: v);
+    _p.setString(_kThemeMode, v.name);
+  }
+
+  void setThemeColor(AppThemeColor v) {
+    state = state.copyWith(themeColor: v);
+    _p.setString(_kThemeColor, v.name);
   }
 }
 

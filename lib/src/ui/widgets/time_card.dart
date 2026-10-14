@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../theme/tokens.dart';
 
-/// 弹层里的「开始 / 结束」方卡。
+/// 弹层里的精致「开始 / 结束」手帐时间卡片。
 ///
-/// 记录详情（⑤）和补录（⑧）都要用，所以抽出来 ——
-/// 两处各写一份的话，字号、圆角、"空态描边更深"这些细节迟早会不一样。
-class TimeCard extends StatelessWidget {
+/// 记录详情、补录和新建记录复用此组件，具备：
+/// - 16px 圆角与柔和纸面微阴影
+/// - 顶部：图标 + 标签 + 右上角微型操作药丸胶囊
+/// - 核心时间：得意黑 SmileySans 展翅大字
+/// - 物理弹性按压反馈（Bounce Motion）
+class TimeCard extends StatefulWidget {
   const TimeCard({
     super.key,
     required this.label,
@@ -14,6 +18,7 @@ class TimeCard extends StatelessWidget {
     required this.action,
     this.onTap,
     this.empty = false,
+    this.icon = LucideIcons.clock,
   });
 
   /// 「开始」「结束」。
@@ -22,7 +27,7 @@ class TimeCard extends StatelessWidget {
   /// 已经格式化好的时刻，或空态文案。
   final String value;
 
-  /// 底下那行小字（「改日期」「补填」「清除」…）。
+  /// 右上角微操作胶囊文案（「改时间」「补填」「清除」…）。
   final String action;
 
   final VoidCallback? onTap;
@@ -30,46 +35,115 @@ class TimeCard extends StatelessWidget {
   /// 空态：值用弱化色、描边更深，一眼看出"这里还没填"。
   final bool empty;
 
+  final IconData icon;
+
+  @override
+  State<TimeCard> createState() => _TimeCardState();
+}
+
+class _TimeCardState extends State<TimeCard> {
+  bool _pressed = false;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final isDone = !widget.empty;
+
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        decoration: BoxDecoration(
-          color: t.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: empty ? t.line : t.lineSoft),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(fontSize: 11, color: t.ink3, letterSpacing: 0.6),
+      onTapDown: widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: widget.onTap != null ? () => setState(() => _pressed = false) : null,
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: PoopMotions.pressDuration,
+        curve: PoopMotions.pressCurve,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(13, 11, 13, 11),
+          decoration: BoxDecoration(
+            color: t.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: widget.empty ? t.line : t.lineSoft,
+              width: widget.empty ? 1.2 : 1.0,
             ),
-            const SizedBox(height: 3),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: empty ? t.ink3 : t.ink,
-                fontFeatures: const [FontFeature.tabularFigures()],
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A2D1B0D),
+                blurRadius: 8,
+                offset: Offset(0, 2),
               ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              action,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: onTap == null ? t.ink4 : t.brandInk,
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 顶部行：图标 + 标签 + 右侧操作小胶囊
+              Row(
+                children: [
+                  Icon(
+                    widget.icon,
+                    size: 13,
+                    color: widget.empty ? t.ink4 : t.brandInk,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: t.ink3,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const Spacer(),
+                  // 右侧动作胶囊（替代干瘪纯文本）
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: widget.empty ? t.brandSoft : t.paperDeep,
+                      borderRadius: BorderRadius.circular(PoopRadii.pill),
+                    ),
+                    child: Text(
+                      widget.action,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: widget.empty ? t.brandInk : t.ink3,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              // 主时间文字（得意黑展示大数字 / 空态标题）
+              if (isDone)
+                Text(
+                  widget.value,
+                  style: displayStyle(
+                    size: 23,
+                    letterSpacing: 0.5,
+                    color: t.ink,
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.5),
+                  child: Text(
+                    widget.value,
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      color: t.ink3,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

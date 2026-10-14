@@ -1,0 +1,39 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 卷纸纸身与垂纸 -->
+    <path
+        android:pathData="M8.5,4.5H16.5C19,4.5 20.5,7 20.5,10.5V18.5C20.5,19.6 19.6,20.5 18.5,20.5H15.5C14.4,20.5 13.5,19.6 13.5,18.5V11"
+        android:fillColor="#FAF8F5"
+        android:strokeColor="#5C4033"
+        android:strokeWidth="1.9"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M8.5,16.5H13.5"
+        android:strokeColor="#5C4033"
+        android:strokeWidth="1.9"
+        android:strokeLineCap="round" />
+    <!-- 纸巾打孔虚线 -->
+    <path
+        android:pathData="M14.8,15.2h1 M16.6,15.2h1 M18.4,15.2h0.9"
+        android:strokeColor="#5C4033"
+        android:strokeAlpha="0.65"
+        android:strokeWidth="1.4"
+        android:strokeLineCap="round" />
+    <!-- 左侧截面对勾 -->
+    <path
+        android:pathData="M8.5,4.5A5.2,6 0 1,0 8.5,16.5A5.2,6 0 1,0 8.5,4.5Z"
+        android:fillColor="#76A08A"
+        android:strokeColor="#5C4033"
+        android:strokeWidth="1.9" />
+    <!-- 白色完成对勾 -->
+    <path
+        android:pathData="M6.3,10.6L8.0,12.3L11.0,8.8"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

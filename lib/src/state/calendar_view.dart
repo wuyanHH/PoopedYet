@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../calendar/calendar_math.dart';
+import 'settings.dart';
 
 /// 日历的显示模式。
 enum CalendarMode { month, week }
@@ -77,6 +78,7 @@ class CalendarView extends Notifier<CalendarViewState> {
   @override
   CalendarViewState build() {
     final today = ref.watch(todayProvider);
+    final settings = ref.watch(settingsProvider);
 
     // 每次状态变化打一行日志。**只在 debug 构建里**。
     //
@@ -92,7 +94,7 @@ class CalendarView extends Notifier<CalendarViewState> {
     return CalendarViewState(
       selectedDate: today,
       visibleMonth: normalizeMonth(today),
-      mode: CalendarMode.month,
+      mode: settings.defaultCalendarMode,
     );
   }
 

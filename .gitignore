@@ -29,3 +29,21 @@ android/app/upload-keystore.jks
 .design/_*.html
 
 # 视觉稿 PNG 是要入库的（是交付物），不要忽略 .design/*.png
+
+# ---- 临时测试脚本、临时截屏与中间图像产物 ----
+*.py
+**/*.py
+*.bak
+.pub_cache/
+emulator_*.png
+generate_*.py
+test_*.py
+test_*.png
+ic_*.png
+masterpiece_*.png
+pooped_yet_*.png
+toilet_paper_*.png
+*_showcase.png
+temp_check/
+__pycache__/
+

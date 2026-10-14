@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>屙了么 · 桌面小组件视觉参考原型</title>
+<style>
+@font-face{
+  font-family:'Smiley Sans';
+  src:url('fonts/smiley/SmileySans-Oblique.woff2') format('woff2'),
+      url('fonts/smiley/SmileySans-Oblique.ttf') format('truetype');
+  font-weight:400; font-style:normal; font-display:block;
+}
+
+:root{
+  --paper:#FAF5EC; --paper-deep:#F2E9DA;
+  --surface:#FFFFFF; --surface-2:#FFFCF6;
+  --ink:#2E2622; --ink-2:#6B5B4E; --ink-3:#756552; --ink-4:#9C8C74;
+  --line:#E9DDCA; --line-soft:#F2E9DA;
+  --brand:#C8783C;
+  --brand-ink:#9A5219;
+  --brand-fill:#A85F29;
+  --brand-soft:#F7E5D2;
+  --off:#B03A2E; --off-soft:#F8E2DE;
+  --work:#4A7C8C; --work-soft:#E0EBEF;
+  --live:#3F7A57; --live-soft:#E1EDE5;
+  --r-widget:22px;
+  --sh-widget:0 8px 24px rgba(94,66,42,.08), 0 2px 6px rgba(94,66,42,.04);
+  --sh-btn:0 2px 6px rgba(168,95,41,.24);
+  --f-disp:'Smiley Sans','Noto Sans SC',sans-serif;
+  --f-body:'Noto Sans SC','Microsoft YaHei',sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+
+.ic{width:var(--s,16px);height:var(--s,16px);flex:none;display:block;
+    fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+body{
+  font-family:var(--f-body); color:var(--ink); background:#EBE4D8;
+  padding:40px 30px 80px; min-height:100vh; position:relative;
+}
+
+/* 页面背景装饰 */
+body::before{
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.4;
+  background:
+    radial-gradient(700px 450px at 10% 0%, rgba(200,120,60,.18), transparent 65%),
+    radial-gradient(600px 450px at 90% 100%, rgba(63,122,87,.14), transparent 65%);
+}
+
+.container{position:relative; z-index:1; max-width:1280px; margin:0 auto}
+
+/* 顶部导言与控制栏 */
+.header{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:32px; flex-wrap:wrap; gap:20px}
+.header-title h1{font-family:var(--f-disp); font-size:38px; color:var(--ink); letter-spacing:.02em}
+.header-title p{font-size:14px; color:var(--ink-2); margin-top:6px}
+
+.ctrl-bar{display:flex; align-items:center; gap:16px; background:var(--surface); padding:8px 16px; border-radius:99px; border:1px solid var(--line); box-shadow:0 2px 8px rgba(94,66,42,.05)}
+.ctrl-bar label{font-size:13px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; cursor:pointer}
+.toggle-switch{position:relative; width:44px; height:24px; background:var(--line); border-radius:12px; transition:.2s; cursor:pointer}
+.toggle-switch::after{content:''; position:absolute; left:2px; top:2px; width:20px; height:20px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.2)}
+input#incognito-toggle{display:none}
+input#incognito-toggle:checked + .toggle-switch{background:var(--brand-fill)}
+input#incognito-toggle:checked + .toggle-switch::after{transform:translateX(20px)}
+
+/* 桌面网格模拟排版 */
+.section{margin-bottom:48px}
+.section-title{font-family:var(--f-disp); font-size:22px; color:var(--ink); margin-bottom:16px; display:flex; align-items:center; gap:10px}
+.section-title span{font-size:12px; font-family:var(--f-body); color:var(--brand-ink); background:var(--brand-soft); padding:3px 10px; border-radius:99px; font-weight:700}
+
+.preview-grid{display:flex; flex-wrap:wrap; gap:28px; align-items:flex-start}
+
+/* 小组件通用基底 */
+.widget{
+  background:var(--paper); border-radius:var(--r-widget);
+  box-shadow:var(--sh-widget); border:1px solid var(--line);
+  position:relative; overflow:hidden; display:flex; flex-direction:column;
+  user-select:none;
+}
+.widget::before{
+  content:''; position:absolute; inset:0; pointer-events:none; opacity:.22; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+}
+
+/* =================== 1. 小号组件 (2x2) =================== */
+.w-small{width:170px; height:170px; padding:13px 14px 12px; justify-content:space-between}
+
+.w-header-tear{display:flex; align-items:center; justify-content:space-between; padding-bottom:6px; border-bottom:1px dashed var(--line); font-size:10.5px; font-weight:700; color:var(--ink-3)}
+.w-avatar-chip{width:20px; height:20px; border-radius:50%; background:var(--brand-soft); color:var(--brand-ink); display:grid; place-items:center}
+
+.w-s-body{display:flex; align-items:center; justify-content:space-between; margin:auto 0}
+.w-date-big{font-family:var(--f-disp); font-size:38px; line-height:1; color:var(--ink); font-variant-numeric:tabular-nums}
+.w-s-meta{text-align:right}
+.w-s-meta .day{font-size:11px; font-weight:700; color:var(--ink-2); margin-bottom:2px}
+.w-s-meta .badge{font-size:10px; font-weight:700; color:var(--brand-ink); background:var(--brand-soft); padding:2px 6px; border-radius:99px; display:inline-block}
+.w-s-meta .last{font-size:9.5px; color:var(--ink-3); margin-top:3px}
+
+.btn-pill{
+  width:100%; height:32px; border-radius:99px; border:none;
+  background:var(--brand-fill); color:#fff; font-size:11.5px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; gap:5px;
+  box-shadow:var(--sh-btn); cursor:pointer; font-family:var(--f-body);
+}
+.btn-pill.live-btn{background:var(--ink); box-shadow:0 2px 6px rgba(46,38,34,.25)}
+
+/* 进行中态微光边框 */
+.w-live-border{border-color:var(--live); box-shadow:0 0 0 1.5px var(--live), var(--sh-widget)}
+.live-pulse{width:7px; height:7px; border-radius:50%; background:var(--live); animation:pulse 1.4s infinite ease-in-out; display:inline-block}
+@keyframes pulse{0%,100%{transform:scale(.9); opacity:.8} 50%{transform:scale(1.4); opacity:1}}
+
+.w-timer-disp{font-family:var(--f-disp); font-size:30px; line-height:1.05; color:var(--ink); text-align:center; margin:auto 0; font-variant-numeric:tabular-nums}
+.w-timer-sub{font-size:10.5px; color:var(--ink-2); text-align:center; font-weight:600}
+
+/* =================== 2. 中号组件 (4x2) =================== */
+.w-medium{width:360px; height:170px; padding:12px 14px; flex-direction:column; justify-content:space-between}
+.w-m-top{display:flex; justify-content:space-between; align-items:center; font-size:11px; font-weight:700; color:var(--ink-3); border-bottom:1px solid var(--line); padding-bottom:6px}
+.w-m-top .streak{color:var(--brand-ink); font-size:10.5px; background:var(--brand-soft); padding:2px 7px; border-radius:99px}
+
+.w-m-split{display:flex; height:116px; gap:12px; align-items:stretch}
+
+/* 左侧行动区 (38%) */
+.w-m-action{width:125px; flex:none; display:flex; flex-direction:column; justify-content:space-between; border-right:1px dashed var(--line); padding-right:10px}
+.w-m-person{display:flex; align-items:center; gap:6px}
+.w-m-p-avatar{width:24px; height:24px; border-radius:50%; background:var(--brand-soft); color:var(--brand-ink); display:grid; place-items:center}
+.w-m-p-info .name{font-size:11.5px; font-weight:800; color:var(--ink)}
+.w-m-p-info .state{font-size:9.5px; color:var(--ink-3)}
+.w-m-stat{font-size:10.5px; color:var(--ink-2); margin-top:2px}
+.w-m-stat b{color:var(--ink); font-family:var(--f-disp); font-size:13px}
+
+/* 右侧迷你周历 (62%) */
+.w-m-cal{flex:1; display:flex; flex-direction:column; justify-content:space-between}
+.w-week-grid{display:grid; grid-template-columns:repeat(7, 1fr); gap:3px; text-align:center}
+.w-week-day-title{font-size:9px; color:var(--ink-3); font-weight:700; margin-bottom:2px}
+
+.w-cell{
+  background:var(--surface); border:1px solid var(--line-soft); border-radius:8px;
+  height:44px; display:flex; flex-direction:column; justify-content:space-between; align-items:center;
+  padding:3px 1px; position:relative;
+}
+.w-cell.today{border-color:var(--brand); background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--brand)}
+.w-cell-num{font-family:var(--f-disp); font-size:11px; color:var(--ink); line-height:1}
+.w-cell-badge{
+  width:14px; height:14px; border-radius:50%; background:var(--brand-soft); color:var(--brand-ink);
+  font-size:8px; font-weight:800; display:grid; place-items:center; margin-top:auto;
+}
+.w-cell-badge.done{background:var(--brand-fill); color:#fff}
+.w-tag-work{position:absolute; right:1px; top:1px; width:6px; height:6px; border-radius:50%; background:var(--work)}
+.w-tag-off{position:absolute; right:1px; top:1px; width:6px; height:6px; border-radius:50%; background:var(--off)}
+
+.w-m-tip{font-size:9.5px; color:var(--ink-3); display:flex; justify-content:space-between; align-items:center}
+.w-m-tip .notice{color:var(--brand-ink); font-weight:700}
+
+/* =================== 3. 大号组件 (4x4) =================== */
+.w-large{width:360px; height:360px; padding:16px 18px; justify-content:space-between}
+.w-l-top{display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding-bottom:8px}
+.w-l-top h3{font-family:var(--f-disp); font-size:16px}
+.w-l-top .date{font-size:11.5px; color:var(--ink-2); font-weight:700}
+
+.w-family-row{display:grid; grid-template-columns:repeat(3, 1fr); gap:8px}
+.w-f-card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:7px 8px; text-align:center}
+.w-f-avatar{width:22px; height:22px; border-radius:50%; background:var(--brand-soft); color:var(--brand-ink); margin:0 auto 3px; display:grid; place-items:center}
+.w-f-name{font-size:10.5px; font-weight:800; color:var(--ink)}
+.w-f-time{font-size:9px; color:var(--ink-3); margin:2px 0 4px}
+.w-f-btn{background:var(--paper-deep); border:1px solid var(--line); border-radius:6px; font-size:9px; font-weight:700; color:var(--brand-ink); padding:2px 6px; cursor:pointer}
+
+.w-l-section-title{font-size:10.5px; font-weight:800; color:var(--ink-2); margin-bottom:5px; display:flex; justify-content:space-between}
+.w-recent-note{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:8px 10px; font-size:10px; color:var(--ink-2); line-height:1.4}
+.w-recent-note b{color:var(--ink)}
+.w-recent-note span{color:var(--brand-ink); font-weight:700}
+
+.w-l-bot-actions{display:flex; gap:8px}
+.w-l-bot-actions button{flex:1; height:32px; font-size:11px; border-radius:99px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-weight:700; cursor:pointer}
+.w-l-bot-actions button.main{background:var(--brand-fill); color:#fff; border:none; box-shadow:var(--sh-btn)}
+
+/* =================== 4. 锁屏 & 灵动岛 =================== */
+.lockscreen-panel{background:#111; color:#fff; border-radius:32px; padding:18px 22px; width:360px; box-shadow:0 12px 30px rgba(0,0,0,.4)}
+.ls-title{font-size:11px; color:#888; margin-bottom:12px; font-weight:700}
+.ls-row{display:flex; gap:16px; align-items:center}
+.ls-circle{width:46px; height:46px; border-radius:50%; border:2.5px solid rgba(255,255,255,.2); border-top-color:#C8783C; display:grid; place-items:center; flex:none}
+.ls-rect{background:rgba(255,255,255,.08); border-radius:14px; padding:8px 12px; flex:1; display:flex; flex-direction:column; gap:3px}
+.ls-rect .r1{display:flex; justify-content:space-between; font-size:11px; font-weight:700}
+.ls-rect .r2{font-size:9.5px; color:#aaa}
+
+.island-compact{width:170px; height:34px; background:#000; border-radius:99px; margin:16px auto 0; display:flex; align-items:center; justify-content:space-between; padding:0 10px; color:#fff}
+.island-compact .time{font-family:var(--f-disp); font-size:14px; color:#E59866; font-variant-numeric:tabular-nums}
+
+.card-label{font-size:12px; font-weight:700; color:var(--ink-2); margin-bottom:8px; text-align:center}
+</style>
+</head>
+<body>
+
+<!-- Lucide SVG 雪碧图 -->
+<svg style="display:none">
+  <symbol id="i-dog" viewBox="0 0 24 24"><path d="M11.25 16.25h1.5L12 17z"/><path d="M16 14v.5"/><path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.16-2.168-.42-3.309"/><path d="M8.5 8.5c-.384 1.05-.626 2.746-.145 4.045M15.5 8.5c.384 1.05.626 2.746.145 4.045"/><path d="M8.5 3a4.5 4.5 0 0 0-4.08 6.388M15.5 3a4.5 4.5 0 0 1 4.08 6.388"/></symbol>
+  <symbol id="i-cat" viewBox="0 0 24 24"><path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17z"/></symbol>
+  <symbol id="i-baby" viewBox="0 0 24 24"><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.5 1.5.5 2 0"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/></symbol>
+</svg>
+
+<div class="container">
+
+  <!-- 头部介绍与暗号开关 -->
+  <div class="header">
+    <div class="header-title">
+      <h1>桌面小组件视觉参考原型</h1>
+      <p>屙了么 (PoopedYet) · 融合方案：便签手帐美感 + 即时动作 + 暗号防护</p>
+    </div>
+    <div class="ctrl-bar">
+      <label for="incognito-toggle">
+        <input type="checkbox" id="incognito-toggle" onchange="toggleIncognito(this.checked)">
+        <div class="toggle-switch"></div>
+        <span id="incognito-label">体面暗号模式 (防社死)</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- 1. 小号小组件 (2x2) -->
+  <div class="section">
+    <div class="section-title">
+      小号小组件 (Small · 2×2)
+      <span>撕历印章 + 即刻开屙</span>
+    </div>
+    <div class="preview-grid">
+      <div>
+        <div class="card-label">常态：未在记录中</div>
+        <div class="widget w-small">
+          <div class="w-header-tear">
+            <span class="txt-month">3月 MARCH</span>
+            <div class="w-avatar-chip"><svg class="ic" style="--s:12px"><use href="#i-dog"/></svg></div>
+          </div>
+          <div class="w-s-body">
+            <div class="w-date-big">30</div>
+            <div class="w-s-meta">
+              <div class="day">星期一</div>
+              <div class="badge txt-badge-done">今日 1 次</div>
+              <div class="last txt-last-time">上次 08:30</div>
+            </div>
+          </div>
+          <button class="btn-pill">
+            <svg class="ic" style="--s:12px"><use href="#i-plus"/></svg>
+            <span class="txt-btn-start">现在开屙</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="card-label">动态态：如厕计时中</div>
+        <div class="widget w-small w-live-border">
+          <div class="w-header-tear">
+            <span style="color:var(--live); display:flex; align-items:center; gap:5px">
+              <span class="live-pulse"></span>
+              <span class="txt-live-title">正在屙...</span>
+            </span>
+            <span style="font-size:9.5px; color:var(--ink-3)">实时记录</span>
+          </div>
+          <div style="margin:auto 0">
+            <div class="w-timer-disp">08:24</div>
+            <div class="w-timer-sub">已用时 8 分钟</div>
+          </div>
+          <button class="btn-pill live-btn">
+            <svg class="ic" style="--s:12px"><use href="#i-check"/></svg>
+            <span class="txt-btn-finish">完成并记录</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 中号小组件 (4x2) -->
+  <div class="section">
+    <div class="section-title">
+      中号小组件 (Medium · 4×2) ★ 核心主打
+      <span>行动舱 + 7天手帐周历</span>
+    </div>
+    <div class="preview-grid">
+      <div>
+        <div class="card-label">常态：家庭/个人双核周历</div>
+        <div class="widget w-medium">
+          <div class="w-m-top">
+            <span class="txt-brand-title">屙了么 · 便签手帐</span>
+            <span class="streak txt-streak-tag">连续顺畅 5 天 ★</span>
+          </div>
+          <div class="w-m-split">
+            <!-- 左侧行动舱 -->
+            <div class="w-m-action">
+              <div>
+                <div class="w-m-person">
+                  <div class="w-m-p-avatar"><svg class="ic" style="--s:13px"><use href="#i-dog"/></svg></div>
+                  <div class="w-m-p-info">
+                    <div class="name">我</div>
+                    <div class="state txt-my-state">今日已打卡</div>
+                  </div>
+                </div>
+                <div class="w-m-stat" style="margin-top:6px">距上次: <b>4h</b></div>
+                <div class="w-m-stat" style="font-size:9.5px; color:var(--ink-3)">状态: 顺畅无痛</div>
+              </div>
+              <button class="btn-pill" style="height:28px">
+                <svg class="ic" style="--s:11px"><use href="#i-plus"/></svg>
+                <span class="txt-btn-start">现在开屙</span>
+              </button>
+            </div>
+            <!-- 右侧 7 天迷你周历 -->
+            <div class="w-m-cal">
+              <div class="w-week-grid">
+                <div><div class="w-week-day-title">一</div><div class="w-cell"><div class="w-cell-num">24</div><div class="w-cell-badge done">1</div></div></div>
+                <div><div class="w-week-day-title">二</div><div class="w-cell"><div class="w-cell-num">25</div><div class="w-cell-badge done">2</div></div></div>
+                <div><div class="w-week-day-title">三</div><div class="w-cell"><div class="w-cell-num">26</div><div class="w-cell-badge done">1</div></div></div>
+                <div><div class="w-week-day-title">四</div><div class="w-cell"><div class="w-tag-off"></div><div class="w-cell-num">27</div><div class="w-cell-badge" style="opacity:.4">-</div></div></div>
+                <div><div class="w-week-day-title">五</div><div class="w-cell"><div class="w-cell-num">28</div><div class="w-cell-badge done">1</div></div></div>
+                <div><div class="w-week-day-title">六</div><div class="w-cell"><div class="w-cell-num">29</div><div class="w-cell-badge done">2</div></div></div>
+                <div><div class="w-week-day-title">日</div><div class="w-cell today"><div class="w-tag-work"></div><div class="w-cell-num">30</div><div class="w-cell-badge done">1</div></div></div>
+              </div>
+              <div class="w-m-tip">
+                <span class="txt-tip-family">今日动态：咪咪尚未排便</span>
+                <span style="font-size:8.5px">3月30日</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card-label">动态态：计时器协同模式</div>
+        <div class="widget w-medium w-live-border">
+          <div class="w-m-top">
+            <span style="color:var(--live); display:flex; align-items:center; gap:5px; font-weight:700">
+              <span class="live-pulse"></span>
+              <span class="txt-live-title">正在屙...</span>
+            </span>
+            <span class="streak" style="background:var(--live-soft); color:var(--live)">计时进行中</span>
+          </div>
+          <div class="w-m-split">
+            <!-- 左侧计时 -->
+            <div class="w-m-action">
+              <div style="text-align:center; margin-top:2px">
+                <div style="font-family:var(--f-disp); font-size:24px; color:var(--ink); font-variant-numeric:tabular-nums">11:35</div>
+                <div style="font-size:9.5px; color:var(--ink-2)">用时 11 分钟</div>
+              </div>
+              <button class="btn-pill live-btn" style="height:28px">
+                <svg class="ic" style="--s:11px"><use href="#i-check"/></svg>
+                <span class="txt-btn-finish">完成并记录</span>
+              </button>
+            </div>
+            <!-- 右侧周历协同 -->
+            <div class="w-m-cal">
+              <div class="w-week-grid">
+                <div><div class="w-week-day-title">一</div><div class="w-cell"><div class="w-cell-num">24</div><div class="w-cell-badge done">1</div></div></div>
+                <div><div class="w-week-day-title">二</div><div class="w-cell"><div class="w-cell-num">25</div><div class="w-cell-badge done">2</div></div></div>
+                <div><div class="w-week-day-title">三</div><div class="w-cell"><div class="w-cell-num">26</div><div class="w-cell-badge done">1</div></div></div>
+                <div><div class="w-week-day-title">四</div><div class="w-cell"><div class="w-tag-off"></div><div class="w-cell-num">27</div><div class="w-cell-badge" style="opacity:.4">-</div></div></div>
+                <div><div class="w-week-day-title">五</div><div class="w-cell"><div class="w-cell-num">28</div><div class="w-cell-badge done">1</div></div></div>
+                <div><div class="w-week-day-title">六</div><div class="w-cell"><div class="w-cell-num">29</div><div class="w-cell-badge done">2</div></div></div>
+                <div><div class="w-week-day-title">日</div><div class="w-cell today" style="border-color:var(--live); box-shadow:inset 0 0 0 1px var(--live)"><div class="w-tag-work"></div><div class="w-cell-num">30</div><div class="w-cell-badge" style="background:var(--live); color:#fff">●</div></div></div>
+              </div>
+              <div class="w-m-tip">
+                <span style="color:var(--live); font-weight:700">本次已达平均时长</span>
+                <span style="font-size:8.5px">3月30日</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 大号组件 (4x4) -->
+  <div class="section">
+    <div class="section-title">
+      大号组件 (Large · 4×4)
+      <span>家庭健康工作台 & 便签流</span>
+    </div>
+    <div class="preview-grid">
+      <div class="widget w-large">
+        <div class="w-l-top">
+          <h3 class="txt-brand-title">屙了么 · 家庭健康手帐</h3>
+          <span class="date">3月30日 星期一 · 班</span>
+        </div>
+
+        <!-- 全家状态三卡 -->
+        <div class="w-family-row">
+          <div class="w-f-card">
+            <div class="w-f-avatar"><svg class="ic" style="--s:12px"><use href="#i-dog"/></svg></div>
+            <div class="w-f-name">我</div>
+            <div class="w-f-time">今日2次 · 4h前</div>
+            <div class="w-f-btn txt-btn-quick">＋ 记一次</div>
+          </div>
+          <div class="w-f-card">
+            <div class="w-f-avatar" style="background:#E1EDE5; color:var(--live)"><svg class="ic" style="--s:12px"><use href="#i-cat"/></svg></div>
+            <div class="w-f-name">咪咪 (猫)</div>
+            <div class="w-f-time">今日1次 · 今晨</div>
+            <div class="w-f-btn txt-btn-quick">＋ 帮记</div>
+          </div>
+          <div class="w-f-card">
+            <div class="w-f-avatar" style="background:#FBEAE8; color:var(--off)"><svg class="ic" style="--s:12px"><use href="#i-baby"/></svg></div>
+            <div class="w-f-name">宝宝</div>
+            <div class="w-f-time">尚未排便</div>
+            <div class="w-f-btn txt-btn-quick">＋ 补录</div>
+          </div>
+        </div>
+
+        <!-- 便签速记流水 -->
+        <div>
+          <div class="w-l-section-title">
+            <span>今日便签流水</span>
+            <span style="font-size:9.5px; color:var(--brand-ink)">共2条备注</span>
+          </div>
+          <div class="w-recent-note">
+            <div><b>🐶 我 · 14:15</b> (11分钟) · <span>#顺畅 #无痛</span></div>
+            <div style="margin-top:2px; color:var(--ink-3)">"晨起喝完温水后排空，感觉非常舒适。"</div>
+          </div>
+        </div>
+
+        <!-- 底部快捷动作 -->
+        <div class="w-l-bot-actions">
+          <button class="main">
+            <span class="txt-btn-start">⚡ 极速开屙</span>
+          </button>
+          <button>📝 补录便签</button>
+          <button>📅 查看月历 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 锁屏与灵动岛 -->
+  <div class="section">
+    <div class="section-title">
+      锁屏组件 & 灵动岛 (Lock Screen & Live Activity)
+      <span>系统级随身触达</span>
+    </div>
+    <div class="preview-grid">
+      <div class="lockscreen-panel">
+        <div class="ls-title">锁屏小组件预览 (iOS 16+ / Android AOD)</div>
+        <div class="ls-row">
+          <!-- 圆形 -->
+          <div class="ls-circle">
+            <svg class="ic" style="--s:18px; color:#E59866"><use href="#i-dog"/></svg>
+          </div>
+          <!-- 矩形 -->
+          <div class="ls-rect">
+            <div class="r1">
+              <span>🐶 我 · 距上次 4h</span>
+              <span style="color:#E59866">今日1次</span>
+            </div>
+            <div class="r2 txt-lock-sub">状态顺畅 · 点击开屙 ＋</div>
+          </div>
+        </div>
+
+        <!-- 灵动岛紧凑胶囊 -->
+        <div class="island-compact">
+          <div style="display:flex; align-items:center; gap:6px">
+            <span class="live-pulse"></span>
+            <span style="font-size:10px; font-weight:700" class="txt-island-state">开屙中</span>
+          </div>
+          <div class="time">08:24</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// 暗号模式/体面模式文案动态切换字典
+const DICT = {
+  normal: {
+    label: "体面暗号模式 (防社死)",
+    brandTitle: "屙了么 · 便签手帐",
+    month: "3月 MARCH",
+    btnStart: "现在开屙",
+    btnFinish: "完成并记录",
+    liveTitle: "正在屙...",
+    badgeDone: "今日 1 次",
+    lastTime: "上次 08:30",
+    streakTag: "连续顺畅 5 天 ★",
+    myState: "今日已打卡",
+    tipFamily: "今日动态：咪咪尚未排便",
+    btnQuick: "＋ 记一次",
+    lockSub: "状态顺畅 · 点击开屙 ＋",
+    islandState: "开屙中"
+  },
+  incognito: {
+    label: "已开启暗号保护 (放空模式)",
+    brandTitle: "PoopedYet · 日常轻体",
+    month: "3月 JOURNAL",
+    btnStart: "减负放空",
+    btnFinish: "放空达成",
+    liveTitle: "正在深度放空中...",
+    badgeDone: "已放空 1 次",
+    lastTime: "上次放空 08:30",
+    streakTag: "身心轻盈 5 天 ★",
+    myState: "已完成减负",
+    tipFamily: "今日动态：咪咪待减负",
+    btnQuick: "＋ 轻体记录",
+    lockSub: "身心轻松 · 点击放空 ＋",
+    islandState: "深度放空"
+  }
+};
+
+function toggleIncognito(isIncognito) {
+  const data = isIncognito ? DICT.incognito : DICT.normal;
+  document.getElementById("incognito-label").innerText = data.label;
+  
+  document.querySelectorAll(".txt-brand-title").forEach(el => el.innerText = data.brandTitle);
+  document.querySelectorAll(".txt-month").forEach(el => el.innerText = data.month);
+  document.querySelectorAll(".txt-btn-start").forEach(el => el.innerText = data.btnStart);
+  document.querySelectorAll(".txt-btn-finish").forEach(el => el.innerText = data.btnFinish);
+  document.querySelectorAll(".txt-live-title").forEach(el => el.innerText = data.liveTitle);
+  document.querySelectorAll(".txt-badge-done").forEach(el => el.innerText = data.badgeDone);
+  document.querySelectorAll(".txt-last-time").forEach(el => el.innerText = data.lastTime);
+  document.querySelectorAll(".txt-streak-tag").forEach(el => el.innerText = data.streakTag);
+  document.querySelectorAll(".txt-my-state").forEach(el => el.innerText = data.myState);
+  document.querySelectorAll(".txt-tip-family").forEach(el => el.innerText = data.tipFamily);
+  document.querySelectorAll(".txt-btn-quick").forEach(el => el.innerText = data.btnQuick);
+  document.querySelectorAll(".txt-lock-sub").forEach(el => el.innerText = data.lockSub);
+  document.querySelectorAll(".txt-island-state").forEach(el => el.innerText = data.islandState);
+}
+</script>
+</body>
+</html>

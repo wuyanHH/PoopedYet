@@ -14,7 +14,8 @@ class SheetShell extends StatelessWidget {
     required this.child,
     this.subtitle,
     this.scrollable = false,
-    this.maxHeightFactor = 0.86,
+    this.maxHeightFactor = 0.85,
+    this.bottomBar,
   });
 
   final String title;
@@ -30,96 +31,135 @@ class SheetShell extends StatelessWidget {
   /// 手机上必然超高，必须能滚。
   final bool scrollable;
 
-  /// 最高占屏幕的比例。默认 0.86，留出一点让用户知道下面还有东西。
+  /// 最高占屏幕的比例。默认 0.85，留出舒适视觉间距与防超出保护。
   final double maxHeightFactor;
+
+  /// 吸附固定在弹层底部的操作栏（不参与内容滚动，确保不被长内容遮挡，自带系统小白条安全区避让）。
+  final Widget? bottomBar;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final maxH = MediaQuery.sizeOf(context).height * maxHeightFactor;
+    final mediaQuery = MediaQuery.of(context);
+    final bottomPadding = mediaQuery.padding.bottom;
+    final viewInsetsBottom = mediaQuery.viewInsets.bottom;
+    final screenHeight = mediaQuery.size.height;
 
-    Widget body = child;
-    if (scrollable) {
-      body = ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxH),
-        // 键盘弹起来时输入框会被遮住，所以内边距要跟着 viewInsets 走。
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.viewInsetsOf(context).bottom,
-          ),
-          child: child,
+    // 计算弹层的最大允许高度（防超出屏幕顶部）
+    final maxSheetHeight = (screenHeight - mediaQuery.padding.top) * maxHeightFactor;
+
+    // 底部安全间距：键盘弹起时由外层 padding 统一避让，键盘未弹起时给系统手势横条留出舒适间距
+    final effectiveBottomSpacing = bottomBar == null
+        ? (bottomPadding > 0 ? bottomPadding + 12.0 : 16.0)
+        : 0.0;
+
+    return AnimatedPadding(
+      padding: EdgeInsets.only(bottom: viewInsetsBottom),
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: maxSheetHeight,
+          minHeight: 180.0, // 兜底最小高度，彻底根除虚拟机/模拟器环境下内容高度塌陷为0导致变灰不见的严重bug
         ),
-      );
-    }
-
-    return SafeArea(
-      top: false,
-      child: Container(
-        decoration: BoxDecoration(
+        child: Material(
           color: t.paper,
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(PoopRadii.sheet),
           ),
-          boxShadow: PoopShadows.s3,
-        ),
-        padding: const EdgeInsets.only(top: 10, bottom: 18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: t.line,
-                  borderRadius: BorderRadius.circular(2),
+          elevation: 6,
+          shadowColor: t.isDark ? Colors.black54 : const Color(0x332D1B0D),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 10),
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: t.line,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          title,
-                          style: displayStyle(
-                            size: 16,
-                            letterSpacing: 0.4,
-                            color: t.ink,
-                          ),
-                        ),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: 3),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 12, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Text(
-                            subtitle!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: t.ink3,
-                              height: 1.4,
+                            title,
+                            style: displayStyle(
+                              size: 17,
+                              letterSpacing: 0.4,
+                              color: t.ink,
                             ),
                           ),
+                          if (subtitle != null) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              subtitle!,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: t.ink3,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(LucideIcons.x, size: 18, color: t.ink2),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+              ),
+              if (scrollable)
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: effectiveBottomSpacing),
+                      child: child,
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(LucideIcons.x, size: 18, color: t.ink2),
-                    visualDensity: VisualDensity.compact,
+                )
+              else
+                Padding(
+                  padding: EdgeInsets.only(bottom: effectiveBottomSpacing),
+                  child: child,
+                ),
+              if (bottomBar != null)
+                Container(
+                  decoration: BoxDecoration(
+                    color: t.paper,
+                    border: Border(
+                      top: BorderSide(color: t.lineSoft, width: 1.0),
+                    ),
                   ),
-                ],
-              ),
-            ),
-            body,
-          ],
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    12,
+                    20,
+                    bottomPadding > 0 ? bottomPadding + 10.0 : 16.0,
+                  ),
+                  child: bottomBar!,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -141,6 +181,7 @@ class SheetFieldLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             text,
@@ -151,7 +192,6 @@ class SheetFieldLabel extends StatelessWidget {
               letterSpacing: 0.6,
             ),
           ),
-          const Spacer(),
           if (trailing != null)
             Text(
               trailing!,

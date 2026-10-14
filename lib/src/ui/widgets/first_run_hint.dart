@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../state/calendar_data.dart';
+import '../../state/calendar_view.dart';
 import '../../state/settings.dart';
 import '../../theme/tokens.dart';
+import '../settings/pooper_list_page.dart';
+import 'smooth_page_route.dart';
 
 /// 首启的一次性提示条（视觉稿 ⑳）。
 ///
@@ -34,7 +37,9 @@ class FirstRunHint extends ConsumerWidget {
     if (poopers == null || poopers.length != 1) return const SizedBox.shrink();
 
     // 这个人在册但还没有任何记录 → 说明还在"刚装好"阶段
-    final records = ref.watch(monthBadgesProvider(DateTime.now())).value;
+    // 使用统一的 todayProvider 归一化当月月份，避免毫秒级全新 key 导致 Provider 重复查询
+    final today = ref.watch(todayProvider);
+    final records = ref.watch(monthBadgesProvider(normalizeMonth(today))).value;
     // 只查当月不够严谨，但首启提示条只关心"最近有没有开始用"，
     // 而且当月没记录时用户看到提示也是合适的。
     final hasAnyInMonth = records != null && records.isNotEmpty;
@@ -49,6 +54,7 @@ class FirstRunHint extends ConsumerWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0x2E9A5219)),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Row(
           children: [
             Container(
@@ -86,8 +92,11 @@ class FirstRunHint extends ConsumerWidget {
             const SizedBox(width: 6),
             GestureDetector(
               onTap: () {
-                // 「去添加」的落地页（屙屎人管理）还没做，先只把提示条收掉。
+                // 点击「去添加」后标记提示已读，并顺畅导航至屙屎人管理列表页
                 prefs.setBool(kFirstRunHintDismissed, true);
+                Navigator.of(context).push(
+                  smoothPageRoute(const PooperListPage()),
+                );
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),

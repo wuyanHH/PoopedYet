@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../data/database.dart';
 import '../../state/calendar_data.dart';
@@ -44,22 +43,27 @@ class PooperPickerRow extends ConsumerWidget {
       );
     }
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final p in people)
-          _PooperChip(
-            pooper: p,
-            selected: p.id == selectedId,
-            onTap: () => onPick(p),
-          ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < people.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            _PooperChip(
+              pooper: people[i],
+              selected: people[i].id == selectedId,
+              onTap: () => onPick(people[i]),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
 
-class _PooperChip extends StatelessWidget {
+class _PooperChip extends StatefulWidget {
   const _PooperChip({
     required this.pooper,
     required this.selected,
@@ -71,46 +75,58 @@ class _PooperChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_PooperChip> createState() => _PooperChipState();
+}
+
+class _PooperChipState extends State<_PooperChip> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final t = context.tokens;
 
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 130),
-        padding: const EdgeInsets.fromLTRB(7, 6, 13, 6),
-        decoration: BoxDecoration(
-          color: selected ? t.brandSoft : t.surface,
-          borderRadius: BorderRadius.circular(PoopRadii.pill),
-          border: Border.all(
-            color: selected ? t.brandInk : t.lineSoft,
-            width: selected ? 1.5 : 1,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.94 : 1.0,
+        duration: PoopMotions.pressDuration,
+        curve: PoopMotions.pressCurve,
+        child: AnimatedContainer(
+          duration: PoopMotions.colorDuration,
+          curve: PoopMotions.colorCurve,
+          padding: const EdgeInsets.fromLTRB(7, 6, 13, 6),
+          decoration: BoxDecoration(
+            color: widget.selected ? t.brandSoft : t.surface,
+            borderRadius: BorderRadius.circular(PoopRadii.pill),
+            border: Border.all(
+              color: widget.selected ? t.brandInk : t.lineSoft,
+              width: widget.selected ? 1.5 : 1,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            PooperAvatar(
-              pooper: pooper,
-              size: 26,
-              radius: 9,
-              iconSize: 14,
-              dimmed: pooper.archivedAt != null,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              pooper.name,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? t.brandInk : t.ink2,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PooperAvatar(
+                pooper: widget.pooper,
+                size: 26,
+                radius: 9,
+                iconSize: 14,
+                dimmed: widget.pooper.archivedAt != null,
               ),
-            ),
-            if (pooper.isDefault) ...[
-              const SizedBox(width: 6),
-              Icon(LucideIcons.star, size: 11, color: t.ink4),
+              const SizedBox(width: 8),
+              Text(
+                widget.pooper.name,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: widget.selected ? FontWeight.w800 : FontWeight.w600,
+                  color: widget.selected ? t.brandInk : t.ink2,
+                ),
+              ),
             ],
-          ],
+          ),
         ),
       ),
     );

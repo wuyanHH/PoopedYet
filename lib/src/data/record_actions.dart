@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
 
+import '../widget/widget_snapshot_service.dart';
 import 'database.dart';
 import 'queries.dart';
 
@@ -35,13 +37,12 @@ class StartPoopNoPooper extends StartPoopResult {
 extension RecordActions on AppDatabase {
   /// 一键开屙。
   ///
-  /// 不弹层、不询问，直接落库 —— 这是这个 App 的手感关键，
-  /// 记一次拉屎不该超过一次点击。补充细节走编辑页。
-  ///
   /// [pooperId] 为 null 时用默认屙屎人。
+  /// [autoSettlePrevious] 为 true 时，若存在未结束记录，自动将其收敛结束，解除卡死限制并允许立即新建。
   Future<StartPoopResult> startPoop({
     String? pooperId,
     DateTime? at,
+    bool autoSettlePrevious = true,
   }) async {
     final now = at ?? DateTime.now();
 
@@ -54,23 +55,35 @@ extension RecordActions on AppDatabase {
     }
 
     // 先把超过 24 小时还挂着的收敛成「未记结束」。
-    // 不做这一步的话，唯一索引会把本次开屙拦下来 ——
-    // 用户会看到"你还在屙"，但那条其实是三天前忘关的。
     await settleStaleRecords(now: now);
 
-    final existing = await (select(poopRecords)
+    final existingList = await (select(poopRecords)
           ..where(
             (t) =>
                 t.pooperId.equals(targetId) &
                 t.endedAt.isNull() &
                 t.endUnknown.equals(false),
           ))
-        .getSingleOrNull();
-    if (existing != null) return StartPoopAlreadyActive(existing);
+        .get();
+    if (existingList.isNotEmpty) {
+      if (autoSettlePrevious) {
+        for (final existing in existingList) {
+          final diff = now.difference(existing.startedAt);
+          if (diff.inHours >= 1) {
+            await markEndUnknown(existing.id);
+          } else {
+            await endPoop(existing.id, at: now);
+          }
+        }
+      } else {
+        return StartPoopAlreadyActive(existingList.first);
+      }
+    }
 
     final rec = await into(poopRecords).insertReturning(
       PoopRecordsCompanion.insert(pooperId: targetId, startedAt: now),
     );
+    unawaited(WidgetSyncManager.sync(this));
     return StartPoopOk(rec);
   }
 
@@ -83,6 +96,7 @@ extension RecordActions on AppDatabase {
         endUnknown: const Value(false),
       ),
     );
+    unawaited(WidgetSyncManager.sync(this));
   }
 
   /// 标记成「未记结束」。
@@ -95,6 +109,7 @@ extension RecordActions on AppDatabase {
         endUnknown: Value(true),
       ),
     );
+    unawaited(WidgetSyncManager.sync(this));
   }
 
   /// 补录一条历史记录。
@@ -111,7 +126,7 @@ extension RecordActions on AppDatabase {
       !(endedAt != null && endUnknown),
       '不变式：有结束时间就不能同时是「未记结束」',
     );
-    return into(poopRecords).insertReturning(
+    final rec = await into(poopRecords).insertReturning(
       PoopRecordsCompanion.insert(
         pooperId: pooperId,
         startedAt: startedAt,
@@ -119,6 +134,8 @@ extension RecordActions on AppDatabase {
         endUnknown: Value(endUnknown),
       ),
     );
+    unawaited(WidgetSyncManager.sync(this));
+    return rec;
   }
 
   /// 加一条备注。
@@ -136,16 +153,51 @@ extension RecordActions on AppDatabase {
         notedAt: at ?? DateTime.now(),
       ),
     );
+    unawaited(WidgetSyncManager.sync(this));
   }
 
   /// 删一条备注。
   Future<void> deleteNote(String noteId) async {
     await (delete(poopNotes)..where((t) => t.id.equals(noteId))).go();
+    unawaited(WidgetSyncManager.sync(this));
   }
 
   /// 删一条记录（备注会被外键级联删掉）。
   Future<void> deleteRecord(String recordId) async {
     await (delete(poopRecords)..where((t) => t.id.equals(recordId))).go();
+    unawaited(WidgetSyncManager.sync(this));
+  }
+
+  /// 还原/恢复一条记录（用于撤销删除）。
+  ///
+  /// 会完整无损地恢复记录本身以及原本包含的所有历史备注。
+  Future<void> restoreRecord(RecordDetail detail) async {
+    final r = detail.record;
+    await into(poopRecords).insert(
+      PoopRecordsCompanion(
+        id: Value(r.id),
+        pooperId: Value(r.pooperId),
+        startedAt: Value(r.startedAt),
+        endedAt: Value(r.endedAt),
+        endUnknown: Value(r.endUnknown),
+        createdAt: Value(r.createdAt),
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+
+    for (final n in detail.notes) {
+      await into(poopNotes).insert(
+        PoopNotesCompanion(
+          id: Value(n.id),
+          recordId: Value(n.recordId),
+          content: Value(n.content),
+          notedAt: Value(n.notedAt),
+          createdAt: Value(n.createdAt),
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+    }
+    unawaited(WidgetSyncManager.sync(this));
   }
 
   /// 把默认备注模板的使用次数 +1。

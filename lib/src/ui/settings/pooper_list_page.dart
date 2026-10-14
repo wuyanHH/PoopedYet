@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -9,6 +11,7 @@ import '../../state/calendar_data.dart';
 import '../../theme/tokens.dart';
 import '../widgets/pooper_avatar.dart';
 import '../widgets/settings_widgets.dart';
+import '../widgets/smooth_page_route.dart';
 import 'pooper_edit_page.dart';
 
 /// 屙屎人管理（视觉稿 ⑪）。
@@ -28,6 +31,8 @@ class PooperListPage extends ConsumerWidget {
     final active = all.where((p) => p.archivedAt == null).toList();
     final archived = all.where((p) => p.archivedAt != null).toList();
 
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
     return SettingsScaffold(
       title: '屙屎人',
       actions: [
@@ -42,7 +47,7 @@ class PooperListPage extends ConsumerWidget {
         ),
       ],
       child: ListView(
-        padding: const EdgeInsets.only(bottom: 40),
+        padding: EdgeInsets.fromLTRB(0, 0, 0, 32 + bottomInset),
         children: [
           if (active.isEmpty)
             _EmptyPoopers()
@@ -89,7 +94,7 @@ class PooperListPage extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
               child: Text(
-                '归档的人不出现在「谁在屙」里，但历史一条都没少 —— '
+                '归档的成员不出现在打卡选择列表中，但所有历史记录均完整保留 —— '
                 '所以日历上的次数不会莫名变少。',
                 style: TextStyle(fontSize: 11.5, color: t.ink3, height: 1.6),
               ),
@@ -114,7 +119,7 @@ class PooperListPage extends ConsumerWidget {
     Pooper? pooper,
   ) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => PooperEditPage(pooper: pooper)),
+      smoothPageRoute(PooperEditPage(pooper: pooper)),
     );
     _refresh(ref);
   }
@@ -136,39 +141,97 @@ class _ActiveList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final isDark = t.isDark;
+
+    final cardRadius = BorderRadius.circular(PoopRadii.card);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: t.surface,
-        borderRadius: BorderRadius.circular(PoopRadii.card),
+        borderRadius: cardRadius,
         border: Border.all(color: t.lineSoft),
+        boxShadow: [
+          BoxShadow(
+            color: t.isDark
+                ? Colors.black.withValues(alpha: 0.2)
+                : const Color(0x082D1B0D),
+            blurRadius: 4,
+            offset: const Offset(0, 1.5),
+          ),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: ReorderableListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        buildDefaultDragHandles: false,
-        itemCount: poopers.length,
-        // 用 onReorderItem 而不是已废弃的 onReorder：
-        // **它已经把 newIndex 按"移除旧位置"调整过了**，
-        // 所以这里不能再自己 `if (newIndex > oldIndex) newIndex -= 1` ——
-        // 那是 onReorder 时代的老写法，配 onReorderItem 会变成多减一位。
-        onReorderItem: (oldIndex, newIndex) {
-          final ids = poopers.map((p) => p.id).toList();
-          final moved = ids.removeAt(oldIndex);
-          ids.insert(newIndex, moved);
-          onReorder(ids).then((_) => onChanged());
-        },
-        itemBuilder: (context, i) {
-          final p = poopers[i];
-          return _PooperRow(
-            key: ValueKey(p.id),
-            pooper: p,
-            index: i,
-            onTap: () => onEdit(p),
-            onChanged: onChanged,
-          );
-        },
+      child: Material(
+        color: t.surface,
+        shape: RoundedRectangleBorder(borderRadius: cardRadius),
+        clipBehavior: Clip.antiAlias,
+        child: DragBoundary(
+          child: ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            itemCount: poopers.length,
+            dragBoundaryProvider: (context) => DragBoundary.forRectOf(context),
+            proxyDecorator: (child, index, animation) {
+              final p = (index >= 0 && index < poopers.length)
+                  ? poopers[index]
+                  : null;
+              return AnimatedBuilder(
+                animation: animation,
+                builder: (context, _) {
+                  final animValue =
+                      Curves.easeInOutCubic.transform(animation.value);
+                  final elevation = lerpDouble(0, 12, animValue)!;
+                  return Material(
+                    color: t.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: cardRadius,
+                      side: BorderSide(
+                        color: t.brand.withValues(alpha: 0.8),
+                        width: 1.5,
+                      ),
+                    ),
+                    elevation: elevation,
+                    shadowColor: isDark
+                        ? Colors.black.withValues(alpha: 0.6)
+                        : const Color(0x38000000),
+                    clipBehavior: Clip.antiAlias,
+                    child: ClipRRect(
+                      borderRadius: cardRadius,
+                      child: p != null
+                          ? _PooperRowContent(
+                              pooper: p,
+                              isDragging: true,
+                              borderRadius: cardRadius,
+                            )
+                          : child,
+                    ),
+                  );
+                },
+              );
+            },
+            // 用 onReorderItem 而不是已废弃的 onReorder：
+            // **它已经把 newIndex 按"移除旧位置"调整过了**，
+            // 所以这里不能再自己 `if (newIndex > oldIndex) newIndex -= 1` ——
+            // 那是 onReorder 时代的老写法，配 onReorderItem 会变成多减一位。
+            onReorderItem: (oldIndex, newIndex) {
+              final ids = poopers.map((p) => p.id).toList();
+              final moved = ids.removeAt(oldIndex);
+              ids.insert(newIndex, moved);
+              onReorder(ids).then((_) => onChanged());
+            },
+            itemBuilder: (context, i) {
+              final p = poopers[i];
+              return _PooperRow(
+                key: ValueKey(p.id),
+                pooper: p,
+                index: i,
+                total: poopers.length,
+                onTap: () => onEdit(p),
+                onChanged: onChanged,
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -179,86 +242,304 @@ class _PooperRow extends ConsumerWidget {
     super.key,
     required this.pooper,
     required this.index,
+    required this.total,
     required this.onTap,
     required this.onChanged,
   });
 
   final Pooper pooper;
   final int index;
+  final int total;
   final VoidCallback onTap;
   final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
+    final db = ref.read(databaseProvider);
+
+    final r = PoopRadii.card;
+    BorderRadius rowRadius;
+    if (total <= 1) {
+      rowRadius = BorderRadius.circular(r);
+    } else if (index == 0) {
+      rowRadius = BorderRadius.vertical(top: Radius.circular(r));
+    } else if (index == total - 1) {
+      rowRadius = BorderRadius.vertical(bottom: Radius.circular(r));
+    } else {
+      rowRadius = BorderRadius.zero;
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (index > 0)
-          Divider(height: 1, thickness: 1, color: t.lineSoft, indent: 16),
-        InkWell(
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: t.lineSoft,
+            indent: 16,
+            endIndent: 16,
+          ),
+        _PooperRowContent(
+          pooper: pooper,
+          index: index,
+          borderRadius: rowRadius,
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 11, 6, 11),
-            child: Row(
+          onArchive: () => _confirmArchive(context, ref),
+          onSetDefault: () async {
+            await db.setDefaultPooper(pooper.id);
+            onChanged();
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('归档「${pooper.name}」？'),
+        content: const Text('归档后不再出现在新建选择列表中，但日历历史记录与统计照常保留，可随时在列表下方恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              '确认归档',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    await ref.read(databaseProvider).archivePooper(pooper.id);
+    onChanged();
+  }
+}
+
+/// 成员行的核心内容组件，复用于普通列表与拖拽高亮代理卡片。
+class _PooperRowContent extends StatelessWidget {
+  const _PooperRowContent({
+    required this.pooper,
+    this.index,
+    this.borderRadius,
+    this.onTap,
+    this.onArchive,
+    this.onSetDefault,
+    this.isDragging = false,
+  });
+
+  final Pooper pooper;
+  final int? index;
+  final BorderRadius? borderRadius;
+  final VoidCallback? onTap;
+  final VoidCallback? onArchive;
+  final VoidCallback? onSetDefault;
+  final bool isDragging;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+
+    Widget handle = Padding(
+      padding: const EdgeInsets.fromLTRB(4, 6, 8, 6),
+      child: Icon(
+        LucideIcons.gripVertical,
+        size: 17,
+        color: isDragging ? t.brandInk : t.ink4,
+      ),
+    );
+
+    if (!isDragging && index != null) {
+      handle = ReorderableDragStartListener(
+        index: index!,
+        child: handle,
+      );
+    }
+
+    final rowContent = Padding(
+      padding: const EdgeInsets.fromLTRB(10, 11, 12, 11),
+      child: Row(
+        children: [
+          // 1. 拖动排序把手（移至最左侧，符合国际通用列表规范，杜绝误触）
+          handle,
+
+          // 2. 成员头像
+          PooperAvatar(pooper: pooper, size: 40, radius: 13, iconSize: 19),
+          const SizedBox(width: 12),
+
+          // 3. 成员姓名与备注信息
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                PooperAvatar(pooper: pooper, size: 38, radius: 13, iconSize: 18),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              pooper.name,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: t.ink,
-                              ),
-                            ),
-                          ),
-                          if (pooper.isDefault) ...[
-                            const SizedBox(width: 7),
-                            _DefaultBadge(),
-                          ],
-                        ],
-                      ),
-                      if (pooper.remark != null && pooper.remark!.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          pooper.remark!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11.5, color: t.ink3),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        pooper.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: t.ink,
                         ),
-                      ],
-                    ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    if (pooper.isDefault)
+                      _DefaultBadge()
+                    else if (!isDragging && onSetDefault != null)
+                      GestureDetector(
+                        onTap: onSetDefault,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: t.paperDeep,
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                LucideIcons.star,
+                                size: 10,
+                                color: t.ink3,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '设为默认',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: t.ink3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                if (pooper.remark != null && pooper.remark!.isNotEmpty) ...[
+                  const SizedBox(height: 2.5),
+                  Text(
+                    pooper.remark!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11.5, color: t.ink3),
                   ),
-                ),
-                // 长按这个把手拖动排序
-                ReorderableDragStartListener(
-                  index: index,
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Icon(LucideIcons.gripVertical, size: 16, color: t.ink4),
-                  ),
-                ),
-                _RowMenu(
-                  pooper: pooper,
-                  onChanged: onChanged,
-                  onEdit: onTap,
-                ),
+                ],
               ],
             ),
           ),
+          const SizedBox(width: 8),
+
+          // 4. 外露的快捷操作按钮区：编辑 + 归档
+          if (!isDragging) ...[
+            _ActionButton(
+              icon: LucideIcons.pencil,
+              tooltip: '编辑',
+              onTap: onTap ?? () {},
+            ),
+            const SizedBox(width: 6),
+            _ActionButton(
+              icon: LucideIcons.archive,
+              tooltip: '归档',
+              isDanger: true,
+              onTap: onArchive ?? () {},
+            ),
+          ],
+        ],
+      ),
+    );
+
+    // 拖拽悬浮卡片无需水波纹，彻底消除拖拽中的直角高亮干扰
+    if (isDragging) {
+      return rowContent;
+    }
+
+    final effectiveRadius = borderRadius ?? BorderRadius.zero;
+    return ClipRRect(
+      borderRadius: effectiveRadius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: effectiveRadius,
+        child: rowContent,
+      ),
+    );
+  }
+}
+
+/// 外露的操作微按钮
+class _ActionButton extends StatefulWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.isDanger = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final bool isDanger;
+
+  @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final bg = widget.isDanger
+        ? t.danger.withValues(alpha: 0.12)
+        : t.brandSoft;
+    final fg = widget.isDanger ? t.danger : t.brandInk;
+
+    return Tooltip(
+      message: widget.tooltip,
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _pressed ? 0.9 : 1.0,
+          duration: PoopMotions.pressDuration,
+          curve: PoopMotions.pressCurve,
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: widget.isDanger
+                    ? t.danger.withValues(alpha: 0.22)
+                    : t.brandInk.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Icon(widget.icon, size: 15, color: fg),
+          ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -285,48 +566,6 @@ class _DefaultBadge extends StatelessWidget {
   }
 }
 
-/// 每行右侧的「…」菜单。
-class _RowMenu extends ConsumerWidget {
-  const _RowMenu({
-    required this.pooper,
-    required this.onChanged,
-    required this.onEdit,
-  });
-
-  final Pooper pooper;
-  final VoidCallback onChanged;
-  final VoidCallback onEdit;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.tokens;
-    final db = ref.read(databaseProvider);
-
-    return PopupMenuButton<String>(
-      icon: Icon(LucideIcons.ellipsisVertical, size: 17, color: t.ink3),
-      splashRadius: 18,
-      onSelected: (v) async {
-        switch (v) {
-          case 'default':
-            await db.setDefaultPooper(pooper.id);
-          case 'edit':
-            onEdit();
-            return;
-          case 'archive':
-            await db.archivePooper(pooper.id);
-        }
-        onChanged();
-      },
-      itemBuilder: (ctx) => [
-        if (!pooper.isDefault)
-          const PopupMenuItem(value: 'default', child: Text('设为默认')),
-        const PopupMenuItem(value: 'edit', child: Text('编辑')),
-        const PopupMenuItem(value: 'archive', child: Text('归档（保留历史）')),
-      ],
-    );
-  }
-}
-
 class _EmptyPoopers extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -339,11 +578,11 @@ class _EmptyPoopers extends StatelessWidget {
             width: 76,
             height: 76,
             decoration: BoxDecoration(
-              color: t.paperDeep,
+              color: t.brandSoft,
               borderRadius: BorderRadius.circular(26),
             ),
             alignment: Alignment.center,
-            child: Icon(LucideIcons.users, size: 32, color: t.ink3),
+            child: Icon(LucideIcons.users, size: 32, color: t.brandInk),
           ),
           const SizedBox(height: 14),
           Text(

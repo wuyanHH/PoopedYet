@@ -1,18 +1,27 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../data/record_actions.dart';
 import '../dev/demo_seeder.dart';
 import '../providers.dart';
 import '../state/calendar_data.dart';
+import '../state/calendar_view.dart';
 import '../theme/tokens.dart';
+import '../widget/widget_deep_link_handler.dart';
 import 'calendar/calendar_card.dart';
+import 'history/history_page.dart';
+import 'records/backfill_sheet.dart';
+import 'records/create_record_sheet.dart';
 import 'records/day_section.dart';
 import 'records/record_detail_sheet.dart';
 import 'settings/settings_page.dart';
+import 'widgets/brand_widgets.dart';
 import 'widgets/first_run_hint.dart';
+import 'widgets/ongoing_poop_badge.dart';
+import 'widgets/poop_button_icon.dart';
+import 'widgets/smooth_page_route.dart';
 
 /// 日历主页（视觉稿 ①）。
 ///
@@ -28,6 +37,24 @@ class HomePage extends ConsumerWidget {
     // watch 一下就够了，结果不参与渲染；失败也不该白屏。
     ref.watch(bootstrapProvider);
 
+    // 挂载桌面小组件 Deep Link 调度器（一键开屙/完成记录/定位日历）
+    ref.watch(widgetDeepLinkHandlerProvider);
+
+    // 监听来自桌面小组件的 UI 动作分发（如 4x4 大号组件点击“📝 补录”）
+    ref.listen<WidgetUiAction?>(widgetActionTriggerProvider, (prev, next) {
+      if (next == WidgetUiAction.backfill) {
+        ref.read(widgetActionTriggerProvider.notifier).clear();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            showBackfillSheet(context);
+          }
+        });
+      }
+    });
+
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
     return Scaffold(
       backgroundColor: t.paper,
       body: SafeArea(
@@ -35,133 +62,142 @@ class HomePage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _AppBar(),
-            const FirstRunHint(),
-            const SizedBox(height: 4),
-            const CalendarCard(),
-            Expanded(
-              child: DaySection(
-                onTapRecord: (id) =>
-                    showRecordDetailSheet(context, recordId: id),
+            _AppBar(isLandscape: isLandscape),
+            if (!isLandscape) ...[
+              const FirstRunHint(),
+              const SizedBox(height: 4),
+              const RepaintBoundary(child: CalendarCard()),
+              Expanded(
+                child: RepaintBoundary(
+                  child: DaySection(
+                    onTapRecord: (id) =>
+                        showRecordDetailSheet(context, recordId: id),
+                  ),
+                ),
               ),
-            ),
+            ] else ...[
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 左侧日历栏：支持平滑滚动，避免任何低高度横屏设备发生溢出
+                    Expanded(
+                      flex: 5,
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            FirstRunHint(),
+                            SizedBox(height: 2),
+                            RepaintBoundary(child: CalendarCard()),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // 中间细微垂直分隔线，增强分栏质感
+                    VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: t.lineSoft.withValues(alpha: 0.6),
+                    ),
+                    // 右侧记录列表栏：独立滚动展示选中日期的所有记录
+                    Expanded(
+                      flex: 5,
+                      child: RepaintBoundary(
+                        child: DaySection(
+                          onTapRecord: (id) =>
+                              showRecordDetailSheet(context, recordId: id),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
-      // FAB 记的永远是"现在"，和选中哪天无关 ——
-      // 它是"现在开屙"，不是"给这天补一条"。补录走历史页。
-      floatingActionButton: _Fab(onTap: () => _startPoop(context, ref)),
+      // FAB 点击弹出新建开屙记录弹窗
+      floatingActionButton: _Fab(
+        onTap: () => showCreateRecordSheet(context),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
-
-  /// 一键开屙。
-  ///
-  /// **不弹层、不询问**，直接落库 —— 这是这个 App 的手感关键。
-  /// 补充细节（改人、补结束时间、写备注）走编辑页。
-  Future<void> _startPoop(BuildContext context, WidgetRef ref) async {
-    final db = ref.read(databaseProvider);
-    final result = await db.startPoop();
-
-    if (!context.mounted) return;
-
-    switch (result) {
-      case StartPoopOk(:final record):
-        _refresh(ref);
-
-        final people = await db.activePoopers();
-        final who = people.where((p) => p.id == record.pooperId).firstOrNull;
-        if (!context.mounted) return;
-
-        // 「一键」的代价是没有退路，所以必须给撤销。
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            SnackBar(
-              content: Text('${who?.name ?? '记录'} 已开始 · 正在屙'),
-              behavior: SnackBarBehavior.floating,
-              action: SnackBarAction(
-                label: '撤销',
-                onPressed: () async {
-                  await db.deleteRecord(record.id);
-                  _refresh(ref);
-                },
-              ),
-            ),
-          );
-
-      case StartPoopAlreadyActive(:final existing):
-        // 这里必须说人话。数据库那边是 UNIQUE 约束报错，但用户不该看到那个。
-        final people = await db.activePoopers();
-        final who = people.where((p) => p.id == existing.pooperId).firstOrNull;
-        final mins = DateTime.now().difference(existing.startedAt).inMinutes;
-
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                '${who?.name ?? '有人'} 从 ${_hhmm(existing.startedAt)} 开始还在屙'
-                '（已 $mins 分钟），先结束它',
-              ),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-
-      case StartPoopNoPooper():
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text('还没有屙屎人，先去设置里加一个'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-    }
-  }
-
-  /// 落库之后把受影响的缓存全打掉。
-  ///
-  /// 日历徽标按月缓存、记录列表按天缓存，加了记录两边都要刷新；
-  /// 直接 invalidate 整个 family 最省心（几十条数据重建一次是毫秒级）。
-  void _refresh(WidgetRef ref) {
-    ref.invalidate(monthBadgesProvider);
-    ref.invalidate(weekBadgesProvider);
-    ref.invalidate(dayRecordsProvider);
-    ref.invalidate(staleRecordsProvider);
-    ref.invalidate(activePoopersProvider);
-  }
-
-  static String _hhmm(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
 class _AppBar extends ConsumerWidget {
-  const _AppBar();
+  const _AppBar({this.isLandscape = false});
+
+  final bool isLandscape;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
+    // 监听当日打卡记录，智能感知是否有正在进行的打卡。
+    // 使用规范化零点的 todayProvider，避免使用 DateTime.now() 产生毫秒级全新 key 导致 Provider 重建与重复查询
+    final today = ref.watch(todayProvider);
+    final dayRecords =
+        ref.watch(dayRecordsProvider(today)).value ?? const [];
+    final hasActive =
+        dayRecords.any((d) => d.record.endedAt == null && !d.record.endUnknown);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 12, 4),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        isLandscape ? 4 : 8,
+        14,
+        isLandscape ? 4 : 6,
+      ),
       child: Row(
         children: [
+          // 品牌标题与状态展示
           GestureDetector(
             // 长按标题开开发菜单 —— 不占界面，普通用户也碰不到。
-            onLongPress: kDebugMode ? () => _devMenu(context, ref) : null,
-            child: Text(
-              '屙了么',
-              style: displayStyle(size: 21, letterSpacing: 1, color: t.ink),
+            onLongPress: kDebugMode
+                ? () {
+                    HapticFeedback.heavyImpact();
+                    _devMenu(context, ref);
+                  }
+                : null,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 品牌统一门面 Logo Badge（遵循单一来源，引用纯矢量可爱便便图标）
+                const BrandHeaderBadge(size: 36),
+                const SizedBox(width: 9),
+                Text(
+                  '屙了么',
+                  style: displayStyle(size: 21, letterSpacing: 0.8, color: t.ink),
+                ),
+                // 仅在有进行中记录时展示全新的动态状态胶囊（方案 1A：旋转卷纸秒表 + 虚线流淌）
+                if (hasActive) ...[
+                  const SizedBox(width: 8),
+                  const OngoingPoopBadge(
+                    compact: true,
+                    iconSize: 15,
+                  ),
+                ],
+              ],
             ),
           ),
           const Spacer(),
-          _IconButton(icon: LucideIcons.search, onTap: () {}),
-          _IconButton(
-            icon: LucideIcons.settings,
+          // 右侧微质感物理按压反馈按钮组
+          _AppBarAction(
+            icon: LucideIcons.history,
+            tooltip: '历史记录',
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SettingsPage()),
+              smoothPageRoute(const HistoryPage()),
+            ),
+          ),
+          const SizedBox(width: 7),
+          _AppBarAction(
+            icon: LucideIcons.settings,
+            tooltip: '设置',
+            onTap: () => Navigator.of(context).push(
+              smoothPageRoute(const SettingsPage()),
             ),
           ),
         ],
@@ -170,21 +206,25 @@ class _AppBar extends ConsumerWidget {
   }
 
   Future<void> _devMenu(BuildContext context, WidgetRef ref) async {
-    final t = ref.read(_tokensProbe);
-
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (sheetCtx) => SafeArea(
-        top: false,
-        child: Container(
+      builder: (sheetCtx) {
+        final t = sheetCtx.tokens;
+        final bottomInset = MediaQuery.paddingOf(sheetCtx).bottom;
+        return Container(
           decoration: BoxDecoration(
             color: t.paper,
             borderRadius: const BorderRadius.vertical(
               top: Radius.circular(PoopRadii.sheet),
             ),
           ),
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            bottomInset > 0 ? bottomInset + 14 : 20,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -215,8 +255,8 @@ class _AppBar extends ConsumerWidget {
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -229,74 +269,139 @@ class _AppBar extends ConsumerWidget {
   }
 }
 
-/// 拿令牌但不依赖 BuildContext（弹层里用）。
-final _tokensProbe = Provider((ref) => PoopTokens.light);
-
-class _IconButton extends StatelessWidget {
-  const _IconButton({required this.icon, required this.onTap});
+class _AppBarAction extends StatefulWidget {
+  const _AppBarAction({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  State<_AppBarAction> createState() => _AppBarActionState();
+}
+
+class _AppBarActionState extends State<_AppBarAction> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(11),
-      child: SizedBox(
-        width: 38,
-        height: 38,
-        child: Icon(icon, size: 17, color: t.ink2),
+    return Semantics(
+      label: widget.tooltip,
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          widget.onTap();
+        },
+        child: AnimatedScale(
+          scale: _pressed ? 0.92 : 1.0,
+          duration: PoopMotions.pressDuration,
+          curve: PoopMotions.pressCurve,
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: t.surface,
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: t.lineSoft, width: 1.0),
+              boxShadow: [
+                BoxShadow(
+                  color: t.isDark
+                      ? Colors.black.withValues(alpha: 0.25)
+                      : const Color(0x0A2D1B0D),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1.5),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Icon(widget.icon, size: 17, color: t.ink2),
+          ),
+        ),
       ),
     );
   }
 }
 
-/// 「现在开屙」。
-class _Fab extends StatelessWidget {
+/// 「开屙」主操作悬浮按钮（简略紧凑形态，告别通用 '+' 号，内嵌拉屎专属矢量微雕）。
+class _Fab extends StatefulWidget {
   const _Fab({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
+  State<_Fab> createState() => _FabState();
+}
+
+class _FabState extends State<_Fab> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 52,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          // 渐变浅端必须够深：白字对 #B05F2C 是 4.65:1。
-          // 原来的 #D98B4C 只有 2.71:1，连大字阈值都不到。
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB05F2C), Color(0xFF9A5219)],
-          ),
-          borderRadius: BorderRadius.circular(PoopRadii.pill),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x59A85F29),
-              blurRadius: 18,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(LucideIcons.plus, size: 17, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(
-              '现在开屙',
-              style: displayStyle(
-                size: 15,
-                letterSpacing: 1,
-                color: Colors.white,
+    final t = context.tokens;
+
+    return Semantics(
+      button: true,
+      label: '开屙',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) {
+          setState(() => _pressed = false);
+          HapticFeedback.mediumImpact();
+          widget.onTap();
+        },
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedScale(
+          scale: _pressed ? 0.94 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOutCubic,
+          child: Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [t.brand, t.brandFill],
               ),
+              borderRadius: BorderRadius.circular(PoopRadii.pill),
+              boxShadow: [
+                BoxShadow(
+                  color: t.brandFill.withValues(alpha: t.isDark ? 0.40 : 0.30),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const PoopButtonIcon.start(
+                  size: 20,
+                  onDarkButton: true,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '开屙',
+                  style: displayStyle(
+                    size: 14,
+                    letterSpacing: 0.8,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
