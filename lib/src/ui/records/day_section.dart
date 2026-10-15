@@ -201,12 +201,7 @@ class DaySection extends ConsumerWidget {
 
               const SizedBox(width: 8),
 
-              // 右侧：回到今天按钮与打卡次数统计胶囊
-              if (!isToday)
-                _TodayButton(
-                  onTap: () => ref.read(calendarViewProvider.notifier).goToday(),
-                ),
-              if (!isToday) const SizedBox(width: 6),
+              // 右侧：打卡次数统计胶囊（列表上方的回到今天按钮已收敛至主页全局悬浮按钮）
               _CountPill(count: records.length),
             ],
           ),

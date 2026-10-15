@@ -99,16 +99,17 @@ class _SwipeToNavigateState extends State<SwipeToNavigate> {
         final vx = d.velocity.pixelsPerSecond.dx;
         final vy = d.velocity.pixelsPerSecond.dy;
 
-        // 根据位移与初速度综合判断是垂直主意图还是水平主意图
-        final isVerticalIntent =
-            (_dy.abs() > _dx.abs() * 1.15 || vy.abs() > vx.abs() * 1.15);
+        // 优先依据主位移与速度分量综合判断手势主轴
+        final isVerticalDominant =
+            (_dy.abs() >= _dx.abs() || vy.abs() > vx.abs());
 
-        if (isVerticalIntent) {
+        if (isVerticalDominant) {
           // 垂直手势：向上推为下一月，向下拉为上一月
           final isFast = vy.abs() >= kSwipeVelocityThreshold;
           final isFar = _dy.abs() >= kSwipeDistanceThreshold;
 
           if (isFast || isFar) {
+            // 速度优先，位移兜底
             final isPrev = isFast ? vy > 0 : _dy > 0;
             if (isPrev) {
               widget.onPrev(isVertical: true);

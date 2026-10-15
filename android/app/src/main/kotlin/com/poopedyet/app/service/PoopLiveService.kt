@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
@@ -27,8 +28,8 @@ class PoopLiveService : Service {
     constructor() : super()
 
     companion object {
-        // 使用 v2 渠道强制在真机上建立 IMPORTANCE_HIGH 高优先级通知渠道，才能被 vivo OriginOS 原子岛/状态栏胶囊识别
-        const val CHANNEL_ID = "poop_live_island_v2"
+        // 使用 v3 渠道强制在真机上建立 IMPORTANCE_HIGH 高优先级通知渠道，才能被 vivo OriginOS 原子岛/状态栏胶囊、小米 HyperOS、OPPO 流体云识别
+        const val CHANNEL_ID = "poop_live_island_v3"
         const val NOTIFICATION_ID = 9527
 
         const val ACTION_START_LIVE = "com.poopedyet.app.START_LIVE"
@@ -90,15 +91,23 @@ class PoopLiveService : Service {
 
             val notification = buildLiveNotification(recordId, pooperName, startedAt, isIncognito)
             
-            // 兼容 Android 14+ 必须显式声明前台服务类型的要求，防止抛出 MissingForegroundServiceTypeException 崩溃
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
+            try {
+                // 兼容 Android 14+ 必须显式声明前台服务类型的要求，防止抛出 MissingForegroundServiceTypeException 崩溃
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    startForeground(
+                        NOTIFICATION_ID,
+                        notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                    )
+                } else {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
+            } catch (e: Exception) {
+                try {
+                    startForeground(NOTIFICATION_ID, notification)
+                } catch (ex: Exception) {
+                    // 兜底防止后台启动前台服务受限异常
+                }
             }
         }
 
@@ -164,18 +173,35 @@ class PoopLiveService : Service {
 
         val title = if (isIncognito) "🧻 $pooperName 正在深度放空中..." else "🧻 $pooperName 正在如厕中..."
         val subText = if (isIncognito) "身心减负中" else "如厕计时进行中"
+        val contentText = if (isIncognito) "正在深度放空，身心减负中..." else "正在如厕计时中，点击进入应用"
         val finishBtnText = if (isIncognito) "放空达成" else "完成打卡"
 
+        val extras = Bundle().apply {
+            // 小米 HyperOS 澎湃 OS 焦点通知 / 灵动胶囊识别
+            putString("android.substName", "屙了么")
+            putBoolean("miui.enableFloat", true)
+            putBoolean("miui.enableKeyguard", true)
+            putBoolean("show_when_locked", true)
+            // OPPO / 一加 / realme (ColorOS 14+) 流体云胶囊识别
+            putBoolean("com.coloros.notification.capsule", true)
+            putString("com.coloros.notification.capsule_type", "stopwatch")
+            // vivo OriginOS 原子岛
+            putBoolean("vivo.summaryNotification", false)
+        }
+
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_live_notification)
             .setContentTitle(title)
+            .setContentText(contentText)
             .setSubText(subText)
             .setContentIntent(openPendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setAutoCancel(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            // 必须设置 PRIORITY_MAX 才能触发 vivo OriginOS 的原子通知/原子岛状态栏胶囊
+            // Android 12+ 立即展示前台通知，杜绝 10 秒延迟展示
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            // 必须设置 PRIORITY_MAX 才能触发 vivo OriginOS 的原子通知/原子岛状态栏胶囊与锁屏浮窗
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setTicker(title)
             // 启用系统级秒表计时器（精准跳秒、极其省电）
@@ -185,6 +211,7 @@ class PoopLiveService : Service {
             // CATEGORY_STOPWATCH 是厂商灵动胶囊识别的核心标记
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setColor(0xFFA85F29.toInt()) // 焦糖品牌色
+            .setExtras(extras)
             // 添加一键完成 Action 按钮：统一使用鼠尾草绿对勾卷纸完成图标 (ic_widget_action_finish)
             .addAction(R.drawable.ic_widget_action_finish, finishBtnText, finishPendingIntent)
 

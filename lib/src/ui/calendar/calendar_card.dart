@@ -109,7 +109,7 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -120,6 +120,7 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
                 : _weekLabel(view, settings.weekStart),
             mode: view.mode,
             direction: _direction,
+            isVertical: _isVertical,
             onTitleTap: () => _openPicker(context, ref),
             onModeChanged: nav.setMode,
           ),
@@ -131,13 +132,13 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
             weekendBrandColor: settings.weekendBrandColor,
           ),
 
-          // 日历网格区域：支持 Material Design 3 视差穿透切页与纯粹水平手势
+          // 日历网格区域：月视图支持顺畅的双向手势切月，周视图专注水平切周
           SwipeToNavigate(
-            allowVertical: false,
+            allowVertical: isMonth,
             onPrev: ({required bool isVertical}) {
               HapticFeedback.selectionClick();
               setState(() {
-                _isVertical = false;
+                _isVertical = isVertical;
               });
               if (isMonth) {
                 nav.prevMonth();
@@ -148,7 +149,7 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
             onNext: ({required bool isVertical}) {
               HapticFeedback.selectionClick();
               setState(() {
-                _isVertical = false;
+                _isVertical = isVertical;
               });
               if (isMonth) {
                 nav.nextMonth();
@@ -237,11 +238,15 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
                       );
                     }
 
-                    // 水平切月 / 切周：Material Design 3 Shared Axis (X-Axis) 视差微移穿透模型
-                    // 彻底告别 100% 飞舞与晃眼眩晕，新页微移 26% 优雅浮入，旧页微退 -18% 快速渐出
-                    final slideOffset = isIncoming
-                        ? Offset(_direction * 0.26, 0)
-                        : Offset(-_direction * 0.18, 0);
+                    // 翻页切月 / 切周：视差微移穿透模型
+                    // 水平滑动沿 X 轴穿透，垂直上下滑沿 Y 轴穿透，手势与动效完全同向，自然连贯
+                    final slideOffset = _isVertical
+                        ? (isIncoming
+                            ? Offset(0, _direction * 0.22)
+                            : Offset(0, -_direction * 0.16))
+                        : (isIncoming
+                            ? Offset(_direction * 0.26, 0)
+                            : Offset(-_direction * 0.18, 0));
 
                     final offsetAnimation = Tween<Offset>(
                       begin: slideOffset,
@@ -348,9 +353,8 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
   }
 }
 
-/// 日历卡片底部融合控制栏：
-/// - 正中保持物理质感微把手，支持垂直轻拖上下折叠/展开；
-/// - 右下角呈现 Gemini 风格的微悬浮圆形翻转按钮，180° 顺滑旋转指示展开/折叠状态。
+/// 日历卡片底部控制栏：
+/// - 正中保持物理质感微把手，支持垂直轻拖上下折叠/展开与轻点切换。
 class _CalendarHandleBar extends StatefulWidget {
   const _CalendarHandleBar({
     required this.isMonth,
@@ -371,7 +375,6 @@ class _CalendarHandleBar extends StatefulWidget {
 class _CalendarHandleBarState extends State<_CalendarHandleBar> {
   double _dragOffset = 0.0;
   bool _isHoveredOrPressed = false;
-  bool _isButtonPressed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -388,21 +391,21 @@ class _CalendarHandleBarState extends State<_CalendarHandleBar> {
       },
       onVerticalDragUpdate: (d) {
         setState(() {
-          // 紧致微阻尼物理位移（严格收敛浮动幅度，杜绝越界撞网格或飞出底边）
-          _dragOffset = (_dragOffset + d.delta.dy * 0.26).clamp(-3.0, 3.0);
+          // 顺滑弹性物理位移，给予清晰可感知的跟手反馈
+          _dragOffset = (_dragOffset + d.delta.dy * 0.38).clamp(-6.0, 6.0);
         });
       },
       onVerticalDragEnd: (d) {
         final vy = d.velocity.pixelsPerSecond.dy;
-        if (_dragOffset < -2.0 || vy < -120) {
+        if (_dragOffset < -2.5 || vy < -80) {
           HapticFeedback.mediumImpact();
           widget.onDragUp();
-        } else if (_dragOffset > 2.0 || vy > 120) {
+        } else if (_dragOffset > 2.5 || vy > 80) {
           HapticFeedback.mediumImpact();
           widget.onDragDown();
         } else {
-          // 轻触直接切换
-          if (_dragOffset.abs() < 1.6 && vy.abs() < 90) {
+          // 短触/原地微动直接切换
+          if (_dragOffset.abs() < 2.0 && vy.abs() < 100) {
             HapticFeedback.mediumImpact();
             widget.onToggle();
           }
@@ -418,100 +421,40 @@ class _CalendarHandleBarState extends State<_CalendarHandleBar> {
           _isHoveredOrPressed = false;
         });
       },
-      child: Padding(
-        padding: const EdgeInsets.only(top: 2, bottom: 2),
+      child: Tooltip(
+        message: '轻点或上下拖拽：切换周/月模式',
+        preferBelow: false,
+        verticalOffset: 16,
+        waitDuration: const Duration(milliseconds: 250),
+        triggerMode: TooltipTriggerMode.longPress,
         child: SizedBox(
           width: double.infinity,
-          height: 26, // 紧凑型触控栏
-          child: Row(
-            children: [
-              // 左侧占位（与右侧 Gemini 展开圆钮宽度严格对称，确保中间小白条绝对居中）
-              const SizedBox(width: 32),
-
-              // 中间：微阻尼物理质感微把手
-              Expanded(
-                child: Center(
-                  child: Transform.translate(
-                    offset: Offset(0, _dragOffset),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 140),
-                      curve: Curves.easeOutCubic,
-                      width: _isHoveredOrPressed ? 40 : 32,
-                      height: _isHoveredOrPressed ? 3.8 : 3.0,
-                      decoration: BoxDecoration(
-                        color: _isHoveredOrPressed
-                            ? t.brandInk.withValues(alpha: 0.7)
-                            : t.line.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(PoopRadii.pill),
-                        boxShadow: [
-                          BoxShadow(
-                            color: t.isDark
-                                ? Colors.black.withValues(alpha: 0.25)
-                                : const Color(0x1F2D1B0D),
-                            blurRadius: _isHoveredOrPressed ? 3.0 : 1.5,
-                            offset: const Offset(0, 0.8),
-                          ),
-                        ],
-                      ),
+          height: 20,
+          child: Center(
+            child: Transform.translate(
+              offset: Offset(0, _dragOffset),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOutCubic,
+                width: _isHoveredOrPressed ? 40 : 32,
+                height: _isHoveredOrPressed ? 3.8 : 3.0,
+                decoration: BoxDecoration(
+                  color: _isHoveredOrPressed
+                      ? t.brandInk.withValues(alpha: 0.7)
+                      : t.line.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(PoopRadii.pill),
+                  boxShadow: [
+                    BoxShadow(
+                      color: t.isDark
+                          ? Colors.black.withValues(alpha: 0.25)
+                          : const Color(0x1F2D1B0D),
+                      blurRadius: _isHoveredOrPressed ? 3.0 : 1.5,
+                      offset: const Offset(0, 0.8),
                     ),
-                  ),
+                  ],
                 ),
               ),
-
-              // 右下角：Gemini 风格精致微悬浮圆形展开/收起按钮
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapDown: (_) => setState(() => _isButtonPressed = true),
-                  onTapUp: (_) => setState(() => _isButtonPressed = false),
-                  onTapCancel: () => setState(() => _isButtonPressed = false),
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    widget.onToggle();
-                  },
-                  child: AnimatedScale(
-                    scale: _isButtonPressed ? 0.90 : 1.0,
-                    duration: const Duration(milliseconds: 120),
-                    curve: Curves.easeOutCubic,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: t.surface,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: t.line.withValues(alpha: 0.85),
-                          width: 0.9,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: t.isDark
-                                ? Colors.black.withValues(alpha: 0.35)
-                                : const Color(0x185E422A),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1.5),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        // 180 度顺滑旋转：折叠态(周)向下 chevronDown，展开态(月)向上
-                        child: AnimatedRotation(
-                          turns: widget.isMonth ? 0.5 : 0.0,
-                          duration: const Duration(milliseconds: 320),
-                          curve: Curves.fastEaseInToSlowEaseOut,
-                          child: Icon(
-                            LucideIcons.chevronDown,
-                            size: 13,
-                            color: _isButtonPressed ? t.brandInk : t.ink3,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -524,6 +467,7 @@ class _Header extends StatelessWidget {
     required this.title,
     required this.mode,
     required this.direction,
+    required this.isVertical,
     required this.onTitleTap,
     required this.onModeChanged,
   });
@@ -531,6 +475,7 @@ class _Header extends StatelessWidget {
   final String title;
   final CalendarMode mode;
   final int direction;
+  final bool isVertical;
   final VoidCallback onTitleTap;
   final ValueChanged<CalendarMode> onModeChanged;
 
@@ -541,85 +486,110 @@ class _Header extends StatelessWidget {
 
     return Row(
       children: [
-        // 标题区：支持自适应缩放与同向平滑微平移过渡
+        // 标题区：固定高度与基线对齐，彻底消除切换日期时的微像素抖动
         Expanded(
-          child: InkWell(
-            onTap: onTitleTap,
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 240),
-                        switchInCurve: Curves.fastEaseInToSlowEaseOut,
-                        switchOutCurve: Curves.fastEaseInToSlowEaseOut,
-                        transitionBuilder: (child, animation) {
-                          final isIncoming = child.key == ValueKey(title);
-                          if (direction == 0) {
-                            // 模式切换时原位平滑交叉淡入淡出
-                            return FadeTransition(
-                              opacity: CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.fastEaseInToSlowEaseOut,
-                              ),
-                              child: child,
+          child: Tooltip(
+            message: '点击切换年份与月份',
+            preferBelow: true,
+            verticalOffset: 20,
+            waitDuration: const Duration(milliseconds: 200),
+            triggerMode: TooltipTriggerMode.longPress,
+            child: InkWell(
+              onTap: onTitleTap,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: SizedBox(
+                        height: 26,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 160),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          layoutBuilder: (currentChild, previousChildren) {
+                            return Stack(
+                              alignment: Alignment.centerLeft,
+                              clipBehavior: Clip.none,
+                              children: [
+                                ...previousChildren,
+                                if (currentChild != null) currentChild,
+                              ],
                             );
-                          }
-                          // 翻页时同步视差推拉微位移，节奏与网格完全一致
-                          final slideOffset = isIncoming
-                              ? Offset(direction * 0.28, 0)
-                              : Offset(-direction * 0.20, 0);
+                          },
+                          transitionBuilder: (child, animation) {
+                            final isIncoming = child.key == ValueKey(title);
 
-                          final offset = Tween<Offset>(
-                            begin: slideOffset,
-                            end: Offset.zero,
-                          ).animate(CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.fastEaseInToSlowEaseOut,
-                          ));
+                            // 时序错开，出场先退、入场后进，彻底杜绝文字交叉重叠双影
+                            final fadeAnim = CurvedAnimation(
+                              parent: animation,
+                              curve: isIncoming
+                                  ? const Interval(0.35, 1.0, curve: Curves.easeOutCubic)
+                                  : const Interval(0.0, 0.40, curve: Curves.easeInCubic),
+                            );
 
-                          return SlideTransition(
-                            position: offset,
-                            child: FadeTransition(
-                              opacity: CurvedAnimation(
-                                parent: animation,
-                                curve: isIncoming
-                                    ? const Interval(0.15, 1.0, curve: Curves.easeOut)
-                                    : const Interval(0.0, 0.45, curve: Curves.easeIn),
+                            // 位移微动效：精细收敛位移幅度，顺滑过渡且杜绝抖动
+                            final Offset slideOffset;
+                            if (direction == 0) {
+                              // 模式切换：原位平滑浮现
+                              slideOffset = isIncoming
+                                  ? const Offset(0, 0.04)
+                                  : const Offset(0, -0.04);
+                            } else if (isVertical) {
+                              // 垂直切月：轻微 Y 轴视差位移
+                              slideOffset = isIncoming
+                                  ? Offset(0, direction * 0.12)
+                                  : Offset(0, -direction * 0.08);
+                            } else {
+                              // 水平切月/切周：轻微 X 轴视差位移
+                              slideOffset = isIncoming
+                                  ? Offset(direction * 0.12, 0)
+                                  : Offset(-direction * 0.08, 0);
+                            }
+
+                            final offsetAnimation = Tween<Offset>(
+                              begin: slideOffset,
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.fastEaseInToSlowEaseOut,
+                            ));
+
+                            return SlideTransition(
+                              position: offsetAnimation,
+                              child: FadeTransition(
+                                opacity: fadeAnim,
+                                child: child,
                               ),
-                              child: child,
+                            );
+                          },
+                          child: Text(
+                            title,
+                            key: ValueKey(title),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: displayStyle(
+                              size: isMonth ? 18.5 : 15.5,
+                              letterSpacing: isMonth ? 0.4 : 0.2,
+                              color: t.ink,
                             ),
-                          );
-                        },
-                        child: Text(
-                          title,
-                          key: ValueKey(title),
-                          maxLines: 1,
-                          style: displayStyle(
-                            size: isMonth ? 18.5 : 15.5,
-                            letterSpacing: isMonth ? 0.4 : 0.2,
-                            color: t.ink,
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: t.paperDeep,
-                      borderRadius: BorderRadius.circular(6),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: t.paperDeep,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(LucideIcons.chevronDown, size: 13, color: t.ink2),
                     ),
-                    child: Icon(LucideIcons.chevronDown, size: 13, color: t.ink2),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -717,26 +687,35 @@ class _ModeSwitchItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Center(
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.5,
-              color: selected ? Colors.white : t.ink3,
+    final tooltipText = label == '月' ? '切换为月历视图' : '切换为周历视图';
+
+    return Tooltip(
+      message: tooltipText,
+      preferBelow: true,
+      verticalOffset: 20,
+      waitDuration: const Duration(milliseconds: 250),
+      triggerMode: TooltipTriggerMode.longPress,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Center(
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+                color: selected ? Colors.white : t.ink3,
+              ),
+              child: Text(label),
             ),
-            child: Text(label),
           ),
         ),
       ),

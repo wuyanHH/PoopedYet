@@ -36,13 +36,20 @@ class PooperListPage extends ConsumerWidget {
     return SettingsScaffold(
       title: '屙屎人',
       actions: [
-        InkWell(
-          onTap: () => _openEdit(context, ref, null),
-          borderRadius: BorderRadius.circular(11),
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Icon(LucideIcons.plus, size: 19, color: t.brandInk),
+        Tooltip(
+          message: '新增屙屎人',
+          preferBelow: true,
+          verticalOffset: 24,
+          waitDuration: const Duration(milliseconds: 200),
+          triggerMode: TooltipTriggerMode.longPress,
+          child: InkWell(
+            onTap: () => _openEdit(context, ref, null),
+            borderRadius: BorderRadius.circular(11),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(LucideIcons.plus, size: 19, color: t.brandInk),
+            ),
           ),
         ),
       ],

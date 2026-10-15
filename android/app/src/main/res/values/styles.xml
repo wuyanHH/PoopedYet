@@ -6,9 +6,9 @@
         <item name="android:statusBarColor">@color/splash_background</item>
         <item name="android:navigationBarColor">@color/splash_background</item>
         <item name="android:windowLightStatusBar">true</item>
-        <!-- Android 12+ SplashScreen API 属性：采用透明占位，杜绝双重启动页 -->
+        <!-- Android 12+ SplashScreen API 属性：直接展示透明底萌便便前景，消除空白遮盖 -->
         <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_transparent_icon</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
     </style>
 

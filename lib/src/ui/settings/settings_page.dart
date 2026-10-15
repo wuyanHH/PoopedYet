@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../calendar/calendar_math.dart';
+import '../../data/database.dart';
 import '../../data/holiday_loader.dart';
 import '../../dev/demo_seeder.dart';
 import '../../providers.dart';
@@ -56,9 +57,7 @@ class SettingsPage extends ConsumerWidget {
                 leadingColor: t.brandInk,
                 leadingBackground: t.brandSoft,
                 title: '屙屎人',
-                subtitle: poopers.isEmpty
-                    ? '还没有'
-                    : poopers.map((p) => p.name).join('、'),
+                subtitleWidget: _buildPoopersPreview(context, poopers),
                 trailing: const SettingsChevron(),
                 onTap: () => _push(context, const PooperListPage()),
               ),
@@ -67,7 +66,7 @@ class SettingsPage extends ConsumerWidget {
                 leadingColor: t.brandInk,
                 leadingBackground: t.brandSoft,
                 title: '便便感受',
-                subtitle: '${templates.length} 条 · 管理打卡标签（如顺畅、便秘、拉肚子等）',
+                subtitleWidget: _buildTemplatesPreview(context, templates),
                 trailing: const SettingsChevron(),
                 onTap: () => _push(context, const NoteTemplatePage()),
               ),
@@ -75,9 +74,21 @@ class SettingsPage extends ConsumerWidget {
           ),
 
           // ---------------- 日历 ----------------
-          const SettingsSectionLabel('日历'),
+          const SettingsSectionLabel('日历与列表'),
           SettingsCard(
             children: [
+              SettingsRow(
+                title: '记录排列顺序',
+                subtitle: '当日打卡记录默认按时间倒序或正序呈现',
+                trailing: SettingsSegmented<RecordSortOrder>(
+                  options: const [
+                    ('时间倒序', RecordSortOrder.desc),
+                    ('时间正序', RecordSortOrder.asc),
+                  ],
+                  value: settings.recordSortOrder,
+                  onChanged: s.setRecordSortOrder,
+                ),
+              ),
               SettingsRow(
                 title: '默认展示视图',
                 subtitle: '打开软件时日历默认以月或周展示',
@@ -290,7 +301,7 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  static const _version = '0.3.0';
+  static const _version = '0.3.3';
 
   static void _showDevDemoDialog(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
@@ -348,6 +359,163 @@ class SettingsPage extends ConsumerWidget {
 
   static void _push(BuildContext context, Widget page) {
     Navigator.of(context).push(smoothPageRoute(page));
+  }
+
+  Widget _buildPoopersPreview(BuildContext context, List<Pooper> poopers) {
+    final t = context.tokens;
+    if (poopers.isEmpty) {
+      return Text('暂无成员，点击添加', style: TextStyle(fontSize: 12, color: t.ink3));
+    }
+
+    // 严格锁定单行：仅取前 3 位成员，剩余展示 +N，彻底杜绝换行
+    final displayPoopers = poopers.take(3).toList();
+    final remaining = poopers.length - displayPoopers.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '共 ${poopers.length} 位 · 管理专属头像与默认人选',
+          style: TextStyle(fontSize: 11.5, color: t.ink3, height: 1.3),
+        ),
+        const SizedBox(height: 5),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final p in displayPoopers) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: p.isDefault ? t.brandSoft : t.paperDeep,
+                    borderRadius: BorderRadius.circular(PoopRadii.pill),
+                    border: Border.all(
+                      color: p.isDefault
+                          ? t.brandInk.withValues(alpha: 0.25)
+                          : t.lineSoft,
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (p.isDefault) ...[
+                        Icon(LucideIcons.star, size: 10, color: t.brandInk),
+                        const SizedBox(width: 3),
+                      ],
+                      Text(
+                        p.name,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight:
+                              p.isDefault ? FontWeight.w700 : FontWeight.w500,
+                          color: p.isDefault ? t.brandInk : t.ink2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 5),
+              ],
+              if (remaining > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: t.paperDeep,
+                    borderRadius: BorderRadius.circular(PoopRadii.pill),
+                    border: Border.all(color: t.lineSoft, width: 0.8),
+                  ),
+                  child: Text(
+                    '+$remaining',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: t.ink3,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTemplatesPreview(
+    BuildContext context,
+    List<NoteTemplate> templates,
+  ) {
+    final t = context.tokens;
+    if (templates.isEmpty) {
+      return Text('暂无标签，点击添加', style: TextStyle(fontSize: 12, color: t.ink3));
+    }
+
+    // 严格锁定单行：仅取前 3 个标签，剩余展示 +N，彻底杜绝换行
+    final displayTemplates = templates.take(3).toList();
+    final remaining = templates.length - displayTemplates.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '共 ${templates.length} 种 · 快速记录顺畅、便秘等便况',
+          style: TextStyle(fontSize: 11.5, color: t.ink3, height: 1.3),
+        ),
+        const SizedBox(height: 5),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final item in displayTemplates) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: t.paperDeep,
+                    borderRadius: BorderRadius.circular(PoopRadii.pill),
+                    border: Border.all(color: t.lineSoft, width: 0.8),
+                  ),
+                  child: Text(
+                    item.content,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: t.ink2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 5),
+              ],
+              if (remaining > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: t.paperDeep,
+                    borderRadius: BorderRadius.circular(PoopRadii.pill),
+                    border: Border.all(color: t.lineSoft, width: 0.8),
+                  ),
+                  child: Text(
+                    '+$remaining',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: t.ink3,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 

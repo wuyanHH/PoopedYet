@@ -1,52 +1,28 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../theme/tokens.dart';
 
-/// 裁切页面退出动作
-enum CropExitAction {
-  /// 确认使用裁剪后的图片
-  confirm,
-
-  /// 取消当前图片裁切，返回相册重新挑选其他照片
-  repick,
-
-  /// 彻底放弃并退出
-  cancel,
-}
-
-/// 裁切结果对象
-class CropResult {
-  const CropResult({
-    required this.action,
-    this.croppedBytes,
-  });
-
-  final CropExitAction action;
-  final Uint8List? croppedBytes;
-
-  static const repick = CropResult(action: CropExitAction.repick);
-  static const cancel = CropResult(action: CropExitAction.cancel);
-}
-
 /// 屙屎人头像截取编辑器。
 ///
-/// 功能特性：
-///   - 全景可视暗房：超出裁切框的图像半透明可见，彻底消除视野盲区；
-///   - 智能比例适配：竖图支持整幅上下滑动选景，横图支持左右滑动，双指特写缩放；
-///   - 严格边界约束：图片自动保证覆盖裁切框，杜绝露黑穿帮；
-///   - 原生硬件级高质量 PNG 头像导出，亚像素级抗锯齿对齐。
+/// 特性保证：
+///   - 严格锁定原图真实宽高比，彻底移除视口强约束，杜绝长图被压扁变形；
+///   - 动态无损提取原图真实物理像素（选多大裁多大，绝不大图粗暴压缩，也绝不小图虚假放大）；
+///   - 导出纯正 1:1 正方形矩形图片（绝不破坏像素硬切圆角，上层 UI 自由遮罩）；
+///   - 视口呈现 1:1 辅助暗房与优雅圆角虚线构图参考；
+///   - 支持页内就地重新选图，杜绝闪跳回详情页的糟糕交互；
+///   - 物理边界阻尼与双指丝滑缩放。
 class AvatarCropperPage extends StatefulWidget {
   const AvatarCropperPage({
     super.key,
-    required this.imageBytes,
+    required this.initialImageBytes,
   });
 
-  final Uint8List imageBytes;
+  final Uint8List initialImageBytes;
 
   @override
   State<AvatarCropperPage> createState() => _AvatarCropperPageState();
@@ -56,26 +32,31 @@ class _AvatarCropperPageState extends State<AvatarCropperPage> {
   final TransformationController _transformController =
       TransformationController();
 
+  late Uint8List _imageBytes;
   ui.Image? _decodedImage;
   bool _loading = true;
-  int _quarterTurns = 0;
+  int _quarterTurns = 0; // 0: 0°, 1: 90°, 2: 180°, 3: 270°
   bool _cropping = false;
 
-  static const double _cropSize = 260.0;
-  static const double _cropRadius = 28.0;
+  static const double _cropSize = 280.0;
+  static const double _cropRadius = 24.0;
 
   @override
   void initState() {
     super.initState();
-    _loadImage();
+    _imageBytes = widget.initialImageBytes;
+    _loadImage(_imageBytes);
   }
 
-  Future<void> _loadImage() async {
+  Future<void> _loadImage(Uint8List bytes) async {
+    setState(() => _loading = true);
     try {
-      final image = await decodeImageFromList(widget.imageBytes);
+      final image = await decodeImageFromList(bytes);
       if (!mounted) return;
       setState(() {
+        _imageBytes = bytes;
         _decodedImage = image;
+        _quarterTurns = 0;
         _loading = false;
         _resetTransform();
       });
@@ -91,80 +72,134 @@ class _AvatarCropperPageState extends State<AvatarCropperPage> {
     super.dispose();
   }
 
-  double get _effectiveW {
+  /// 原图旋转后的有效物理宽度
+  double get _effW {
     if (_decodedImage == null) return _cropSize;
-    final rawW = _decodedImage!.width.toDouble();
-    final rawH = _decodedImage!.height.toDouble();
-    return _quarterTurns % 2 == 1 ? rawH : rawW;
+    return _quarterTurns % 2 == 1
+        ? _decodedImage!.height.toDouble()
+        : _decodedImage!.width.toDouble();
   }
 
-  double get _effectiveH {
+  /// 原图旋转后的有效物理高度
+  double get _effH {
     if (_decodedImage == null) return _cropSize;
-    final rawW = _decodedImage!.width.toDouble();
-    final rawH = _decodedImage!.height.toDouble();
-    return _quarterTurns % 2 == 1 ? rawW : rawH;
+    return _quarterTurns % 2 == 1
+        ? _decodedImage!.width.toDouble()
+        : _decodedImage!.height.toDouble();
   }
 
-  double get _aspect => _effectiveW / _effectiveH;
+  /// 真实无损长宽比
+  double get _aspectRatio => _effW / _effH;
 
-  // 使得短边刚好等于 _cropSize，长边向外自然延展，获得充足的拖拽平移行程
-  double get _layoutW => _aspect < 1.0 ? _cropSize : _cropSize * _aspect;
-  double get _layoutH => _aspect > 1.0 ? _cropSize : _cropSize / _aspect;
+  /// 计算在 _cropSize 视口下短边对齐时的显示尺寸（长边自然延伸，保持 100% 原始长宽比）
+  Size get _contentSize {
+    if (_aspectRatio >= 1.0) {
+      // 横图：高为 _cropSize，宽按比例延展
+      return Size(_cropSize * _aspectRatio, _cropSize);
+    } else {
+      // 竖图/长图：宽为 _cropSize，高按比例延展，绝不强行压缩为 1:1
+      return Size(_cropSize, _cropSize / _aspectRatio);
+    }
+  }
 
   void _resetTransform() {
-    final initX = -(_layoutW - _cropSize) / 2;
-    final initY = -(_layoutH - _cropSize) / 2;
-    _transformController.value = Matrix4.translationValues(initX, initY, 0);
+    final size = _contentSize;
+    final initX = -(size.width - _cropSize) / 2;
+    final initY = -(size.height - _cropSize) / 2;
+    _transformController.value = Matrix4.identity()
+      ..translate(initX, initY, 0.0);
   }
 
-  void _rotate() {
+  void _rotateClockwise() {
+    HapticFeedback.lightImpact();
     setState(() {
       _quarterTurns = (_quarterTurns + 1) % 4;
       _resetTransform();
     });
   }
 
-  void _reset() {
+  void _resetPosition() {
+    HapticFeedback.lightImpact();
     setState(() {
       _quarterTurns = 0;
       _resetTransform();
     });
   }
 
+  /// 在当前页面内直接挑选新照片并无缝热更新，避免跳回上一层页面
+  Future<void> _pickAnotherPhoto() async {
+    try {
+      HapticFeedback.selectionClick();
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 95,
+      );
+      if (file == null || !mounted) return;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      await _loadImage(bytes);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('挑选照片失败: $e')),
+        );
+      }
+    }
+  }
+
+  /// 完成截取：动态提取原图物理像素（选多大就是多大，零失真无损 1:1 矩形输出）
   Future<void> _completeCrop() async {
     if (_cropping || _decodedImage == null) return;
+    HapticFeedback.mediumImpact();
     setState(() => _cropping = true);
 
     try {
+      final matrix = _transformController.value;
+      final double currentScale = matrix.getMaxScaleOnAxis().clamp(1.0, 10.0);
+
+      // 计算裁剪框在 contentSize 上的覆盖跨度 (屏幕视口 / scale)
+      final double cropSpanOnContent = _cropSize / currentScale;
+
+      // content 尺寸与原图有效物理像素的映射比例
+      final size = _contentSize;
+      final double pixelPerUnit = _effW / size.width;
+
+      // 原图上被裁切的正方形区域真实物理像素边长（不虚假放大，也不粗暴压缩）
+      final double actualPixelSpan = cropSpanOnContent * pixelPerUnit;
+      final int outputSize = actualPixelSpan.round().clamp(1, 4096);
+
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(
         recorder,
-        const Rect.fromLTWH(0, 0, _cropSize, _cropSize),
+        Rect.fromLTWH(0, 0, outputSize.toDouble(), outputSize.toDouble()),
       );
 
-      // 1. 裁剪为标准的平滑圆角矩形
-      canvas.clipRRect(
-        RRect.fromRectAndRadius(
-          const Rect.fromLTWH(0, 0, _cropSize, _cropSize),
-          const Radius.circular(_cropRadius),
-        ),
+      // 1. 严格 1:1 正方形矩形裁切，绝不抠除圆角
+      canvas.clipRect(
+        Rect.fromLTWH(0, 0, outputSize.toDouble(), outputSize.toDouble()),
       );
 
-      // 2. 应用当前手势缩放与位移矩阵
-      canvas.transform(_transformController.value.storage);
+      // 2. 将屏幕视口映射到输出高分辨率物理画布
+      final double scaleFactor = outputSize / _cropSize;
+      canvas.scale(scaleFactor);
+      canvas.transform(matrix.storage);
 
-      // 3. 在中心按旋转方向绘制原图
+      // 3. 在视口中按与屏幕完全相同的几何模型绘制原图
       final rawW = _decodedImage!.width.toDouble();
       final rawH = _decodedImage!.height.toDouble();
-      final isRotatedOdd = _quarterTurns % 2 == 1;
-      final drawW = isRotatedOdd ? _layoutH : _layoutW;
-      final drawH = isRotatedOdd ? _layoutW : _layoutH;
 
       canvas.save();
-      canvas.translate(_layoutW / 2, _layoutH / 2);
+      canvas.translate(size.width / 2, size.height / 2);
       if (_quarterTurns != 0) {
         canvas.rotate(_quarterTurns * (math.pi / 2));
       }
+
+      final drawW = _quarterTurns % 2 == 1 ? size.height : size.width;
+      final drawH = _quarterTurns % 2 == 1 ? size.width : size.height;
+
       canvas.drawImageRect(
         _decodedImage!,
         Rect.fromLTWH(0, 0, rawW, rawH),
@@ -173,28 +208,23 @@ class _AvatarCropperPageState extends State<AvatarCropperPage> {
       );
       canvas.restore();
 
-      final ui.Image cropped = await recorder.endRecording().toImage(
-        _cropSize.toInt(),
-        _cropSize.toInt(),
+      final ui.Image croppedImage = await recorder.endRecording().toImage(
+        outputSize,
+        outputSize,
       );
       final ByteData? byteData =
-          await cropped.toByteData(format: ui.ImageByteFormat.png);
+          await croppedImage.toByteData(format: ui.ImageByteFormat.png);
 
       if (byteData == null) return;
       final Uint8List croppedBytes = byteData.buffer.asUint8List();
 
       if (mounted) {
-        Navigator.of(context).pop(
-          CropResult(
-            action: CropExitAction.confirm,
-            croppedBytes: croppedBytes,
-          ),
-        );
+        Navigator.of(context).pop(croppedBytes);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('截取图片失败: $e')),
+          SnackBar(content: Text('裁切图片失败: $e')),
         );
       }
     } finally {
@@ -205,229 +235,236 @@ class _AvatarCropperPageState extends State<AvatarCropperPage> {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final contentSize = _contentSize;
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) {
-          // 点击系统返回键，跳到上一层重新选择图片
-          Navigator.of(context).pop(CropResult.repick);
-        }
-      },
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          backgroundColor: Colors.black,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(LucideIcons.chevronLeft, color: Colors.white, size: 24),
-            onPressed: () => Navigator.of(context).pop(CropResult.repick),
-            tooltip: '重选图片',
-          ),
-          title: const Text(
-            '调整头像截取区域',
-            style: TextStyle(
-              fontSize: 16.5,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(LucideIcons.rotateCw, color: Colors.white, size: 20),
-              onPressed: _loading ? null : _rotate,
-              tooltip: '顺时针旋转90°',
-            ),
-            IconButton(
-              icon: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 19),
-              onPressed: _loading ? null : _reset,
-              tooltip: '重置位置',
-            ),
-            const SizedBox(width: 4),
-          ],
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(LucideIcons.x, color: Colors.white, size: 22),
+          onPressed: () => Navigator.of(context).pop(null),
+          tooltip: '取消',
         ),
-        body: _loading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: Colors.white,
-                ),
-              )
-            : Stack(
-                fit: StackFit.expand,
-                children: [
-                  // 1. 中间可交互裁剪视口（clipBehavior: Clip.none 允许完整延展至全景）
-                  Center(
-                    child: SizedBox(
-                      width: _cropSize,
-                      height: _cropSize,
-                      child: InteractiveViewer(
-                        transformationController: _transformController,
-                        clipBehavior: Clip.none,
-                        boundaryMargin: EdgeInsets.zero,
-                        minScale: 1.0,
-                        maxScale: 4.0,
-                        child: SizedBox(
-                          width: _layoutW,
-                          height: _layoutH,
-                          child: RotatedBox(
+        title: const Text(
+          '调整头像截取区域',
+          style: TextStyle(
+            fontSize: 16.5,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.image, color: Colors.white, size: 20),
+            onPressed: _loading ? null : _pickAnotherPhoto,
+            tooltip: '换一张照片',
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.rotateCw, color: Colors.white, size: 20),
+            onPressed: _loading ? null : _rotateClockwise,
+            tooltip: '旋转90°',
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 19),
+            onPressed: _loading ? null : _resetPosition,
+            tooltip: '复位',
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+          : Stack(
+              fit: StackFit.expand,
+              children: [
+                // 1. 中间可交互裁剪视口
+                //    constrained: false 允许图片保持自身真实几何宽高比延展，绝不强行限制为 1:1 正方形导致长图变扁！
+                Center(
+                  child: SizedBox(
+                    width: _cropSize,
+                    height: _cropSize,
+                    child: InteractiveViewer(
+                      transformationController: _transformController,
+                      constrained: false,
+                      clipBehavior: Clip.none,
+                      boundaryMargin: EdgeInsets.zero,
+                      minScale: 1.0,
+                      maxScale: 5.0,
+                      child: SizedBox(
+                        width: contentSize.width,
+                        height: contentSize.height,
+                        child: CustomPaint(
+                          size: contentSize,
+                          painter: _ImageRenderPainter(
+                            image: _decodedImage!,
                             quarterTurns: _quarterTurns,
-                            child: Image.memory(
-                              widget.imageBytes,
-                              width: _quarterTurns % 2 == 1 ? _layoutH : _layoutW,
-                              height: _quarterTurns % 2 == 1 ? _layoutW : _layoutH,
-                              fit: BoxFit.fill,
-                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
+                ),
 
-                  // 2. 周围半透明暗房遮罩与取景限制辅助线（挖空 260x260 选区）
-                  IgnorePointer(
-                    child: CustomPaint(
-                      size: Size.infinite,
-                      painter: _CropOverlayPainter(
-                        cropSize: _cropSize,
-                        cropRadius: _cropRadius,
-                      ),
+                // 2. 经典半透明暗房遮罩与圆角辅助构图框
+                IgnorePointer(
+                  child: CustomPaint(
+                    size: Size.infinite,
+                    painter: _CropOverlayPainter(
+                      cropSize: _cropSize,
+                      cropRadius: _cropRadius,
                     ),
                   ),
+                ),
 
-                  // 3. 底部操作指引与确认按钮
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: SafeArea(
-                      top: false,
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                              Colors.black,
-                              Colors.black87,
-                              Colors.transparent,
-                            ],
+                // 3. 底部提示与确认使用操作面板
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      16,
+                      24,
+                      MediaQuery.paddingOf(context).bottom + 20,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.85),
+                          Colors.black,
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '双指缩放特写 · 拖动调整头像取景',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withValues(alpha: 0.72),
+                            letterSpacing: 0.3,
                           ),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                        const SizedBox(height: 16),
+                        Row(
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  LucideIcons.move,
-                                  size: 13,
-                                  color: Colors.white.withValues(alpha: 0.65),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '单指拖动对齐 · 双指缩放特写',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    letterSpacing: 0.5,
+                            // 换一张照片按钮
+                            Expanded(
+                              flex: 4,
+                              child: OutlinedButton.icon(
+                                onPressed: _cropping ? null : _pickAnotherPhoto,
+                                icon: const Icon(LucideIcons.imagePlus, size: 16),
+                                label: const Text('重选照片'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                    width: 1.0,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(PoopRadii.pill),
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                // 重新选择按钮
-                                Expanded(
-                                  flex: 4,
-                                  child: SizedBox(
-                                    height: 48,
-                                    child: OutlinedButton.icon(
-                                      onPressed: _cropping
-                                          ? null
-                                          : () => Navigator.of(context)
-                                              .pop(CropResult.repick),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: Colors.white,
-                                        side: BorderSide(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.35),
-                                          width: 1.2,
+                            const SizedBox(width: 12),
+                            // 确认使用按钮
+                            Expanded(
+                              flex: 6,
+                              child: ElevatedButton.icon(
+                                onPressed: _cropping ? null : _completeCrop,
+                                icon: _cropping
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
                                         ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                              PoopRadii.pill),
-                                        ),
-                                      ),
-                                      icon: const Icon(LucideIcons.images,
-                                          size: 16),
-                                      label: const Text(
-                                        '重选照片',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
+                                      )
+                                    : const Icon(LucideIcons.check, size: 17),
+                                label: Text(
+                                  _cropping ? '正在截取...' : '确认使用头像',
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                // 确认保存按钮
-                                Expanded(
-                                  flex: 6,
-                                  child: SizedBox(
-                                    height: 48,
-                                    child: ElevatedButton(
-                                      onPressed:
-                                          _cropping ? null : _completeCrop,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: t.brandFill,
-                                        foregroundColor: Colors.white,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                              PoopRadii.pill),
-                                        ),
-                                      ),
-                                      child: _cropping
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white,
-                                              ),
-                                            )
-                                          : const Text(
-                                              '确定使用',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w800,
-                                                letterSpacing: 0.8,
-                                              ),
-                                            ),
-                                    ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: t.brand,
+                                  foregroundColor: Colors.white,
+                                  elevation: 4,
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(PoopRadii.pill),
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-      ),
+                ),
+              ],
+            ),
     );
   }
 }
 
-/// 裁剪框外周遮罩、限定边框与辅助角标绘制器。
+/// 纯粹的几何物理原图绘制器，100% 保持原始长宽比，严禁任何拉伸变形
+class _ImageRenderPainter extends CustomPainter {
+  const _ImageRenderPainter({
+    required this.image,
+    required this.quarterTurns,
+  });
+
+  final ui.Image image;
+  final int quarterTurns;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(size.width / 2, size.height / 2);
+    if (quarterTurns != 0) {
+      canvas.rotate(quarterTurns * (math.pi / 2));
+    }
+    final rawW = image.width.toDouble();
+    final rawH = image.height.toDouble();
+    final isOdd = quarterTurns % 2 == 1;
+    final drawW = isOdd ? size.height : size.width;
+    final drawH = isOdd ? size.width : size.height;
+
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, rawW, rawH),
+      Rect.fromCenter(center: Offset.zero, width: drawW, height: drawH),
+      Paint()..filterQuality = FilterQuality.high,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ImageRenderPainter oldDelegate) =>
+      oldDelegate.image != image || oldDelegate.quarterTurns != quarterTurns;
+}
+
+/// 经典半透明遮罩暗房与取景参考框
 class _CropOverlayPainter extends CustomPainter {
   const _CropOverlayPainter({
     required this.cropSize,
@@ -439,127 +476,74 @@ class _CropOverlayPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final cropRect = Rect.fromCenter(
-      center: center,
-      width: cropSize,
-      height: cropSize,
-    );
-    final cropRRect = RRect.fromRectAndRadius(
-      cropRect,
-      Radius.circular(cropRadius),
+    final double left = (size.width - cropSize) / 2;
+    final double top = (size.height - cropSize) / 2;
+    final Rect cropRect = Rect.fromLTWH(left, top, cropSize, cropSize);
+
+    // 1. 全屏深色遮罩（72% 暗房遮光）
+    final backgroundPath = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    // 2. 挖空中间 1:1 视口
+    final cutoutPath = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(cropRect, Radius.circular(cropRadius)),
+      );
+
+    final overlayPath = Path.combine(
+      PathOperation.difference,
+      backgroundPath,
+      cutoutPath,
     );
 
-    // 1. 周围暗角遮罩（反向挖空）
-    final bgPath = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-    final holePath = Path()..addRRect(cropRRect);
-    final maskPath = Path.combine(PathOperation.difference, bgPath, holePath);
-
-    final maskPaint = Paint()
+    final darkPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.72)
       ..style = PaintingStyle.fill;
-    canvas.drawPath(maskPath, maskPaint);
 
-    // 2. 裁剪框限定边框（强化边框限制感）
+    canvas.drawPath(overlayPath, darkPaint);
+
+    // 3. 绘制细腻的高光白色圆角参考边框
     final borderPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.95)
+      ..color = Colors.white.withValues(alpha: 0.9)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-    canvas.drawRRect(cropRRect, borderPaint);
+      ..strokeWidth = 1.8;
 
-    // 3. 增强四角定位指示标识（Corner Handles），强化边界存在感
-    final cornerPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round;
-
-    const cornerLen = 22.0;
-    // 左上角
-    canvas.drawLine(
-      Offset(cropRect.left, cropRect.top + cornerLen),
-      Offset(cropRect.left, cropRect.top + cropRadius),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(cropRect.left + cropRadius, cropRect.top),
-      Offset(cropRect.left + cornerLen, cropRect.top),
-      cornerPaint,
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(cropRect, Radius.circular(cropRadius)),
+      borderPaint,
     );
 
-    // 右上角
-    canvas.drawLine(
-      Offset(cropRect.right, cropRect.top + cornerLen),
-      Offset(cropRect.right, cropRect.top + cropRadius),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(cropRect.right - cornerLen, cropRect.top),
-      Offset(cropRect.right - cropRadius, cropRect.top),
-      cornerPaint,
-    );
-
-    // 左下角
-    canvas.drawLine(
-      Offset(cropRect.left, cropRect.bottom - cornerLen),
-      Offset(cropRect.left, cropRect.bottom - cropRadius),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(cropRect.left + cropRadius, cropRect.bottom),
-      Offset(cropRect.left + cornerLen, cropRect.bottom),
-      cornerPaint,
-    );
-
-    // 右下角
-    canvas.drawLine(
-      Offset(cropRect.right, cropRect.bottom - cornerLen),
-      Offset(cropRect.right, cropRect.bottom - cropRadius),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(cropRect.right - cornerLen, cropRect.bottom),
-      Offset(cropRect.right - cropRadius, cropRect.bottom),
-      cornerPaint,
-    );
-
-    // 4. 九宫格三分构图辅助线（轻度半透明）
+    // 4. 九宫格辅助线（淡白色网格，帮助构图对齐）
     final gridPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.22)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+      ..strokeWidth = 0.8;
 
-    final cellW = cropSize / 3;
-    final cellH = cropSize / 3;
-
-    // 垂直辅助线
+    final cell = cropSize / 3;
+    // 纵向两条
     canvas.drawLine(
-      Offset(cropRect.left + cellW, cropRect.top + 4),
-      Offset(cropRect.left + cellW, cropRect.bottom - 4),
+      Offset(left + cell, top),
+      Offset(left + cell, top + cropSize),
       gridPaint,
     );
     canvas.drawLine(
-      Offset(cropRect.left + cellW * 2, cropRect.top + 4),
-      Offset(cropRect.left + cellW * 2, cropRect.bottom - 4),
+      Offset(left + cell * 2, top),
+      Offset(left + cell * 2, top + cropSize),
       gridPaint,
     );
-
-    // 水平辅助线
+    // 横向两条
     canvas.drawLine(
-      Offset(cropRect.left + 4, cropRect.top + cellH),
-      Offset(cropRect.right - 4, cropRect.top + cellH),
+      Offset(left, top + cell),
+      Offset(left + cropSize, top + cell),
       gridPaint,
     );
     canvas.drawLine(
-      Offset(cropRect.left + 4, cropRect.top + cellH * 2),
-      Offset(cropRect.right - 4, cropRect.top + cellH * 2),
+      Offset(left, top + cell * 2),
+      Offset(left + cropSize, top + cell * 2),
       gridPaint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _CropOverlayPainter oldDelegate) {
-    return oldDelegate.cropSize != cropSize ||
-        oldDelegate.cropRadius != cropRadius;
-  }
+  bool shouldRepaint(covariant _CropOverlayPainter oldDelegate) =>
+      oldDelegate.cropSize != cropSize || oldDelegate.cropRadius != cropRadius;
 }

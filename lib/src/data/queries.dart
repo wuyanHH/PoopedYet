@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../calendar/calendar_math.dart';
 import '../domain/history_filter.dart';
 import '../domain/record_state.dart';
+import '../state/settings.dart';
 import 'database.dart';
 
 /// 某一天、某个屙屎人的次数。
@@ -114,9 +115,12 @@ extension CalendarQueries on AppDatabase {
 
   /// 某一天的记录，已按显示顺序排好。
   ///
-  /// 排序规则：**「正在屙」的置顶**，其余按 `startedAt` 升序。
-  /// 置顶是因为它需要用户立刻操作（点"结束"），沉在下面会被漏掉。
-  Future<List<RecordDetail>> recordsOn(DateTime day, {DateTime? now}) async {
+  /// 排序规则：**「正在屙」的始终置顶**，其余记录根据 [sortOrder] 排列（默认时间倒序，最新在最前）。
+  Future<List<RecordDetail>> recordsOn(
+    DateTime day, {
+    DateTime? now,
+    RecordSortOrder sortOrder = RecordSortOrder.desc,
+  }) async {
     final at = now ?? DateTime.now();
     final from = startOfDay(day);
     final to = from.add(const Duration(days: 1));
@@ -137,7 +141,9 @@ extension CalendarQueries on AppDatabase {
       final aActive = recordStateOf(a.record, now: at) == RecordState.active;
       final bActive = recordStateOf(b.record, now: at) == RecordState.active;
       if (aActive != bActive) return aActive ? -1 : 1;
-      return a.record.startedAt.compareTo(b.record.startedAt);
+      return sortOrder == RecordSortOrder.desc
+          ? b.record.startedAt.compareTo(a.record.startedAt)
+          : a.record.startedAt.compareTo(b.record.startedAt);
     });
 
     return details;

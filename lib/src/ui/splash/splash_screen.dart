@@ -67,33 +67,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.initState();
     _currentTip = _randomTips[Random().nextInt(_randomTips.length)];
 
-    // 设置状态栏与底部手势条透明/燕麦白沉浸式
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        systemNavigationBarColor: Color(0xFFFAF8F5),
-        systemNavigationBarIconBrightness: Brightness.dark,
-      ),
-    );
-
-    // 1. 入场缩放与淡入动画控制器 (850ms)
+    // 1. 入场缩放与淡入动画控制器 (650ms 紧凑顺滑)
     _enterController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 850),
+      duration: const Duration(milliseconds: 650),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.90, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.94, end: 1.0).animate(
       CurvedAnimation(
         parent: _enterController,
         curve: Curves.easeOutBack,
       ),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    // 起始透明度设为 0.45，首帧即刻具备清晰视觉锚点，彻底消除 0.0 全透明导致的纯色空白感
+    _fadeAnimation = Tween<double>(begin: 0.45, end: 1.0).animate(
       CurvedAnimation(
         parent: _enterController,
-        curve: const Interval(0.0, 0.70, curve: Curves.easeOut),
+        curve: Curves.easeOutCubic,
       ),
     );
 
@@ -170,14 +161,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final t = context.tokens;
     final isDark = t.isDark;
 
-    // 官方规范颜色 Token
-    const bgOatmeal = Color(0xFFFAF8F5);
-    const primaryCaramel = Color(0xFF5C4033);
-    const textSecondary = Color(0xFF8A827D);
-    const textDisabled = Color(0xFFB5ADA7);
+    final effectiveBg = t.paper; // 严格对齐 Android 原生 WindowBackground，零色差无缝衔接
+    final effectivePrimary = isDark ? t.ink : const Color(0xFF5C4033);
+    final textSecondary = isDark ? t.ink3 : const Color(0xFF8D7B68);
+    final textDisabled = isDark ? t.ink4 : const Color(0xFFB5A998);
 
-    final effectiveBg = isDark ? t.paper : bgOatmeal;
-    final effectivePrimary = isDark ? t.ink : primaryCaramel;
+    // 动态沉浸式系统栏与底部手势条（深浅色完美统一，杜绝暗色模式闪白条）
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: effectiveBg,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: effectiveBg,
@@ -243,7 +242,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Every Poop, Accounted For.',
                       style: TextStyle(
                         fontSize: 13,

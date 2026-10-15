@@ -13,6 +13,7 @@ import '../../domain/record_state.dart';
 import '../../providers.dart';
 import '../../state/calendar_data.dart';
 import '../../theme/tokens.dart';
+import '../widgets/expand_toggle_button.dart';
 import '../widgets/poop_button_icon.dart';
 import '../widgets/pooper_picker.dart';
 import '../widgets/sheet_shell.dart';
@@ -150,15 +151,11 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: 14),
 
             // ---------------- 时间 ----------------
-            SheetFieldLabel(
-              text: '时间',
-              trailing: dur == null ? null : '时长 ${formatDuration(dur)}',
-            ),
+            const SheetFieldLabel(text: '时间'),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  flex: 10,
                   child: _TimeCard(
                     label: '开始',
                     value: hhmm(r.startedAt),
@@ -168,81 +165,109 @@ class _Body extends ConsumerWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: dur == null
-                              ? (state == RecordState.active ? t.liveSoft : t.paperDeep)
-                              : t.brandSoft,
-                          borderRadius: BorderRadius.circular(PoopRadii.pill),
-                          border: Border.all(
-                            color: dur == null
-                                ? (state == RecordState.active
-                                    ? t.live.withValues(alpha: 0.35)
-                                    : t.lineSoft)
-                                : t.brand.withValues(alpha: 0.3),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (dur == null && state == RecordState.active) ...[
-                              Container(
-                                width: 5,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  color: t.live,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                            ],
-                            Text(
-                              dur == null ? '进行中' : formatDuration(dur),
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                color: dur == null
-                                    ? (state == RecordState.active ? t.live : t.ink3)
-                                    : t.brandInk,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Icon(
-                        LucideIcons.arrowRight,
-                        size: 14,
-                        color: dur == null ? t.ink4 : t.brandInk,
-                      ),
-                    ],
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: t.paperDeep,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: t.lineSoft),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      LucideIcons.arrowRight,
+                      size: 14,
+                      color: t.brandInk,
+                    ),
                   ),
                 ),
                 Expanded(
-                  flex: 10,
                   child: _TimeCard(
                     label: '结束',
                     value: r.endedAt == null
                         ? _endPlaceholder(state)
                         : hhmm(r.endedAt!),
-                    action: r.endedAt == null ? '补填' : '清除',
+                    action: r.endedAt == null
+                        ? (state == RecordState.active ? '记结束' : '补记时间')
+                        : '改时间',
                     icon: LucideIcons.flag,
                     empty: r.endedAt == null,
-                    onTap: r.endedAt == null
-                        ? () => _editEnd(context, ref)
-                        : () => _clearEnd(context, ref),
+                    onTap: () => _editEnd(context, ref),
+                    onSecondaryTap: r.endedAt != null
+                        ? () => _clearEnd(context, ref)
+                        : null,
+                    secondaryAction: r.endedAt != null ? '清除' : null,
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+
+            // 时长与状态全宽展示栏：100% 容纳任何长文本，彻底消除截断
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
+              decoration: BoxDecoration(
+                color: dur == null
+                    ? (state == RecordState.active ? t.liveSoft : t.paperDeep)
+                    : t.brandSoft,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: dur == null
+                      ? (state == RecordState.active
+                          ? t.live.withValues(alpha: 0.35)
+                          : t.lineSoft)
+                      : t.brand.withValues(alpha: 0.25),
+                  width: 0.9,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (dur == null && state == RecordState.active) ...[
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: t.live,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '正在屙 · 已屙 ${formatDuration(Duration(minutes: minutesBetween(r.startedAt, now)))}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: t.live,
+                      ),
+                    ),
+                  ] else if (dur != null) ...[
+                    Icon(LucideIcons.timer, size: 14, color: t.brandInk),
+                    const SizedBox(width: 6),
+                    Text(
+                      '如厕时长：${formatDuration(dur)}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: t.brandInk,
+                      ),
+                    ),
+                  ] else ...[
+                    Icon(LucideIcons.info, size: 13, color: t.ink3),
+                    const SizedBox(width: 6),
+                    Text(
+                      '未记结束时间 · 时长不详',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: t.ink3,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -342,7 +367,7 @@ class _Body extends ConsumerWidget {
                       },
                     ),
                     // 底部避让间距充足留白，保证滚动到底部时「添加备注」整个按钮完整舒展，绝不被吸底栏紧贴或遮挡
-                    const SizedBox(height: 38),
+                    const SizedBox(height: 52),
                   ],
                 );
               },
@@ -438,6 +463,7 @@ class _Body extends ConsumerWidget {
     final at = await pickDateTime(
       context,
       initial: detail.record.endedAt ?? DateTime.now(),
+      baseStartTime: detail.record.startedAt,
     );
     if (at == null || !context.mounted) return;
     final res = await ref.read(databaseProvider).updateEndedAt(recordId, at);
@@ -459,88 +485,93 @@ class _Body extends ConsumerWidget {
     final t = context.tokens;
     final controller = TextEditingController();
 
-    final text = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: t.paper,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: t.lineSoft),
-        ),
-        title: Text(
-          '自定义便便感受',
-          style: displayStyle(
-            size: 17.5,
-            letterSpacing: 0.5,
-            color: t.ink,
+    final String? text;
+    try {
+      text = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: t.paper,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: t.lineSoft),
           ),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 20,
-          style: TextStyle(fontSize: 14.5, color: t.ink),
-          decoration: InputDecoration(
-            hintText: '比如：很顺畅、拉肚子、干硬',
-            hintStyle: TextStyle(fontSize: 13, color: t.ink3),
-            filled: true,
-            fillColor: t.surface,
-            counterText: '',
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: t.lineSoft),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: t.lineSoft),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: t.brandInk, width: 1.5),
+          title: Text(
+            '自定义便便感受',
+            style: displayStyle(
+              size: 17.5,
+              letterSpacing: 0.5,
+              color: t.ink,
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              '取消',
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: t.ink3,
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 20,
+            style: TextStyle(fontSize: 14.5, color: t.ink),
+            decoration: InputDecoration(
+              hintText: '比如：很顺畅、拉肚子、干硬',
+              hintStyle: TextStyle(fontSize: 13, color: t.ink3),
+              filled: true,
+              fillColor: t.surface,
+              counterText: '',
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.lineSoft),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.lineSoft),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.brandInk, width: 1.5),
               ),
             ),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: t.brandFill,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            onPressed: () {
-              final val = controller.text.trim();
-              Navigator.of(ctx).pop(val.isEmpty ? null : val);
-            },
-            child: const Text(
-              '添加并选用',
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(
+                '取消',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: t.ink3,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: t.brandFill,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              onPressed: () {
+                final val = controller.text.trim();
+                Navigator.of(ctx).pop(val.isEmpty ? null : val);
+              },
+              child: const Text(
+                '添加并选用',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
 
     if (text == null || !context.mounted) return;
     await ref.read(databaseProvider).createNoteTemplate(text);
@@ -610,35 +641,39 @@ Future<String?> _promptText(
   BuildContext context, {
   required String title,
   required String initial,
-}) {
+}) async {
   final controller = TextEditingController(text: initial);
-  return showDialog<String>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        maxLines: null,
-        minLines: 2,
-        maxLength: 200,
-        decoration: const InputDecoration(hintText: '写点什么…'),
+  try {
+    return await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: null,
+          minLines: 2,
+          maxLength: 200,
+          decoration: const InputDecoration(hintText: '写点什么…'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final t = controller.text.trim();
+              Navigator.of(ctx).pop(t.isEmpty ? null : t);
+            },
+            child: const Text('保存'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('取消'),
-        ),
-        TextButton(
-          onPressed: () {
-            final t = controller.text.trim();
-            Navigator.of(ctx).pop(t.isEmpty ? null : t);
-          },
-          child: const Text('保存'),
-        ),
-      ],
-    ),
-  );
+    );
+  } finally {
+    controller.dispose();
+  }
 }
 
 /// 精致手帐质感的「开始 / 结束」时间卡片。
@@ -648,6 +683,8 @@ class _TimeCard extends StatefulWidget {
     required this.value,
     required this.action,
     required this.onTap,
+    this.secondaryAction,
+    this.onSecondaryTap,
     this.empty = false,
     this.icon = LucideIcons.clock,
   });
@@ -656,6 +693,8 @@ class _TimeCard extends StatefulWidget {
   final String value;
   final String action;
   final VoidCallback onTap;
+  final String? secondaryAction;
+  final VoidCallback? onSecondaryTap;
   final bool empty;
   final IconData icon;
 
@@ -721,7 +760,32 @@ class _TimeCardState extends State<_TimeCard> {
                     ),
                   ),
                   const Spacer(),
-                  // 右侧动作胶囊（替代干瘪文字超链接）
+                  // 可选辅助次级动作（如清除）
+                  if (widget.secondaryAction != null && widget.onSecondaryTap != null) ...[
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        widget.onSecondaryTap!();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: t.paperDeep,
+                          borderRadius: BorderRadius.circular(PoopRadii.pill),
+                        ),
+                        child: Text(
+                          widget.secondaryAction!,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: t.danger,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  // 主操作胶囊（改时间 / 补记时间 / 记结束）
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                     decoration: BoxDecoration(
@@ -811,18 +875,32 @@ class _NoteRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          GestureDetector(
-            onTap: onEdit,
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(LucideIcons.pencil, size: 14, color: t.ink4),
+          Tooltip(
+            message: '修改这条备注',
+            preferBelow: false,
+            verticalOffset: 16,
+            waitDuration: const Duration(milliseconds: 200),
+            triggerMode: TooltipTriggerMode.longPress,
+            child: GestureDetector(
+              onTap: onEdit,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(LucideIcons.pencil, size: 14, color: t.ink4),
+              ),
             ),
           ),
-          GestureDetector(
-            onTap: onDelete,
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(LucideIcons.trash2, size: 14, color: t.ink4),
+          Tooltip(
+            message: '删除这条备注',
+            preferBelow: false,
+            verticalOffset: 16,
+            waitDuration: const Duration(milliseconds: 200),
+            triggerMode: TooltipTriggerMode.longPress,
+            child: GestureDetector(
+              onTap: onDelete,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(LucideIcons.trash2, size: 14, color: t.ink4),
+              ),
             ),
           ),
         ],
@@ -931,36 +1009,28 @@ class _DetailTopicChipState extends State<_DetailTopicChip> {
                 : null,
             color: isSelected ? null : t.paperDeep,
             borderRadius: BorderRadius.circular(PoopRadii.pill),
-            border: isSelected
-                ? null
-                : Border.all(color: t.lineSoft, width: 1.0),
+            border: Border.all(
+              color: isSelected ? Colors.transparent : t.lineSoft,
+              width: 1.0,
+            ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: t.brandFill.withValues(alpha: 0.3),
+                      color: t.brandFill.withValues(alpha: 0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
                   ]
                 : null,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isSelected) ...[
-                const Icon(LucideIcons.check, size: 13, color: Colors.white),
-                const SizedBox(width: 4),
-              ],
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? Colors.white : t.ink,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              color: isSelected ? Colors.white : t.ink,
+              letterSpacing: 0.2,
+            ),
           ),
         ),
       ),
@@ -1021,6 +1091,7 @@ class _DetailTopicGridState extends State<_DetailTopicGrid> {
 
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AnimatedSize(
           duration: const Duration(milliseconds: 240),
@@ -1033,17 +1104,20 @@ class _DetailTopicGridState extends State<_DetailTopicGrid> {
                 constraints: _expanded
                     ? const BoxConstraints()
                     : const BoxConstraints(maxHeight: 78),
-                child: ClipRect(
-                  child: wrapWidget,
+                child: Padding(
+                  padding: EdgeInsets.only(right: !_expanded ? 28 : 0),
+                  child: ClipRect(
+                    child: wrapWidget,
+                  ),
                 ),
               ),
-              // 折叠状态下底部平滑渐隐遮罩（如被底色自然遮盖）
-              if (!_expanded)
+              // 折叠状态下底部平滑渐隐遮罩并在右下角展示微悬浮圆形展开按钮
+              if (!_expanded) ...[
                 Positioned(
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  height: 38,
+                  height: 36,
                   child: IgnorePointer(
                     child: Container(
                       decoration: BoxDecoration(
@@ -1052,60 +1126,48 @@ class _DetailTopicGridState extends State<_DetailTopicGrid> {
                           end: Alignment.bottomCenter,
                           colors: [
                             t.paper.withValues(alpha: 0.0),
-                            t.paper.withValues(alpha: 0.96),
+                            t.paper.withValues(alpha: 0.82),
+                            t.paper,
                           ],
+                          stops: const [0.0, 0.5, 1.0],
                         ),
                       ),
                     ),
                   ),
                 ),
+                Positioned(
+                  right: 2,
+                  bottom: 2,
+                  child: ExpandToggleButton(
+                    isExpanded: false,
+                    onToggle: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _expanded = true);
+                    },
+                    size: 22,
+                    semanticLabel: '展开全部感受',
+                  ),
+                ),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 6),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            HapticFeedback.selectionClick();
-            setState(() => _expanded = !_expanded);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-            decoration: BoxDecoration(
-              color: _expanded ? t.paperDeep : t.brandSoft,
-              borderRadius: BorderRadius.circular(PoopRadii.pill),
-              border: Border.all(
-                color: _expanded
-                    ? t.lineSoft
-                    : t.brand.withValues(alpha: 0.22),
-                width: 0.8,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _expanded
-                      ? '收起感受'
-                      : '展开全部感受（共 ${sortedTemplates.length} 个）',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: _expanded ? t.ink2 : t.brandInk,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  _expanded
-                      ? LucideIcons.chevronUp
-                      : LucideIcons.chevronDown,
-                  size: 14,
-                  color: _expanded ? t.ink2 : t.brandInk,
-                ),
-              ],
+        // 展开状态下在底部右侧呈现微悬浮圆形收起按钮
+        if (_expanded) ...[
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ExpandToggleButton(
+              isExpanded: true,
+              onToggle: () {
+                HapticFeedback.selectionClick();
+                setState(() => _expanded = false);
+              },
+              size: 22,
+              semanticLabel: '收起感受',
             ),
           ),
-        ),
+        ],
       ],
     );
   }

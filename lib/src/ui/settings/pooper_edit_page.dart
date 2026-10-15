@@ -71,40 +71,30 @@ class _PooperEditPageState extends ConsumerState<PooperEditPage> {
     super.dispose();
   }
 
-  /// 从相册选取图片并调起截取编辑界面（支持取消后重新回到相册选图）
+  /// 从相册选取图片并调起截取编辑界面
   Future<void> _pickAndCropAvatar() async {
     try {
       final picker = ImagePicker();
-      while (mounted) {
-        final XFile? file = await picker.pickImage(
-          source: ImageSource.gallery,
-          maxWidth: 2048,
-          maxHeight: 2048,
-          imageQuality: 95,
-        );
-        // 用户在相册界面取消，退出整个选图流程
-        if (file == null || !mounted) break;
+      final XFile? file = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 95,
+      );
+      if (file == null || !mounted) return;
 
-        final rawBytes = await file.readAsBytes();
-        if (!mounted) break;
+      final rawBytes = await file.readAsBytes();
+      if (!mounted) return;
 
-        final CropResult? result = await Navigator.of(context).push<CropResult>(
-          smoothPageRoute(AvatarCropperPage(imageBytes: rawBytes)),
-        );
+      final Uint8List? croppedBytes = await Navigator.of(context).push<Uint8List>(
+        smoothPageRoute(AvatarCropperPage(initialImageBytes: rawBytes)),
+      );
 
-        if (result == null || !mounted || result.action == CropExitAction.cancel) {
-          break;
-        } else if (result.action == CropExitAction.repick) {
-          // 在裁切界面取消或点击重选，循环跳回上一层相册继续选图
-          continue;
-        } else if (result.action == CropExitAction.confirm &&
-            result.croppedBytes != null) {
-          setState(() {
-            _customAvatarBlob = result.croppedBytes;
-            _avatarType = _AvatarType.custom;
-          });
-          break;
-        }
+      if (croppedBytes != null && mounted) {
+        setState(() {
+          _customAvatarBlob = croppedBytes;
+          _avatarType = _AvatarType.custom;
+        });
       }
     } catch (e) {
       if (mounted) {

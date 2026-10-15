@@ -6,17 +6,12 @@ import '../../theme/tokens.dart';
 import '../widgets/sheet_shell.dart';
 
 /// 弹出符合暖奶油手账焦糖美学的高颜值一体化时间选择器。
-///
-/// 彻底告别 Material 官方粗糙丑陋的二次连环弹窗（先弹日历方块、再弹时钟表盘）：
-///   - 底部抽屉一站式时分双滚轮（带机械齿轮触感反馈）
-///   - 实时等宽大数字时分看板与日期徽标
-///   - 预设快捷微调胶囊（当前时刻、±5分钟、整点）
-///   - 单次确认保存，零多余弹窗步骤
 Future<DateTime?> pickDateTime(
   BuildContext context, {
   required DateTime initial,
   DateTime? firstDate,
   DateTime? lastDate,
+  DateTime? baseStartTime,
 }) {
   return showModalBottomSheet<DateTime>(
     context: context,
@@ -26,6 +21,7 @@ Future<DateTime?> pickDateTime(
       initial: initial,
       firstDate: firstDate,
       lastDate: lastDate,
+      baseStartTime: baseStartTime,
     ),
   );
 }
@@ -35,11 +31,13 @@ class _CustomDateTimePickerSheet extends StatefulWidget {
     required this.initial,
     this.firstDate,
     this.lastDate,
+    this.baseStartTime,
   });
 
   final DateTime initial;
   final DateTime? firstDate;
   final DateTime? lastDate;
+  final DateTime? baseStartTime;
 
   @override
   State<_CustomDateTimePickerSheet> createState() =>
@@ -139,12 +137,11 @@ class _CustomDateTimePickerSheetState
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final hourStr = _selectedHour.toString().padLeft(2, '0');
-    final minStr = _selectedMinute.toString().padLeft(2, '0');
+    final hasBaseStart = widget.baseStartTime != null;
 
     return SheetShell(
       title: '调整记录时间',
-      subtitle: '时分双滚轮精密微调，一次确认保存',
+      subtitle: hasBaseStart ? '时分双滚轮微调 · 可基于开始时间一键快捷加时' : '时分双滚轮精密微调，一次确认保存',
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
@@ -218,66 +215,53 @@ class _CustomDateTimePickerSheetState
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // ---------------- 2. 居中时分大看板看板 ----------------
+            // ---------------- 2. 双滚轮时间选择器（核心交互中心，不再重复展示静态大看板） ----------------
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              height: 148,
               decoration: BoxDecoration(
                 color: t.surface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: t.brand.withValues(alpha: 0.35),
-                  width: 1.2,
-                ),
+                border: Border.all(color: t.lineSoft),
                 boxShadow: [
                   BoxShadow(
                     color: t.isDark
                         ? Colors.black.withValues(alpha: 0.2)
-                        : const Color(0x102D1B0D),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
+                        : const Color(0x0A2D1B0D),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _TimeDigitCard(digit: hourStr, unit: '时'),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Text(
-                      ':',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: t.brandInk,
-                        height: 1.0,
-                      ),
-                    ),
-                  ),
-                  _TimeDigitCard(digit: minStr, unit: '分'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // ---------------- 3. 双滚轮精密旋转区域 ----------------
-            SizedBox(
-              height: 136,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   // 滚轮正中焦糖高光选中条
                   Container(
                     height: _itemExtent,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
                       color: t.brandSoft.withValues(alpha: 0.65),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: t.brandInk.withValues(alpha: 0.45),
+                        color: t.brandInk.withValues(alpha: 0.40),
                         width: 1.2,
+                      ),
+                    ),
+                  ),
+
+                  // 中间冒号分割符
+                  IgnorePointer(
+                    child: Center(
+                      child: Text(
+                        ':',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: t.brandInk,
+                          height: 1.0,
+                        ),
                       ),
                     ),
                   ),
@@ -287,16 +271,17 @@ class _CustomDateTimePickerSheetState
                     child: IgnorePointer(
                       child: Container(
                         decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              t.paper.withValues(alpha: 0.85),
-                              t.paper.withValues(alpha: 0.0),
-                              t.paper.withValues(alpha: 0.0),
-                              t.paper.withValues(alpha: 0.85),
+                              t.surface.withValues(alpha: 0.90),
+                              t.surface.withValues(alpha: 0.0),
+                              t.surface.withValues(alpha: 0.0),
+                              t.surface.withValues(alpha: 0.90),
                             ],
-                            stops: const [0.0, 0.28, 0.72, 1.0],
+                            stops: const [0.0, 0.26, 0.74, 1.0],
                           ),
                         ),
                       ),
@@ -325,7 +310,7 @@ class _CustomDateTimePickerSheetState
                                 child: Text(
                                   i.toString().padLeft(2, '0'),
                                   style: TextStyle(
-                                    fontSize: isSelected ? 21 : 16,
+                                    fontSize: isSelected ? 24 : 16,
                                     fontWeight: isSelected
                                         ? FontWeight.w800
                                         : FontWeight.w500,
@@ -340,11 +325,7 @@ class _CustomDateTimePickerSheetState
                           ),
                         ),
                       ),
-                      Container(
-                        width: 1,
-                        height: 24,
-                        color: t.lineSoft,
-                      ),
+                      const SizedBox(width: 24), // 为冒号留出空间
                       // 分钟滚轮 (00 ~ 59)
                       Expanded(
                         child: ListWheelScrollView.useDelegate(
@@ -364,7 +345,7 @@ class _CustomDateTimePickerSheetState
                                 child: Text(
                                   i.toString().padLeft(2, '0'),
                                   style: TextStyle(
-                                    fontSize: isSelected ? 21 : 16,
+                                    fontSize: isSelected ? 24 : 16,
                                     fontWeight: isSelected
                                         ? FontWeight.w800
                                         : FontWeight.w500,
@@ -384,9 +365,9 @@ class _CustomDateTimePickerSheetState
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
 
-            // ---------------- 4. 快捷微调药丸胶囊 ----------------
+            // ---------------- 3. 贴合如厕真实场景的加时药丸 ----------------
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -400,18 +381,62 @@ class _CustomDateTimePickerSheetState
                     _scrollToTime(now.hour, now.minute);
                   },
                 ),
-                _PresetChip(
-                  label: '-5分钟',
-                  onTap: () => _adjustMinutes(-5),
-                ),
-                _PresetChip(
-                  label: '+5分钟',
-                  onTap: () => _adjustMinutes(5),
-                ),
-                _PresetChip(
-                  label: '整点',
-                  onTap: () => _scrollToTime(_selectedHour, 0),
-                ),
+                if (hasBaseStart) ...[
+                  // 针对结束时间：在开始时间上添加对应分钟数
+                  _PresetChip(
+                    label: '5分钟',
+                    onTap: () {
+                      final target = widget.baseStartTime!.add(const Duration(minutes: 5));
+                      _scrollToTime(target.hour, target.minute);
+                    },
+                  ),
+                  _PresetChip(
+                    label: '10分钟',
+                    onTap: () {
+                      final target = widget.baseStartTime!.add(const Duration(minutes: 10));
+                      _scrollToTime(target.hour, target.minute);
+                    },
+                  ),
+                  _PresetChip(
+                    label: '15分钟',
+                    onTap: () {
+                      final target = widget.baseStartTime!.add(const Duration(minutes: 15));
+                      _scrollToTime(target.hour, target.minute);
+                    },
+                  ),
+                  _PresetChip(
+                    label: '20分钟',
+                    onTap: () {
+                      final target = widget.baseStartTime!.add(const Duration(minutes: 20));
+                      _scrollToTime(target.hour, target.minute);
+                    },
+                  ),
+                  _PresetChip(
+                    label: '30分钟',
+                    onTap: () {
+                      final target = widget.baseStartTime!.add(const Duration(minutes: 30));
+                      _scrollToTime(target.hour, target.minute);
+                    },
+                  ),
+                ] else ...[
+                  // 针对开始时间微调：提供往前推算常用区间
+                  _PresetChip(
+                    label: '-5分钟',
+                    onTap: () => _adjustMinutes(-5),
+                  ),
+                  _PresetChip(
+                    label: '-10分钟',
+                    onTap: () => _adjustMinutes(-10),
+                  ),
+                  _PresetChip(
+                    label: '-15分钟',
+                    onTap: () => _adjustMinutes(-15),
+                  ),
+                  _PresetChip(
+                    label: '-30分钟',
+                    onTap: () => _adjustMinutes(-30),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 18),

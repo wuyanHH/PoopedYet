@@ -78,13 +78,20 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(6, 8, 12, 4),
       child: Row(
         children: [
-          InkWell(
-            onTap: () => Navigator.of(context).maybePop(),
-            borderRadius: BorderRadius.circular(11),
-            child: SizedBox(
-              width: 40,
-              height: 40,
-              child: Icon(LucideIcons.chevronLeft, size: 20, color: t.ink2),
+          Tooltip(
+            message: '返回上一页',
+            preferBelow: true,
+            verticalOffset: 24,
+            waitDuration: const Duration(milliseconds: 200),
+            triggerMode: TooltipTriggerMode.longPress,
+            child: InkWell(
+              onTap: () => Navigator.of(context).maybePop(),
+              borderRadius: BorderRadius.circular(11),
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Icon(LucideIcons.chevronLeft, size: 20, color: t.ink2),
+              ),
             ),
           ),
           Text(
@@ -97,34 +104,41 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          InkWell(
-            onTap: () => Navigator.of(context).push(
-              smoothPageRoute(const HistoryFilterPage()),
-            ),
-            borderRadius: BorderRadius.circular(11),
-            child: SizedBox(
-              width: 40,
-              height: 40,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(LucideIcons.slidersHorizontal, size: 18, color: t.ink2),
-                  // 有筛选条件时点一个小圆点 —— 否则用户会忘了自己筛过，
-                  // 然后以为"记录少了"。
-                  if (filter.activeCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: t.brandFill,
-                          shape: BoxShape.circle,
+          Tooltip(
+            message: '筛选历史记录',
+            preferBelow: true,
+            verticalOffset: 24,
+            waitDuration: const Duration(milliseconds: 200),
+            triggerMode: TooltipTriggerMode.longPress,
+            child: InkWell(
+              onTap: () => Navigator.of(context).push(
+                smoothPageRoute(const HistoryFilterPage()),
+              ),
+              borderRadius: BorderRadius.circular(11),
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(LucideIcons.slidersHorizontal, size: 18, color: t.ink2),
+                    // 有筛选条件时点一个小圆点 —— 否则用户会忘了自己筛过，
+                    // 然后以为"记录少了"。
+                    if (filter.activeCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: t.brandFill,
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

@@ -29,20 +29,44 @@ class NoteComposer extends StatefulWidget {
 
 class _NoteComposerState extends State<NoteComposer> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(_onChanged);
+    _focusNode.addListener(_onFocusChanged);
   }
 
   void _onChanged() => setState(() {});
 
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _scrollToVisible();
+    }
+  }
+
+  void _scrollToVisible() {
+    // 延迟等键盘弹起与软键盘避让计算生效后，将整个输入框及下方的「添加备注」按钮完整滚动到视口中
+    Future.delayed(const Duration(milliseconds: 220), () {
+      if (mounted) {
+        Scrollable.ensureVisible(
+          context,
+          alignment: 1.0,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
   @override
   void dispose() {
     _controller.removeListener(_onChanged);
+    _focusNode.removeListener(_onFocusChanged);
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -71,6 +95,9 @@ class _NoteComposerState extends State<NoteComposer> {
         TextField(
           key: const ValueKey('noteInput'),
           controller: _controller,
+          focusNode: _focusNode,
+          onTap: _scrollToVisible,
+          scrollPadding: const EdgeInsets.only(bottom: 120),
           maxLines: null,
           minLines: 2,
           maxLength: widget.maxLength,

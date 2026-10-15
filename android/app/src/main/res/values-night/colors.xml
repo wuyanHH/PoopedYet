@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 暗色/夜间模式下的系统底色：严格对齐 Flutter 端 t.paper (0xFF191614) 手账深纸色 -->
+    <color name="splash_background">#191614</color>
+    <color name="primary_caramel">#D98845</color>
+    <color name="accent_yellow">#E4B34F</color>
+    <color name="accent_sage">#76A08A</color>
+
+    <!-- 桌面小组件 (AppWidget) 暗色主题色彩体系 -->
+    <color name="widget_paper">#191614</color>
+    <color name="widget_surface">#24201C</color>
+    <color name="widget_surface_2">#2F2B26</color>
+    <color name="widget_line">#3D3730</color>
+    <color name="widget_ink">#E8DFD3</color>
+    <color name="widget_ink_2">#B5A695</color>
+    <color name="widget_ink_3">#807365</color>
+    <color name="widget_brand_fill">#9E521E</color>
+    <color name="widget_brand_ink">#F5A962</color>
+    <color name="widget_brand_soft">#3D2814</color>
+    <color name="widget_live">#4CAF50</color>
+</resources>

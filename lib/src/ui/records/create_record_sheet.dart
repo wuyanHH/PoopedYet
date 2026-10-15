@@ -347,14 +347,16 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
                     onTap: () => _pickTime(isStart: true),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                // 中间状态/时长与流向指示（固定宽度 76px，绝不挤压左右两端卡片，彻底消除宽度抖动）
+                SizedBox(
+                  width: 76,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
+                          horizontal: 6,
                           vertical: 3.5,
                         ),
                         decoration: BoxDecoration(
@@ -369,6 +371,7 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             if (_end == null) ...[
                               Container(
@@ -381,12 +384,16 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
                               ),
                               const SizedBox(width: 3.5),
                             ],
-                            Text(
-                              _end == null ? '进行中' : _durLabel(),
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                color: _end == null ? t.ink3 : t.brandInk,
+                            Flexible(
+                              child: Text(
+                                _end == null ? '进行中' : _durLabel(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: _end == null ? t.ink3 : t.brandInk,
+                                ),
                               ),
                             ),
                           ],
@@ -698,6 +705,7 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
       initial: isStart
           ? _start
           : (_end ?? _start.add(const Duration(minutes: 10))),
+      baseStartTime: isStart ? null : _start,
     );
     if (at == null || !mounted) return;
     setState(() {
@@ -864,94 +872,99 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
     final t = context.tokens;
     final controller = TextEditingController();
 
-    final text = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: t.paper,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: t.lineSoft),
-        ),
-        title: Text(
-          '自定义便便感受',
-          style: displayStyle(
-            size: 17.5,
-            letterSpacing: 0.5,
-            color: t.ink,
+    final String? text;
+    try {
+      text = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: t.paper,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: t.lineSoft),
           ),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 20,
-          style: TextStyle(fontSize: 14.5, color: t.ink),
-          decoration: InputDecoration(
-            hintText: '比如：很顺畅、拉肚子、干硬',
-            hintStyle: TextStyle(fontSize: 13, color: t.ink3),
-            filled: true,
-            fillColor: t.surface,
-            counterText: '',
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: t.lineSoft),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: t.lineSoft),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: t.brandInk, width: 1.5),
+          title: Text(
+            '自定义便便感受',
+            style: displayStyle(
+              size: 17.5,
+              letterSpacing: 0.5,
+              color: t.ink,
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              '取消',
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: t.ink3,
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 20,
+            style: TextStyle(fontSize: 14.5, color: t.ink),
+            decoration: InputDecoration(
+              hintText: '比如：很顺畅、拉肚子、干硬',
+              hintStyle: TextStyle(fontSize: 13, color: t.ink3),
+              filled: true,
+              fillColor: t.surface,
+              counterText: '',
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.lineSoft),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.lineSoft),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.brandInk, width: 1.5),
               ),
             ),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: t.brandFill,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            onPressed: () {
-              final val = controller.text.trim();
-              Navigator.of(ctx).pop(val.isEmpty ? null : val);
-            },
-            child: const Text(
-              '添加并选用',
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(
+                '取消',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: t.ink3,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: t.brandFill,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              onPressed: () {
+                final val = controller.text.trim();
+                Navigator.of(ctx).pop(val.isEmpty ? null : val);
+              },
+              child: const Text(
+                '添加并选用',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
 
     if (text == null || !mounted) return;
     await ref.read(databaseProvider).createNoteTemplate(text);
     ref.invalidate(noteTemplatesProvider);
     setState(() {
-      _selectedTags.add(text);
+      _selectedTags.add(text!);
     });
   }
 
@@ -1011,36 +1024,28 @@ class _TopicChipState extends State<_TopicChip> {
                 : null,
             color: isSelected ? null : t.paperDeep,
             borderRadius: BorderRadius.circular(PoopRadii.pill),
-            border: isSelected
-                ? null
-                : Border.all(color: t.lineSoft, width: 1.0),
+            border: Border.all(
+              color: isSelected ? Colors.transparent : t.lineSoft,
+              width: 1.0,
+            ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: t.brandFill.withValues(alpha: 0.3),
+                      color: t.brandFill.withValues(alpha: 0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
                   ]
                 : null,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isSelected) ...[
-                const Icon(LucideIcons.check, size: 13, color: Colors.white),
-                const SizedBox(width: 4),
-              ],
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? Colors.white : t.ink,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              color: isSelected ? Colors.white : t.ink,
+              letterSpacing: 0.2,
+            ),
           ),
         ),
       ),

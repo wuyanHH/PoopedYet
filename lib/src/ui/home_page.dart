@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../calendar/calendar_math.dart';
 import '../dev/demo_seeder.dart';
 import '../providers.dart';
 import '../state/calendar_data.dart';
@@ -55,73 +56,106 @@ class HomePage extends ConsumerWidget {
     final isLandscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
 
+    final view = ref.watch(calendarViewProvider);
+    final today = ref.watch(todayProvider);
+    final isViewingToday = isSameDay(view.selectedDate, today);
+
     return Scaffold(
       backgroundColor: t.paper,
       body: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _AppBar(isLandscape: isLandscape),
-            if (!isLandscape) ...[
-              const FirstRunHint(),
-              const SizedBox(height: 4),
-              const RepaintBoundary(child: CalendarCard()),
-              Expanded(
-                child: RepaintBoundary(
-                  child: DaySection(
-                    onTapRecord: (id) =>
-                        showRecordDetailSheet(context, recordId: id),
+        child: isLandscape
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 左侧日历专栏：纯净日历区，高度完全释放，杜绝被顶栏挤压
+                  Expanded(
+                    flex: 5,
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(6, 8, 6, 12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          FirstRunHint(),
+                          SizedBox(height: 2),
+                          RepaintBoundary(child: CalendarCard()),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ] else ...[
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // 左侧日历栏：支持平滑滚动，避免任何低高度横屏设备发生溢出
-                    Expanded(
-                      flex: 5,
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            FirstRunHint(),
-                            SizedBox(height: 2),
-                            RepaintBoundary(child: CalendarCard()),
-                          ],
+                  // 中间细微垂直分隔线，增强分栏质感
+                  VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: t.lineSoft.withValues(alpha: 0.6),
+                  ),
+                  // 右侧内容专栏：上方为「屙了么」品牌标题与「历史」「设置」操作栏，下方为选中日期的记录列表
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const _AppBar(isLandscape: true),
+                        Expanded(
+                          child: RepaintBoundary(
+                            child: DaySection(
+                              onTapRecord: (id) =>
+                                  showRecordDetailSheet(context, recordId: id),
+                            ),
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _AppBar(isLandscape: false),
+                  const FirstRunHint(),
+                  const SizedBox(height: 4),
+                  const RepaintBoundary(child: CalendarCard()),
+                  Expanded(
+                    child: RepaintBoundary(
+                      child: DaySection(
+                        onTapRecord: (id) =>
+                            showRecordDetailSheet(context, recordId: id),
                       ),
                     ),
-                    // 中间细微垂直分隔线，增强分栏质感
-                    VerticalDivider(
-                      width: 1,
-                      thickness: 1,
-                      color: t.lineSoft.withValues(alpha: 0.6),
-                    ),
-                    // 右侧记录列表栏：独立滚动展示选中日期的所有记录
-                    Expanded(
-                      flex: 5,
-                      child: RepaintBoundary(
-                        child: DaySection(
-                          onTapRecord: (id) =>
-                              showRecordDetailSheet(context, recordId: id),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ],
-        ),
       ),
-      // FAB 点击弹出新建开屙记录弹窗
-      floatingActionButton: _Fab(
-        onTap: () => showCreateRecordSheet(context),
+      // 右下角悬浮按钮组：「今」（回到今天）仅在非今天时显示于开屙上方，点击回到今天，长按展示提示
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (child, anim) => ScaleTransition(
+              scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+              child: FadeTransition(opacity: anim, child: child),
+            ),
+            child: isViewingToday
+                ? const SizedBox.shrink(key: ValueKey('today_hidden'))
+                : _TodayButton(
+                    key: const ValueKey('today_visible'),
+                    onTap: () {
+                      final currentToday = ref.read(todayProvider);
+                      final nav = ref.read(calendarViewProvider.notifier);
+                      nav.selectDay(currentToday);
+                      nav.goToMonth(DateTime(currentToday.year, currentToday.month));
+                    },
+                  ),
+          ),
+          const SizedBox(height: 10),
+          _Fab(
+            onTap: () => showCreateRecordSheet(context),
+          ),
+        ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
@@ -286,45 +320,57 @@ class _AppBarAction extends StatefulWidget {
 
 class _AppBarActionState extends State<_AppBarAction> {
   bool _pressed = false;
+  final GlobalKey<TooltipState> _tooltipKey = GlobalKey<TooltipState>();
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return Semantics(
-      label: widget.tooltip,
-      button: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) => setState(() => _pressed = false),
-        onTapCancel: () => setState(() => _pressed = false),
-        onTap: () {
-          HapticFeedback.lightImpact();
-          widget.onTap();
-        },
-        child: AnimatedScale(
-          scale: _pressed ? 0.92 : 1.0,
-          duration: PoopMotions.pressDuration,
-          curve: PoopMotions.pressCurve,
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: t.surface,
-              borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: t.lineSoft, width: 1.0),
-              boxShadow: [
-                BoxShadow(
-                  color: t.isDark
-                      ? Colors.black.withValues(alpha: 0.25)
-                      : const Color(0x0A2D1B0D),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1.5),
-                ),
-              ],
+    return Tooltip(
+      key: _tooltipKey,
+      message: widget.tooltip ?? '',
+      preferBelow: true,
+      verticalOffset: 24,
+      waitDuration: const Duration(milliseconds: 150),
+      child: Semantics(
+        label: widget.tooltip,
+        button: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            widget.onTap();
+          },
+          onLongPress: () {
+            HapticFeedback.mediumImpact();
+            _tooltipKey.currentState?.ensureTooltipVisible();
+          },
+          child: AnimatedScale(
+            scale: _pressed ? 0.92 : 1.0,
+            duration: PoopMotions.pressDuration,
+            curve: PoopMotions.pressCurve,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: t.surface,
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: t.lineSoft, width: 1.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: t.isDark
+                        ? Colors.black.withValues(alpha: 0.25)
+                        : const Color(0x0A2D1B0D),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1.5),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Icon(widget.icon, size: 17, color: t.ink2),
             ),
-            alignment: Alignment.center,
-            child: Icon(widget.icon, size: 17, color: t.ink2),
           ),
         ),
       ),
@@ -332,7 +378,109 @@ class _AppBarActionState extends State<_AppBarAction> {
   }
 }
 
-/// 「开屙」主操作悬浮按钮（简略紧凑形态，告别通用 '+' 号，内嵌拉屎专属矢量微雕）。
+/// 「回到今天」微悬浮日历按钮：
+/// - 位于「开屙」主按钮正上方，仅在查看非今天日期时呈现；
+/// - 采用精致日历装订小卡片造型，中下方呈现温润有型的「今」字；
+/// - 点击平滑回到今天，长按 100% 呼出「回到今天」提示气泡。
+class _TodayButton extends StatefulWidget {
+  const _TodayButton({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_TodayButton> createState() => _TodayButtonState();
+}
+
+class _TodayButtonState extends State<_TodayButton> {
+  bool _pressed = false;
+  final GlobalKey<TooltipState> _tooltipKey = GlobalKey<TooltipState>();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+
+    return Tooltip(
+      key: _tooltipKey,
+      message: '回到今天',
+      preferBelow: false,
+      verticalOffset: 24,
+      waitDuration: const Duration(milliseconds: 150),
+      child: Semantics(
+        button: true,
+        label: '回到今天',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) {
+            setState(() => _pressed = false);
+            HapticFeedback.selectionClick();
+            widget.onTap();
+          },
+          onTapCancel: () => setState(() => _pressed = false),
+          onLongPress: () {
+            HapticFeedback.mediumImpact();
+            _tooltipKey.currentState?.ensureTooltipVisible();
+          },
+          child: AnimatedScale(
+            scale: _pressed ? 0.90 : 1.0,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOutCubic,
+            child: Container(
+              width: 38,
+              height: 38,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: t.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: t.line.withValues(alpha: 0.85),
+                  width: 1.0,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: t.isDark
+                        ? Colors.black.withValues(alpha: 0.35)
+                        : const Color(0x185E422A),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // 日历顶部装订条微雕细节
+                  Container(
+                    height: 6,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [t.brand, t.brandFill],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        '今',
+                        style: displayStyle(
+                          size: 16,
+                          letterSpacing: 0,
+                          color: t.brandInk,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 「开屙」主操作悬浮按钮（简略紧凑形态，内嵌拉屎专属矢量微雕，长按展示说明）。
 class _Fab extends StatefulWidget {
   const _Fab({required this.onTap});
 
@@ -344,62 +492,74 @@ class _Fab extends StatefulWidget {
 
 class _FabState extends State<_Fab> {
   bool _pressed = false;
+  final GlobalKey<TooltipState> _tooltipKey = GlobalKey<TooltipState>();
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
 
-    return Semantics(
-      button: true,
-      label: '开屙',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) {
-          setState(() => _pressed = false);
-          HapticFeedback.mediumImpact();
-          widget.onTap();
-        },
-        onTapCancel: () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _pressed ? 0.94 : 1.0,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOutCubic,
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [t.brand, t.brandFill],
-              ),
-              borderRadius: BorderRadius.circular(PoopRadii.pill),
-              boxShadow: [
-                BoxShadow(
-                  color: t.brandFill.withValues(alpha: t.isDark ? 0.40 : 0.30),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
+    return Tooltip(
+      key: _tooltipKey,
+      message: '开屙 · 开始记录本次如厕',
+      preferBelow: false,
+      verticalOffset: 28,
+      waitDuration: const Duration(milliseconds: 200),
+      child: Semantics(
+        button: true,
+        label: '开屙',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) {
+            setState(() => _pressed = false);
+            HapticFeedback.mediumImpact();
+            widget.onTap();
+          },
+          onTapCancel: () => setState(() => _pressed = false),
+          onLongPress: () {
+            HapticFeedback.mediumImpact();
+            _tooltipKey.currentState?.ensureTooltipVisible();
+          },
+          child: AnimatedScale(
+            scale: _pressed ? 0.94 : 1.0,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOutCubic,
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [t.brand, t.brandFill],
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const PoopButtonIcon.start(
-                  size: 20,
-                  onDarkButton: true,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '开屙',
-                  style: displayStyle(
-                    size: 14,
-                    letterSpacing: 0.8,
-                    color: Colors.white,
+                borderRadius: BorderRadius.circular(PoopRadii.pill),
+                boxShadow: [
+                  BoxShadow(
+                    color: t.brandFill.withValues(alpha: t.isDark ? 0.40 : 0.30),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const PoopButtonIcon.start(
+                    size: 20,
+                    onDarkButton: true,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '开屙',
+                    style: displayStyle(
+                      size: 14,
+                      letterSpacing: 0.8,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

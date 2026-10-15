@@ -45,8 +45,9 @@ class SheetShell extends StatelessWidget {
     final viewInsetsBottom = mediaQuery.viewInsets.bottom;
     final screenHeight = mediaQuery.size.height;
 
-    // 计算弹层的最大允许高度（防超出屏幕顶部）
-    final maxSheetHeight = (screenHeight - mediaQuery.padding.top) * maxHeightFactor;
+    // 计算弹层的最大允许高度（扣除键盘与顶部安全区，防超出屏幕顶部）
+    final availableHeight = (screenHeight - mediaQuery.padding.top - viewInsetsBottom).clamp(180.0, screenHeight);
+    final maxSheetHeight = (availableHeight * maxHeightFactor).clamp(180.0, availableHeight);
 
     // 底部安全间距：键盘弹起时由外层 padding 统一避让，键盘未弹起时给系统手势横条留出舒适间距
     final effectiveBottomSpacing = bottomBar == null
@@ -119,6 +120,7 @@ class SheetShell extends StatelessWidget {
                       ),
                     ),
                     IconButton(
+                      tooltip: '关闭',
                       onPressed: () => Navigator.of(context).pop(),
                       icon: Icon(LucideIcons.x, size: 18, color: t.ink2),
                       visualDensity: VisualDensity.compact,

@@ -2,6 +2,7 @@ package com.poopedyet.app
 
 import android.Manifest
 import android.app.Activity
+import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -110,6 +111,7 @@ class MainActivity : FlutterActivity() {
                             val liveSession = json.optJSONObject("liveSession")
                             val isLive = liveSession?.optBoolean("isLive", false) ?: false
                             if (isLive) {
+                                checkAndRequestNotificationPermission()
                                 val recordId = liveSession?.optString("recordId", "") ?: ""
                                 val startedAt = liveSession?.optLong("startedAtMillis", System.currentTimeMillis()) ?: System.currentTimeMillis()
                                 val defaultPooper = json.optJSONObject("defaultPooper")
@@ -178,25 +180,48 @@ class MainActivity : FlutterActivity() {
                     val title = call.argument<String>("title") ?: "分享备份文件"
                     if (filePath != null) {
                         try {
-                            val file = File(filePath)
-                            if (!file.exists()) {
+                            val originalFile = File(filePath)
+                            if (!originalFile.exists()) {
                                 result.error("NOT_FOUND", "备份文件不存在: $filePath", null)
                                 return@setMethodCallHandler
                             }
 
-                            val contentUri = FileProvider.getUriForFile(
-                                this,
-                                "${applicationContext.packageName}.fileprovider",
-                                file
-                            )
+                            // 优先尝试原路径 FileProvider；若受限则安全同步到 cacheDir 后分享
+                            val contentUri: Uri = try {
+                                FileProvider.getUriForFile(
+                                    this,
+                                    "${applicationContext.packageName}.fileprovider",
+                                    originalFile
+                                )
+                            } catch (e: Exception) {
+                                val shareCacheDir = File(cacheDir, "backups").apply { if (!exists()) mkdirs() }
+                                val cachedFile = File(shareCacheDir, originalFile.name)
+                                originalFile.copyTo(cachedFile, overwrite = true)
+                                FileProvider.getUriForFile(
+                                    this,
+                                    "${applicationContext.packageName}.fileprovider",
+                                    cachedFile
+                                )
+                            }
 
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "application/json"
                                 putExtra(Intent.EXTRA_STREAM, contentUri)
+                                clipData = ClipData.newRawUri("backup", contentUri)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
 
-                            val chooser = Intent.createChooser(shareIntent, title)
+                            val chooser = Intent.createChooser(shareIntent, title).apply {
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+
+                            // 为所有匹配的目标组件授予临时 URI 读权限
+                            val resInfoList = packageManager.queryIntentActivities(chooser, PackageManager.MATCH_DEFAULT_ONLY)
+                            for (resolveInfo in resInfoList) {
+                                val packageName = resolveInfo.activityInfo.packageName
+                                grantUriPermission(packageName, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+
                             startActivity(chooser)
                             result.success(true)
                         } catch (e: Exception) {

@@ -4,5 +4,8 @@
     android:height="1dp"
     android:viewportWidth="1"
     android:viewportHeight="1">
-    <!-- 完全透明占位：杜绝 Android 12+ 系统强制抓取桌面应用图标展示在启动屏正中心 -->
+    <!-- 合规完全透明占位：杜绝 Android 12+ 系统因空标签 Fallback 强制抓取桌面应用图标展示在启动屏正中心 -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M0,0h1v1h-1z" />
 </vector>

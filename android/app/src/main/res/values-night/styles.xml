@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 暗色系统模式下的冷启动阶段主题：背景锁定为暖纸色，消除白屏/黑屏闪烁 -->
+    <!-- 暗色系统模式下的冷启动阶段主题：背景锁定为暗色手账纸底色 (#191614)，消除白屏闪烁 -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
-        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
-    <!-- Flutter 引擎加载与首帧绘制阶段的主题：背景保持暖纸色，杜绝引擎接管瞬间闪白屏 -->
+    <!-- Flutter 引擎加载与首帧绘制阶段的主题：背景保持暗色手账纸底色，杜绝引擎接管瞬间闪白屏 -->
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@color/splash_background</item>
     </style>

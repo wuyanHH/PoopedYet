@@ -117,9 +117,15 @@ class _HistoryFilterPageState extends ConsumerState<HistoryFilterPage> {
                 prefixIcon: Icon(LucideIcons.search, size: 17, color: t.ink3),
                 suffixIcon: _kw.text.isEmpty
                     ? null
-                    : GestureDetector(
-                        onTap: _kw.clear,
-                        child: Icon(LucideIcons.x, size: 16, color: t.ink3),
+                    : Tooltip(
+                        message: '清空关键词',
+                        preferBelow: false,
+                        verticalOffset: 20,
+                        triggerMode: TooltipTriggerMode.longPress,
+                        child: GestureDetector(
+                          onTap: _kw.clear,
+                          child: Icon(LucideIcons.x, size: 16, color: t.ink3),
+                        ),
                       ),
                 filled: true,
                 fillColor: t.surface,
@@ -323,9 +329,16 @@ class _DateRow extends StatelessWidget {
           : '${value!.year}年${value!.month}月${value!.day}日',
       trailing: value == null
           ? const SettingsChevron()
-          : GestureDetector(
-              onTap: onClear,
-              child: Icon(LucideIcons.x, size: 16, color: t.ink3),
+          : Tooltip(
+              message: '清空此日期限制',
+              preferBelow: false,
+              verticalOffset: 20,
+              waitDuration: const Duration(milliseconds: 200),
+              triggerMode: TooltipTriggerMode.longPress,
+              child: GestureDetector(
+                onTap: onClear,
+                child: Icon(LucideIcons.x, size: 16, color: t.ink3),
+              ),
             ),
       onTap: () async {
         final picked = await showDatePicker(

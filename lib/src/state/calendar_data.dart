@@ -86,13 +86,17 @@ Map<String, List<PooperCount>> _orderBadges(
   return out;
 }
 
-/// 某一天的记录（含人、含备注），已排好序。
+/// 某一天的记录（含人、含备注），根据用户设置排好序（默认时间倒序）。
 ///
 /// `autoDispose`：日期会不停切换，旧日期的列表没必要留着。
 final dayRecordsProvider =
     FutureProvider.autoDispose.family<List<RecordDetail>, DateTime>(
   (ref, day) {
-    return ref.watch(databaseProvider).recordsOn(day);
+    final settings = ref.watch(settingsProvider);
+    return ref.watch(databaseProvider).recordsOn(
+          day,
+          sortOrder: settings.recordSortOrder,
+        );
   },
 );
 

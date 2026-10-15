@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="splash_background">#FAF8F5</color>
+    <!-- 浅色模式下的系统底色：严格对齐 Flutter 端 t.paper (0xFFFAF5EC) 暖纸色 -->
+    <color name="splash_background">#FAF5EC</color>
     <color name="primary_caramel">#5C4033</color>
     <color name="accent_yellow">#E4B34F</color>
     <color name="accent_sage">#76A08A</color>

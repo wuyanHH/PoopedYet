@@ -199,72 +199,228 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
   }
 
   void _showRestoreDialog(BackupData data, {required String fileName}) {
+    final t = context.tokens;
     final meta = data.metadata;
     final createdStr = DateFormat('yyyy-MM-dd HH:mm').format(meta.createdAt);
 
+    var restorePoopers = data.poopers.isNotEmpty;
+    var restoreRecords = data.records.isNotEmpty || data.notes.isNotEmpty;
+    var restoreTemplates = data.templates.isNotEmpty;
+    var restoreSettings = data.settings != null;
+
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('从 WebDAV 恢复'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('云端文件：$fileName', style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text('备份时间：$createdStr'),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: context.tokens.paperDeep,
-                borderRadius: BorderRadius.circular(10),
-              ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final hasAnySelected = (restorePoopers && data.poopers.isNotEmpty) ||
+              (restoreRecords && (data.records.isNotEmpty || data.notes.isNotEmpty)) ||
+              (restoreTemplates && data.templates.isNotEmpty) ||
+              (restoreSettings && data.settings != null);
+
+          return Dialog(
+            backgroundColor: t.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: t.lineSoft),
+            ),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('• 屙屎人员：${meta.pooperCount} 人'),
-                  Text('• 打卡记录：${meta.recordCount} 条'),
-                  Text('• 附加备注：${meta.noteCount} 条'),
-                  Text('• 常用模板：${meta.templateCount} 条'),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: t.brandSoft,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(LucideIcons.cloudDownload, size: 18, color: t.brandInk),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '从 WebDAV 恢复',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: t.ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // 文件名与时间
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: t.paperDeep,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '文件：$fileName',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.ink2),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          createdStr,
+                          style: TextStyle(fontSize: 11, color: t.ink3),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '请勾选需要恢复的数据分类：',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: t.ink2),
+                  ),
+                  const SizedBox(height: 8),
+                  // 可选分类卡片
+                  Container(
+                    decoration: BoxDecoration(
+                      color: t.paperDeep,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: t.lineSoft.withValues(alpha: 0.6)),
+                    ),
+                    child: Column(
+                      children: [
+                        _CategoryCheckboxRow(
+                          icon: LucideIcons.users,
+                          title: '屙屎人员名单',
+                          subtitle: data.poopers.isEmpty
+                              ? '未包含成员数据'
+                              : '共 ${meta.pooperCount} 位成员',
+                          checked: restorePoopers && data.poopers.isNotEmpty,
+                          enabled: data.poopers.isNotEmpty,
+                          onChanged: (v) => setDialogState(() => restorePoopers = v ?? true),
+                        ),
+                        Divider(height: 1, thickness: 0.8, color: t.lineSoft),
+                        _CategoryCheckboxRow(
+                          icon: LucideIcons.clock,
+                          title: '打卡记录与备注',
+                          subtitle: (data.records.isEmpty && data.notes.isEmpty)
+                              ? '未包含打卡数据'
+                              : '共 ${meta.recordCount} 条记录，${meta.noteCount} 条备注',
+                          checked: restoreRecords && (data.records.isNotEmpty || data.notes.isNotEmpty),
+                          enabled: data.records.isNotEmpty || data.notes.isNotEmpty,
+                          onChanged: (v) => setDialogState(() => restoreRecords = v ?? true),
+                        ),
+                        Divider(height: 1, thickness: 0.8, color: t.lineSoft),
+                        _CategoryCheckboxRow(
+                          icon: LucideIcons.tags,
+                          title: '便便感受标签',
+                          subtitle: data.templates.isEmpty
+                              ? '未包含标签数据'
+                              : '共 ${meta.templateCount} 条常用模板',
+                          checked: restoreTemplates && data.templates.isNotEmpty,
+                          enabled: data.templates.isNotEmpty,
+                          onChanged: (v) => setDialogState(() => restoreTemplates = v ?? true),
+                        ),
+                        Divider(height: 1, thickness: 0.8, color: t.lineSoft),
+                        _CategoryCheckboxRow(
+                          icon: LucideIcons.slidersHorizontal,
+                          title: '应用偏好设置',
+                          subtitle: data.settings == null
+                              ? '未包含设置数据'
+                              : '包含周起始日、日历字号与主题',
+                          checked: restoreSettings && data.settings != null,
+                          enabled: data.settings != null,
+                          onChanged: (v) => setDialogState(() => restoreSettings = v ?? true),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // 模式提示文案，完全自适应深浅色
+                  Text(
+                    '• 增量合并：保留当前手机数据，补齐缺失项\n'
+                    '• 彻底覆盖：仅清空所选分类并完全还原云端备份',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: t.ink3,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: Text('取消', style: TextStyle(color: t.ink3)),
+                      ),
+                      const SizedBox(width: 6),
+                      FilledButton.tonal(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: t.brandSoft,
+                          foregroundColor: t.brandInk,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(PoopRadii.pill),
+                          ),
+                        ),
+                        onPressed: hasAnySelected
+                            ? () {
+                                Navigator.of(ctx).pop();
+                                _performRestore(
+                                  data,
+                                  overrideAll: false,
+                                  restorePoopers: restorePoopers,
+                                  restoreRecords: restoreRecords,
+                                  restoreTemplates: restoreTemplates,
+                                  restoreSettings: restoreSettings,
+                                );
+                              }
+                            : null,
+                        child: const Text('增量合并'),
+                      ),
+                      const SizedBox(width: 6),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: t.danger,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(PoopRadii.pill),
+                          ),
+                        ),
+                        onPressed: hasAnySelected
+                            ? () {
+                                Navigator.of(ctx).pop();
+                                _performRestore(
+                                  data,
+                                  overrideAll: true,
+                                  restorePoopers: restorePoopers,
+                                  restoreRecords: restoreRecords,
+                                  restoreTemplates: restoreTemplates,
+                                  restoreSettings: restoreSettings,
+                                );
+                              }
+                            : null,
+                        child: const Text('彻底覆盖'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              '选择恢复方式：\n'
-              '• 增量合并：保留当前手机数据，补齐缺失项\n'
-              '• 彻底覆盖：清空现有数据并完全还原云端备份',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton.tonal(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _performRestore(data, overrideAll: false);
-            },
-            child: const Text('增量合并'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: context.tokens.danger),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _performRestore(data, overrideAll: true);
-            },
-            child: const Text('彻底覆盖'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Future<void> _performRestore(BackupData data, {required bool overrideAll}) async {
+  Future<void> _performRestore(
+    BackupData data, {
+    required bool overrideAll,
+    bool restorePoopers = true,
+    bool restoreRecords = true,
+    bool restoreTemplates = true,
+    bool restoreSettings = true,
+  }) async {
     setState(() => _syncing = true);
     try {
       final db = ref.read(databaseProvider);
@@ -276,13 +432,17 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
         data: data,
         prefs: prefs,
         overrideAll: overrideAll,
+        restorePoopers: restorePoopers,
+        restoreRecords: restoreRecords,
+        restoreTemplates: restoreTemplates,
+        restoreSettings: restoreSettings,
       );
 
       _refreshAllProviders();
       ref.invalidate(webDavConfigProvider);
 
       if (!mounted) return;
-      _showSnack(overrideAll ? '已完全恢复云端备份数据！' : '云端数据增量合并完成！');
+      _showSnack(overrideAll ? '已按所选分类完全恢复云端备份！' : '云端所选分类增量合并完成！');
     } catch (e) {
       if (mounted) _showSnack('恢复失败：$e', isError: true);
     } finally {
@@ -802,6 +962,76 @@ class _RemoteBackupRow extends StatelessWidget {
             onPressed: onDelete,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// WebDAV 恢复弹窗中可勾选的分类条目行
+class _CategoryCheckboxRow extends StatelessWidget {
+  const _CategoryCheckboxRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.checked,
+    this.enabled = true,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool checked;
+  final bool enabled;
+  final ValueChanged<bool?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final effectiveTitleColor = enabled ? t.ink : t.ink4;
+    final effectiveSubColor = enabled ? t.ink3 : t.ink4.withValues(alpha: 0.6);
+    final effectiveIconColor = enabled ? (checked ? t.brandInk : t.ink3) : t.ink4;
+
+    return InkWell(
+      onTap: enabled ? () => onChanged(!checked) : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8.5),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: effectiveIconColor),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: effectiveTitleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 1.5),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 11, color: effectiveSubColor),
+                  ),
+                ],
+              ),
+            ),
+            Checkbox(
+              value: checked,
+              onChanged: enabled ? onChanged : null,
+              activeColor: t.brandInk,
+              checkColor: Colors.white,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ],
+        ),
       ),
     );
   }

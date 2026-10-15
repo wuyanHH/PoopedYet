@@ -33,7 +33,11 @@ class NoteTemplatePage extends ConsumerWidget {
         // 1. 顶部快捷功能按钮：按使用频次一键排序
         if (list.length > 1)
           Tooltip(
-            message: '按使用频次排序',
+            message: '按使用频次重新排序',
+            preferBelow: true,
+            verticalOffset: 24,
+            waitDuration: const Duration(milliseconds: 200),
+            triggerMode: TooltipTriggerMode.longPress,
             child: InkWell(
               onTap: () async {
                 HapticFeedback.lightImpact();
@@ -65,13 +69,20 @@ class NoteTemplatePage extends ConsumerWidget {
             ),
           ),
         // 2. 顶部新增按钮
-        InkWell(
-          onTap: () => _promptNew(context, ref),
-          borderRadius: BorderRadius.circular(11),
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Icon(LucideIcons.plus, size: 19, color: t.brandInk),
+        Tooltip(
+          message: '新增便便感受标签',
+          preferBelow: true,
+          verticalOffset: 24,
+          waitDuration: const Duration(milliseconds: 200),
+          triggerMode: TooltipTriggerMode.longPress,
+          child: InkWell(
+            onTap: () => _promptNew(context, ref),
+            borderRadius: BorderRadius.circular(11),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(LucideIcons.plus, size: 19, color: t.brandInk),
+            ),
           ),
         ),
       ],
@@ -117,92 +128,96 @@ class NoteTemplatePage extends ConsumerWidget {
     BuildContext context, {
     required String title,
     required String initial,
-  }) {
+  }) async {
     final t = context.tokens;
     final controller = TextEditingController(text: initial);
 
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: t.paper,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: t.lineSoft),
-        ),
-        title: Text(
-          title,
-          style: displayStyle(
-            size: 18,
-            letterSpacing: 0.5,
-            color: t.ink,
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: t.paper,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: t.lineSoft),
           ),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 30,
-          style: TextStyle(fontSize: 14.5, color: t.ink),
-          decoration: InputDecoration(
-            hintText: '比如：很顺畅、拉肚子、干硬、成型',
-            hintStyle: TextStyle(fontSize: 13, color: t.ink3),
-            filled: true,
-            fillColor: t.surface,
-            counterText: '',
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: t.lineSoft),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: t.lineSoft),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: t.brandInk, width: 1.5),
+          title: Text(
+            title,
+            style: displayStyle(
+              size: 18,
+              letterSpacing: 0.5,
+              color: t.ink,
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              '取消',
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: t.ink3,
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 30,
+            style: TextStyle(fontSize: 14.5, color: t.ink),
+            decoration: InputDecoration(
+              hintText: '比如：很顺畅、拉肚子、干硬、成型',
+              hintStyle: TextStyle(fontSize: 13, color: t.ink3),
+              filled: true,
+              fillColor: t.surface,
+              counterText: '',
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.lineSoft),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.lineSoft),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.brandInk, width: 1.5),
               ),
             ),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: t.brandFill,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            onPressed: () {
-              final text = controller.text.trim();
-              Navigator.of(ctx).pop(text.isEmpty ? null : text);
-            },
-            child: const Text(
-              '保存',
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(
+                '取消',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: t.ink3,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: t.brandFill,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              onPressed: () {
+                final text = controller.text.trim();
+                Navigator.of(ctx).pop(text.isEmpty ? null : text);
+              },
+              child: const Text(
+                '保存',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   /// 供子组件复用。

@@ -134,7 +134,7 @@ String durationLabel(PoopRecord r, {required DateTime now}) {
 String endLabel(PoopRecord r, {required DateTime now}) {
   switch (recordStateOf(r, now: now)) {
     case RecordState.active:
-      return '正在屙';
+      return '进行中';
     case RecordState.pending:
       return '？';
     case RecordState.endUnknown:

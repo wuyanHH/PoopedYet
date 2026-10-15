@@ -168,13 +168,20 @@ class _BackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return InkWell(
-      onTap: () => Navigator.of(context).maybePop(),
-      borderRadius: BorderRadius.circular(11),
-      child: SizedBox(
-        width: 40,
-        height: 40,
-        child: Icon(LucideIcons.chevronLeft, size: 20, color: t.ink2),
+    return Tooltip(
+      message: '返回上一页',
+      preferBelow: true,
+      verticalOffset: 24,
+      waitDuration: const Duration(milliseconds: 200),
+      triggerMode: TooltipTriggerMode.longPress,
+      child: InkWell(
+        onTap: () => Navigator.of(context).maybePop(),
+        borderRadius: BorderRadius.circular(11),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(LucideIcons.chevronLeft, size: 20, color: t.ink2),
+        ),
       ),
     );
   }
@@ -281,6 +288,7 @@ class SettingsRow extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.subtitleWidget,
     this.leading,
     this.leadingColor,
     this.leadingBackground,
@@ -292,6 +300,7 @@ class SettingsRow extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+  final Widget? subtitleWidget;
   final IconData? leading;
   final Color? leadingColor;
   final Color? leadingBackground;
@@ -340,7 +349,10 @@ class SettingsRow extends StatelessWidget {
                     color: titleColor,
                   ),
                 ),
-                if (subtitle != null) ...[
+                if (subtitleWidget != null) ...[
+                  const SizedBox(height: 5),
+                  subtitleWidget!,
+                ] else if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,

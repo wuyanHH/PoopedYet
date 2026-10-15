@@ -36,6 +36,15 @@ enum CalendarTextSize {
 /// 常用需求全覆盖，只有「特大 / 最大」会被截住。
 const double kCalendarMaxSystemScale = 1.3;
 
+/// 记录列表排序方式。
+enum RecordSortOrder {
+  /// 倒序：时间晚（最新）的排在最前（默认）。
+  desc,
+
+  /// 正序：时间早（最早）的排在最前。
+  asc;
+}
+
 /// 用户设置。
 class Settings {
   const Settings({
@@ -48,6 +57,7 @@ class Settings {
     this.themeMode = AppThemeMode.system,
     this.themeColor = AppThemeColor.caramel,
     this.defaultCalendarMode = CalendarMode.month,
+    this.recordSortOrder = RecordSortOrder.desc,
   });
 
   /// 每周起始日。日历网格的偏移量直接依赖它。
@@ -79,6 +89,9 @@ class Settings {
   /// 默认展示视图（打开软件时默认以月历或周历展示）。
   final CalendarMode defaultCalendarMode;
 
+  /// 记录列表的排序规则（时间倒序 / 时间正序，默认时间倒序）。
+  final RecordSortOrder recordSortOrder;
+
   Settings copyWith({
     WeekStart? weekStart,
     bool? showBadges,
@@ -89,6 +102,7 @@ class Settings {
     AppThemeMode? themeMode,
     AppThemeColor? themeColor,
     CalendarMode? defaultCalendarMode,
+    RecordSortOrder? recordSortOrder,
   }) {
     return Settings(
       weekStart: weekStart ?? this.weekStart,
@@ -100,6 +114,7 @@ class Settings {
       themeMode: themeMode ?? this.themeMode,
       themeColor: themeColor ?? this.themeColor,
       defaultCalendarMode: defaultCalendarMode ?? this.defaultCalendarMode,
+      recordSortOrder: recordSortOrder ?? this.recordSortOrder,
     );
   }
 }
@@ -113,6 +128,7 @@ const _kCalTextSize = 'settings.calendarTextSize';
 const _kThemeMode = 'settings.themeMode';
 const _kThemeColor = 'settings.themeColor';
 const _kDefaultCalMode = 'settings.defaultCalendarMode';
+const _kRecordSortOrder = 'settings.recordSortOrder';
 
 /// 首启的「已自动创建『我』」提示条是否已被关掉。
 /// 关过就永不再出现。
@@ -131,6 +147,7 @@ class SettingsNotifier extends Notifier<Settings> {
     final tm = p.getString(_kThemeMode);
     final tc = p.getString(_kThemeColor);
     final dcm = p.getString(_kDefaultCalMode);
+    final rso = p.getString(_kRecordSortOrder);
 
     return Settings(
       weekStart: WeekStart.values.firstWhere(
@@ -157,10 +174,19 @@ class SettingsNotifier extends Notifier<Settings> {
         (e) => e.name == dcm,
         orElse: () => CalendarMode.month,
       ),
+      recordSortOrder: RecordSortOrder.values.firstWhere(
+        (e) => e.name == rso,
+        orElse: () => RecordSortOrder.desc,
+      ),
     );
   }
 
   SharedPreferences get _p => ref.read(sharedPrefsProvider);
+
+  void setRecordSortOrder(RecordSortOrder v) {
+    state = state.copyWith(recordSortOrder: v);
+    _p.setString(_kRecordSortOrder, v.name);
+  }
 
   void setDefaultCalendarMode(CalendarMode v) {
     state = state.copyWith(defaultCalendarMode: v);

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -9,6 +10,7 @@ import '../../data/queries.dart';
 import '../../domain/record_state.dart';
 import '../../state/calendar_data.dart';
 import '../../theme/tokens.dart';
+import '../widgets/expand_toggle_button.dart';
 import '../widgets/ongoing_poop_badge.dart';
 import '../widgets/poop_button_icon.dart';
 import '../widgets/pooper_avatar.dart';
@@ -55,6 +57,8 @@ class _RecordCardState extends ConsumerState<RecordCard>
   bool _pressed = false;
   bool _notesExpanded = false;
   bool _isDeleting = false;
+  bool _isCompleting = false;
+  bool _hasTriggeredHaptic = false;
 
   // 水平阻尼拖拽与弹簧复位
   double _dragOffset = 0.0;
@@ -112,6 +116,7 @@ class _RecordCardState extends ConsumerState<RecordCard>
     // 必须立即将所有动画与删除状态彻底重置为初始状态，绝不能携带任何历史残留的删除状态！
     if (oldWidget.detail.record.id != widget.detail.record.id) {
       _isDeleting = false;
+      _isCompleting = false;
       _dragOffset = 0.0;
       _springController.reset();
       _deleteController.reset();
@@ -127,7 +132,10 @@ class _RecordCardState extends ConsumerState<RecordCard>
 
   void _resetPosition({bool spring = true}) {
     if (!spring || _dragOffset == 0.0) {
-      setState(() => _dragOffset = 0.0);
+      setState(() {
+        _dragOffset = 0.0;
+        _isCompleting = false;
+      });
       return;
     }
     _springAnimation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
@@ -137,7 +145,11 @@ class _RecordCardState extends ConsumerState<RecordCard>
           _dragOffset = _springAnimation!.value;
         });
       });
-    _springController.forward(from: 0.0);
+    _springController.forward(from: 0.0).then((_) {
+      if (mounted) {
+        setState(() => _isCompleting = false);
+      }
+    });
   }
 
   /// 执行带有极致丝滑物理动画的删除
@@ -421,6 +433,7 @@ class _RecordCardState extends ConsumerState<RecordCard>
                   behavior: HitTestBehavior.opaque,
                   onHorizontalDragStart: (_) {
                     if (_isDeleting) return;
+                    _hasTriggeredHaptic = false;
                     if (_springController.isAnimating) {
                       _springController.stop();
                     }
@@ -435,10 +448,21 @@ class _RecordCardState extends ConsumerState<RecordCard>
                           : (0.85 - ((abs - 90.0) / 240.0)).clamp(0.35, 0.85);
                       _dragOffset = (_dragOffset + d.delta.dx * factor)
                           .clamp(-kMaxDragDistance, kMaxDragDistance);
+
+                      // 越过触发阈值瞬间触发微触觉反馈，回退时轻微提示，赋予物理操作确认感
+                      final isOver = _dragOffset.abs() >= kTriggerThreshold;
+                      if (isOver && !_hasTriggeredHaptic) {
+                        _hasTriggeredHaptic = true;
+                        HapticFeedback.mediumImpact();
+                      } else if (!isOver && _hasTriggeredHaptic) {
+                        _hasTriggeredHaptic = false;
+                        HapticFeedback.selectionClick();
+                      }
                     });
                   },
                   onHorizontalDragEnd: (d) async {
                     if (_isDeleting) return;
+                    _hasTriggeredHaptic = false;
                     final vx = d.velocity.pixelsPerSecond.dx;
                     // 严格同向性约束：位移方向必须与速度方向保持一致，彻底杜绝右滑回弹时因反向速度误触发左滑删除
                     final isLeftSwipe =
@@ -448,7 +472,9 @@ class _RecordCardState extends ConsumerState<RecordCard>
 
                     if (isLeftSwipe) {
                       if (!hasEnded) {
-                        // 未结束 ➔ 结束打卡
+                        // 未结束 ➔ 结束打卡：立即标记完成状态，保证弹簧回弹期间底板保持翡翠绿与已完成状态，绝不闪变红色删除
+                        HapticFeedback.lightImpact();
+                        setState(() => _isCompleting = true);
                         _resetPosition(spring: true);
                         if (widget.onQuickEnd != null) {
                           await widget.onQuickEnd!();
@@ -467,10 +493,12 @@ class _RecordCardState extends ConsumerState<RecordCard>
                         }
                       } else {
                         // 已结束 ➔ 触发丝滑删除物理动效
+                        HapticFeedback.mediumImpact();
                         await _executeDelete();
                       }
                     } else if (isRightSwipe) {
                       // 向右滑 👉：内容补充操作（添加便签备注）
+                      HapticFeedback.lightImpact();
                       _resetPosition(spring: true);
                       if (widget.onAddNote != null) {
                         widget.onAddNote!();
@@ -483,6 +511,7 @@ class _RecordCardState extends ConsumerState<RecordCard>
                   },
                   onHorizontalDragCancel: () {
                     if (!_isDeleting) {
+                      _hasTriggeredHaptic = false;
                       _resetPosition(spring: true);
                     }
                   },
@@ -494,6 +523,7 @@ class _RecordCardState extends ConsumerState<RecordCard>
                           dragOffset: effectiveOffset,
                           isTriggerReady: effectiveOffset.abs() >= kTriggerThreshold,
                           hasEnded: hasEnded,
+                          isCompleting: _isCompleting,
                           endedAt: r.endedAt,
                           now: widget.now,
                         ),
@@ -531,6 +561,7 @@ class _SeamlessSwipeBackground extends StatelessWidget {
     required this.dragOffset,
     required this.isTriggerReady,
     required this.hasEnded,
+    this.isCompleting = false,
     required this.endedAt,
     required this.now,
   });
@@ -538,6 +569,7 @@ class _SeamlessSwipeBackground extends StatelessWidget {
   final double dragOffset;
   final bool isTriggerReady;
   final bool hasEnded;
+  final bool isCompleting;
   final DateTime? endedAt;
   final DateTime now;
 
@@ -549,11 +581,12 @@ class _SeamlessSwipeBackground extends StatelessWidget {
 
     final absOffset = dragOffset.abs();
     final isLeftDragging = dragOffset < 0;
+    final showFinish = !hasEnded || isCompleting;
 
     // 渐变背景色配置
     final LinearGradient gradient;
     if (isLeftDragging) {
-      gradient = !hasEnded
+      gradient = showFinish
           ? LinearGradient(
               colors: isTriggerReady
                   ? const [Color(0xFF2E7D32), Color(0xFF1B5E20)]
@@ -585,11 +618,11 @@ class _SeamlessSwipeBackground extends StatelessWidget {
     final String subtitle;
 
     if (isLeftDragging) {
-      if (!hasEnded) {
+      if (showFinish) {
         icon = LucideIcons.checkCheck;
-        shortTitle = '左滑完成';
-        readyTitle = '松手完成';
-        subtitle = '记录 ${hhmm(now)} 结束';
+        shortTitle = isCompleting ? '已完成' : '左滑完成';
+        readyTitle = isCompleting ? '已完成' : '松手完成';
+        subtitle = isCompleting ? '打卡记录已完成' : '记录 ${hhmm(now)} 结束';
       } else {
         icon = LucideIcons.trash2;
         shortTitle = '左滑删除';
@@ -780,6 +813,11 @@ class _TimeRow extends StatelessWidget {
       fontFeatures: const [FontFeature.tabularFigures()],
     );
 
+    if (state == RecordState.active) {
+      // 正在屙时仅保留干脆利落的开始时间，彻底消除“进行中”等冗余字样
+      return Text(start, style: timeStyle);
+    }
+
     return Row(
       children: [
         Text(start, style: timeStyle),
@@ -787,23 +825,12 @@ class _TimeRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 5),
           child: Icon(LucideIcons.arrowRight, size: 12, color: t.ink4),
         ),
-        if (state == RecordState.active) ...[
-          const _PulsingDot(),
-          const SizedBox(width: 5),
-          Text(
-            end,
-            style: timeStyle.copyWith(
-              color: accent,
-              fontWeight: FontWeight.w800,
-            ),
+        Text(
+          end,
+          style: timeStyle.copyWith(
+            color: state == RecordState.done ? t.ink2 : accent,
           ),
-        ] else
-          Text(
-            end,
-            style: timeStyle.copyWith(
-              color: state == RecordState.done ? t.ink2 : accent,
-            ),
-          ),
+        ),
       ],
     );
   }
@@ -812,7 +839,7 @@ class _TimeRow extends StatelessWidget {
 /// 备注展示气泡：
 ///   - 高度与行数精准判定：只有当总行数或总高度真正超标时才触发折叠，少量短文本绝对不折叠不遮挡；
 ///   - 内部采用 SingleChildScrollView 隔离 Column 高度约束，彻底根绝 BOTTOM OVERFLOWED 斑马纹溢出警告条；
-///   - 告别突兀生硬的悬浮厚药丸胶囊，换用底部自然淡出渐变 + 极简手账微文字链。
+///   - 右下角统一采用精致微悬浮圆形展开/收起按钮（180°顺滑旋转 chevron）。
 class _NotesBubble extends StatelessWidget {
   const _NotesBubble({
     required this.notes,
@@ -887,47 +914,16 @@ class _NotesBubble extends StatelessWidget {
             ],
           ),
         ],
-        // 展开状态下，居中呈现清晰完整的收起胶囊按钮，上下留足安全边距，确保整个按钮 100% 完整显示
+        // 展开状态下在底部右侧呈现微悬浮圆形收起按钮
         if (hasOverflow && expanded) ...[
-          const SizedBox(height: 8),
-          Center(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onToggleExpand,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: t.surface,
-                  borderRadius: BorderRadius.circular(PoopRadii.pill),
-                  border: Border.all(color: t.lineSoft, width: 0.8),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x0A000000),
-                      blurRadius: 4,
-                      offset: Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '收起备注',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: t.brandInk,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(width: 3),
-                    Icon(LucideIcons.chevronUp, size: 13, color: t.brandInk),
-                  ],
-                ),
-              ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ExpandToggleButton(
+              isExpanded: true,
+              onToggle: onToggleExpand,
+              size: 22,
+              semanticLabel: '收起备注',
             ),
           ),
         ],
@@ -948,14 +944,13 @@ class _NotesBubble extends StatelessWidget {
         child: Stack(
           children: [
             // 1. 内容主体层：
-            //    仅在超出且折叠时约束最大高度并裁切；展开状态下解除硬性约束，
-            //    留足底部空间，确保收起按钮整个胶囊完整显露，杜绝截断切边！
+            //    仅在超出且折叠时约束最大高度并裁切；展开状态下解除硬性约束
             Padding(
               padding: EdgeInsets.fromLTRB(
                 10,
                 8,
-                10,
-                (hasOverflow && expanded) ? 10 : 8,
+                shouldClip ? 28 : 10, // 折叠时右侧预留按钮避让间距
+                8,
               ),
               child: shouldClip
                   ? ConstrainedBox(
@@ -972,88 +967,44 @@ class _NotesBubble extends StatelessWidget {
                   : contentColumn,
             ),
 
-            // 2. 只有在真正发生超出且处于折叠状态时，才呈现柔和底部渐变淡出与极简微文字展开
-            if (shouldClip)
+            // 2. 超出且处于折叠状态时，呈现柔和底部渐变淡出并在右下角展示圆形展开按钮
+            if (shouldClip) ...[
               Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: 38,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(10),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      // 底部平滑渐变羽化遮罩：文字自然淡出隐没
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                t.paperDeep.withValues(alpha: 0.0),
-                                t.paperDeep.withValues(alpha: 0.88),
-                                t.paperDeep,
-                              ],
-                              stops: const [0.0, 0.45, 1.0],
-                            ),
-                          ),
-                        ),
+                height: 32,
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(10),
                       ),
-
-                      // 底部手账展开胶囊按钮（整个按钮完整且融入底色）
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 3),
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: onToggleExpand,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: t.surface.withValues(alpha: 0.95),
-                              borderRadius: BorderRadius.circular(PoopRadii.pill),
-                              border: Border.all(color: t.lineSoft, width: 0.8),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x0A000000),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '展开全部备注',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: t.brandInk,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                                const SizedBox(width: 3),
-                                Icon(
-                                  LucideIcons.chevronDown,
-                                  size: 13,
-                                  color: t.brandInk,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          t.paperDeep.withValues(alpha: 0.0),
+                          t.paperDeep.withValues(alpha: 0.75),
+                          t.paperDeep,
+                        ],
+                        stops: const [0.0, 0.5, 1.0],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
+              Positioned(
+                right: 6,
+                bottom: 5,
+                child: ExpandToggleButton(
+                  isExpanded: false,
+                  onToggle: onToggleExpand,
+                  size: 22,
+                  semanticLabel: '展开全部备注',
+                ),
+              ),
+            ],
           ],
         ),
       ),
