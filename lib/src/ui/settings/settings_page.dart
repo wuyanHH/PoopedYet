@@ -20,6 +20,9 @@ import '../widgets/settings_widgets.dart';
 import '../widgets/smooth_page_route.dart';
 import 'backup/data_backup_page.dart';
 import 'backup/webdav_sync_page.dart';
+import 'changelog_page.dart';
+import '../../data/update/update_service.dart';
+import '../widgets/update_dialog.dart';
 import 'note_template_page.dart';
 import 'pooper_list_page.dart';
 
@@ -82,8 +85,8 @@ class SettingsPage extends ConsumerWidget {
                 subtitle: '当日打卡记录默认按时间倒序或正序呈现',
                 trailing: SettingsSegmented<RecordSortOrder>(
                   options: const [
-                    ('时间倒序', RecordSortOrder.desc),
-                    ('时间正序', RecordSortOrder.asc),
+                    ('倒序', RecordSortOrder.desc),
+                    ('正序', RecordSortOrder.asc),
                   ],
                   value: settings.recordSortOrder,
                   onChanged: s.setRecordSortOrder,
@@ -263,7 +266,25 @@ class SettingsPage extends ConsumerWidget {
               SettingsRow(
                 leading: LucideIcons.info,
                 title: '版本',
-                trailing: const SettingsValue(_version),
+                trailing: const SettingsValue('v$_version 正式版'),
+              ),
+              SettingsRow(
+                leading: LucideIcons.cloudDownload,
+                leadingColor: t.brandInk,
+                leadingBackground: t.brandSoft,
+                title: '检查新版本',
+                subtitle: '连接 GitHub Releases 获取最新发布与架构专属包',
+                trailing: const SettingsChevron(),
+                onTap: () => _handleCheckUpdate(context),
+              ),
+              SettingsRow(
+                leading: LucideIcons.scrollText,
+                leadingColor: t.brandInk,
+                leadingBackground: t.brandSoft,
+                title: '版本更新日志',
+                subtitle: '查看 1.0.0 正式版与历史里程碑演进记录',
+                trailing: const SettingsChevron(),
+                onTap: () => _push(context, const ChangelogPage()),
               ),
               SettingsRow(
                 leading: LucideIcons.notebookPen,
@@ -275,7 +296,7 @@ class SettingsPage extends ConsumerWidget {
                 onTap: () => showLicensePage(
                   context: context,
                   applicationName: '屙了么 PoopedYet',
-                  applicationVersion: _version,
+                  applicationVersion: 'v$_version 正式版',
                 ),
               ),
             ],
@@ -301,7 +322,110 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  static const _version = '0.3.3';
+  static const _version = '1.0.0';
+
+  static Future<void> _handleCheckUpdate(BuildContext context) async {
+    final t = context.tokens;
+    // 弹出轻量 Loading 弹窗
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+          decoration: BoxDecoration(
+            color: t.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: t.lineSoft),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x142D1B0D),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: t.brandInk,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                '正在检查新版本...',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: t.ink,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final service = UpdateService();
+      final futures = await Future.wait([
+        service.checkLatestRelease(currentVersion: _version),
+        UpdateService.getDeviceAbi(),
+      ]);
+
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // 关闭 Loading
+
+      final releaseInfo = futures[0] as UpdateReleaseInfo?;
+      final deviceAbi = futures[1] as String? ?? 'arm64-v8a';
+
+      if (releaseInfo != null && releaseInfo.isNewer) {
+        UpdateDialog.show(
+          context,
+          releaseInfo: releaseInfo,
+          deviceAbi: deviceAbi,
+        );
+      } else if (releaseInfo != null) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('🎉 当前已是最新正式版本 (v$_version)'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+      } else {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('未检测到新版本发布（若网络受限可稍后重试）'),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 2),
+            ),
+          );
+      }
+    } catch (_) {
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // 关闭 Loading
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('检查更新超时，请检查网络连接后重试'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+    }
+  }
 
   static void _showDevDemoDialog(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
@@ -910,7 +1034,7 @@ class _LiveIslandNotificationRowState
         ),
         Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: t.paperDeep,
             borderRadius: BorderRadius.circular(10),
@@ -922,11 +1046,13 @@ class _LiveIslandNotificationRowState
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'vivo (OriginOS 5/6) 用户请在系统通知管理中确保勾选「允许通知」、「悬浮通知」与「原子通知」，开屙时挖孔屏旁即可实时浮现灵动胶囊。',
+                  '💡 vivo (OriginOS) 适配说明：\n'
+                  '1. 系统挖孔屏灵动岛（原子岛）受 vivo 官方限制，仅对官方白名单推送服务开放。\n'
+                  '2. 本应用支持系统级实时前台秒表与锁屏胶囊，点击上方「去开启」进入系统设置，务必开启「允许通知」、「悬浮通知」和「锁屏通知」，并将通知类别保持为「重要通知」，即可在开屙时实时跳秒并一键完成。',
                   style: TextStyle(
                     fontSize: 11,
                     color: t.ink2,
-                    height: 1.45,
+                    height: 1.5,
                   ),
                 ),
               ),

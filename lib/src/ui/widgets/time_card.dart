@@ -81,13 +81,13 @@ class _TimeCardState extends State<TimeCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 顶部行：图标 + 标签 + 右侧操作小胶囊
+              // 顶部行：图标（两端统一使用品牌焦糖色，绝对对称协调） + 标签 + 右侧操作小胶囊
               Row(
                 children: [
                   Icon(
                     widget.icon,
                     size: 13,
-                    color: widget.empty ? t.ink4 : t.brandInk,
+                    color: t.brandInk,
                   ),
                   const SizedBox(width: 5),
                   Text(
@@ -104,7 +104,7 @@ class _TimeCardState extends State<TimeCard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                     decoration: BoxDecoration(
-                      color: widget.empty ? t.brandSoft : t.paperDeep,
+                      color: t.paperDeep,
                       borderRadius: BorderRadius.circular(PoopRadii.pill),
                     ),
                     child: Text(
@@ -112,36 +112,38 @@ class _TimeCardState extends State<TimeCard> {
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
-                        color: widget.empty ? t.brandInk : t.ink3,
+                        color: t.ink3,
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              // 主时间文字（得意黑展示大数字 / 空态标题）
-              if (isDone)
-                Text(
-                  widget.value,
-                  style: displayStyle(
-                    size: 23,
-                    letterSpacing: 0.5,
-                    color: t.ink,
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.5),
-                  child: Text(
-                    widget.value,
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                      color: t.ink3,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
+              // 主时间文字（采用 32px 固定高度锁定，彻底根除有无结束时间引起的卡片高度跳动！）
+              SizedBox(
+                height: 32,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: isDone
+                      ? Text(
+                          widget.value,
+                          style: displayStyle(
+                            size: 23,
+                            letterSpacing: 0.5,
+                            color: t.ink,
+                          ),
+                        )
+                      : Text(
+                          widget.value,
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                            color: t.ink3,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
                 ),
+              ),
             ],
           ),
         ),

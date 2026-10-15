@@ -160,9 +160,8 @@ class _BackfillSheetState extends ConsumerState<BackfillSheet> {
             ),
             const SizedBox(height: 18),
 
-            SheetFieldLabel(
+            const SheetFieldLabel(
               text: '记录时间',
-              trailing: _end == null ? '结束非必填' : '时长 ${_durLabel()}',
             ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -170,9 +169,9 @@ class _BackfillSheetState extends ConsumerState<BackfillSheet> {
                 Expanded(
                   flex: 10,
                   child: TimeCard(
-                    label: '开始时刻',
+                    label: '开始时间',
                     value: _hhmm(_start),
-                    action: '改时间',
+                    action: '修改',
                     icon: LucideIcons.clock,
                     onTap: () => _pickTime(isStart: true),
                   ),
@@ -188,21 +187,21 @@ class _BackfillSheetState extends ConsumerState<BackfillSheet> {
                           vertical: 3.5,
                         ),
                         decoration: BoxDecoration(
-                          color: _end == null ? t.paperDeep : t.brandSoft,
+                          color: _end == null ? t.liveSoft : t.brandSoft,
                           borderRadius: BorderRadius.circular(PoopRadii.pill),
                           border: Border.all(
                             color: _end == null
-                                ? t.lineSoft
+                                ? t.live.withValues(alpha: 0.35)
                                 : t.brand.withValues(alpha: 0.3),
                             width: 0.8,
                           ),
                         ),
                         child: Text(
-                          _end == null ? '进行中' : _durLabel(),
+                          _end == null ? '正在屙' : _durLabel(),
                           style: TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w800,
-                            color: _end == null ? t.ink3 : t.brandInk,
+                            color: _end == null ? t.live : t.brandInk,
                           ),
                         ),
                       ),
@@ -218,14 +217,12 @@ class _BackfillSheetState extends ConsumerState<BackfillSheet> {
                 Expanded(
                   flex: 10,
                   child: TimeCard(
-                    label: '结束时刻',
+                    label: '结束时间',
                     value: _end == null ? '未填写' : _hhmm(_end!),
-                    action: _end == null ? '补填' : '清除',
+                    action: '修改',
                     icon: LucideIcons.flag,
                     empty: _end == null,
-                    onTap: _end == null
-                        ? () => _pickTime(isStart: false)
-                        : () => setState(() => _end = null),
+                    onTap: () => _pickTime(isStart: false),
                   ),
                 ),
               ],

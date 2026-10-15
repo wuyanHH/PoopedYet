@@ -28,8 +28,8 @@ class PoopLiveService : Service {
     constructor() : super()
 
     companion object {
-        // 使用 v3 渠道强制在真机上建立 IMPORTANCE_HIGH 高优先级通知渠道，才能被 vivo OriginOS 原子岛/状态栏胶囊、小米 HyperOS、OPPO 流体云识别
-        const val CHANNEL_ID = "poop_live_island_v3"
+        // 使用 v4 渠道强制在真机上重建 IMPORTANCE_HIGH 高优先级通知渠道，解决旧版本通道被 vivo OriginOS 静音降级的问题
+        const val CHANNEL_ID = "poop_live_island_v4"
         const val NOTIFICATION_ID = 9527
 
         const val ACTION_START_LIVE = "com.poopedyet.app.START_LIVE"
@@ -123,17 +123,23 @@ class PoopLiveService : Service {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "如厕实时活动与灵动胶囊"
-            val desc = "在进行排便时展示实时秒表与一键完成操作"
-            // 必须设为 IMPORTANCE_HIGH 才能被 vivo OriginOS 原子岛/状态栏胶囊与浮动通知捕获
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            // 尝试清理旧渠道，防止旧版本静音降级设置残留
+            try {
+                manager.deleteNotificationChannel("poop_live_island_v3")
+            } catch (_: Exception) {}
+
+            val name = "如厕实时活动与状态栏胶囊"
+            val desc = "在进行排便时展示实时秒表与一键完成快捷操作"
+            // 必须设为 IMPORTANCE_HIGH 才能被 vivo OriginOS、小米 HyperOS、OPPO 流体云识别为焦点通知/胶囊
             val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
                 description = desc
                 setShowBadge(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                enableLights(true)
                 enableVibration(false)
                 setSound(null, null)
             }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
     }
@@ -185,8 +191,10 @@ class PoopLiveService : Service {
             // OPPO / 一加 / realme (ColorOS 14+) 流体云胶囊识别
             putBoolean("com.coloros.notification.capsule", true)
             putString("com.coloros.notification.capsule_type", "stopwatch")
-            // vivo OriginOS 原子岛
+            // vivo OriginOS 悬浮横幅通知与锁屏胶囊兼容识别
             putBoolean("vivo.summaryNotification", false)
+            putBoolean("vivo.enableFloat", true)
+            putBoolean("vivo.enableKeyguard", true)
         }
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -194,6 +202,7 @@ class PoopLiveService : Service {
             .setContentTitle(title)
             .setContentText(contentText)
             .setSubText(subText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setContentIntent(openPendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -201,7 +210,7 @@ class PoopLiveService : Service {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             // Android 12+ 立即展示前台通知，杜绝 10 秒延迟展示
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            // 必须设置 PRIORITY_MAX 才能触发 vivo OriginOS 的原子通知/原子岛状态栏胶囊与锁屏浮窗
+            // 必须设置 PRIORITY_MAX 才能触发 vivo OriginOS 的横幅通知/状态栏胶囊与锁屏浮窗
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setTicker(title)
             // 启用系统级秒表计时器（精准跳秒、极其省电）

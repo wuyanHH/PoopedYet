@@ -333,14 +333,14 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
             ),
             const SizedBox(height: 10),
 
-            // 开始时刻与结束时刻左右卡片
+            // 开始时间与结束时间左右卡片
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   flex: 10,
                   child: TimeCard(
-                    label: '开始时刻',
+                    label: '开始时间',
                     value: _hhmm(_start),
                     action: '修改',
                     icon: LucideIcons.clock,
@@ -360,11 +360,11 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
                           vertical: 3.5,
                         ),
                         decoration: BoxDecoration(
-                          color: _end == null ? t.paperDeep : t.brandSoft,
+                          color: _end == null ? t.liveSoft : t.brandSoft,
                           borderRadius: BorderRadius.circular(PoopRadii.pill),
                           border: Border.all(
                             color: _end == null
-                                ? t.lineSoft
+                                ? t.live.withValues(alpha: 0.35)
                                 : t.brand.withValues(alpha: 0.3),
                             width: 0.8,
                           ),
@@ -386,13 +386,13 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
                             ],
                             Flexible(
                               child: Text(
-                                _end == null ? '进行中' : _durLabel(),
+                                _end == null ? '正在屙' : _durLabel(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w800,
-                                  color: _end == null ? t.ink3 : t.brandInk,
+                                  color: _end == null ? t.live : t.brandInk,
                                 ),
                               ),
                             ),
@@ -411,14 +411,12 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
                 Expanded(
                   flex: 10,
                   child: TimeCard(
-                    label: '结束时刻',
+                    label: '结束时间',
                     value: _end == null ? '未填写' : _hhmm(_end!),
-                    action: _end == null ? '补填' : '清除',
+                    action: '修改',
                     icon: LucideIcons.flag,
                     empty: _end == null,
-                    onTap: _end == null
-                        ? () => _pickTime(isStart: false)
-                        : () => setState(() => _end = null),
+                    onTap: () => _pickTime(isStart: false),
                   ),
                 ),
               ],

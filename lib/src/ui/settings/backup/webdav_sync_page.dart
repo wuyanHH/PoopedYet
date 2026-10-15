@@ -28,11 +28,17 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
   late final TextEditingController _folderCtrl;
   bool _allowSelfSigned = false;
   bool _obscurePass = true;
+  bool? _manuallyExpandedConfig;
 
   bool _testing = false;
   bool _syncing = false;
   bool _loadingRemoteFiles = false;
   List<WebDavRemoteFile> _remoteFiles = [];
+
+  bool get _isConfigExpanded {
+    final configured = ref.read(webDavConfigProvider).isConfigured;
+    return _manuallyExpandedConfig ?? (!configured);
+  }
 
   @override
   void initState() {
@@ -79,6 +85,7 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
     final cfg = _buildCurrentConfig();
     await ref.read(webDavConfigProvider.notifier).updateConfig(cfg);
     if (mounted) {
+      setState(() => _manuallyExpandedConfig = false);
       _showSnack('WebDAV 配置已保存');
     }
   }
@@ -556,6 +563,45 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
                           color: t.ink,
                         ),
                       ),
+                      if (cfg.isConfigured) ...[
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => setState(
+                            () => _manuallyExpandedConfig = !_isConfigExpanded,
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: t.brandSoft,
+                              borderRadius: BorderRadius.circular(PoopRadii.pill),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _isConfigExpanded
+                                      ? LucideIcons.chevronUp
+                                      : LucideIcons.slidersHorizontal,
+                                  size: 11,
+                                  color: t.brandInk,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  _isConfigExpanded ? '收起配置' : '修改配置',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: t.brandInk,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                       const Spacer(),
                       if (cfg.lastSyncAt != null)
                         Text(
@@ -625,102 +671,149 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
           ),
 
           // ---------------- 服务器配置 ----------------
-          const SettingsSectionLabel('服务器配置'),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: t.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: t.lineSoft),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _FormField(
-                    label: '服务器地址 (URL)',
-                    hint: '例如 https://dav.jianguoyun.com/dav/',
-                    controller: _urlCtrl,
+            padding: const EdgeInsets.only(top: 18, left: 16, right: 16, bottom: 6),
+            child: Row(
+              children: [
+                Text(
+                  '服务器配置',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: t.ink2,
                   ),
-                  const SizedBox(height: 12),
-                  _FormField(
-                    label: '账号 / 用户名',
-                    hint: 'WebDAV 登录用户名或邮箱',
-                    controller: _userCtrl,
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => setState(
+                    () => _manuallyExpandedConfig = !_isConfigExpanded,
                   ),
-                  const SizedBox(height: 12),
-                  _FormField(
-                    label: '密码 / 应用授权码',
-                    hint: '坚果云等推荐使用应用授权密码',
-                    controller: _passCtrl,
-                    obscureText: _obscurePass,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePass ? LucideIcons.eyeOff : LucideIcons.eye,
-                        size: 17,
-                        color: t.ink3,
-                      ),
-                      onPressed: () => setState(() => _obscurePass = !_obscurePass),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _FormField(
-                    label: '云端保存文件夹',
-                    hint: '默认 $kDefaultRemoteFolder（留空自动使用默认）',
-                    controller: _folderCtrl,
-                    suffixIcon: _folderCtrl.text.trim() != kDefaultRemoteFolder
-                        ? IconButton(
-                            tooltip: '恢复默认文件夹',
-                            icon: Icon(LucideIcons.rotateCcw, size: 16, color: t.ink3),
-                            onPressed: () => setState(
-                              () => _folderCtrl.text = kDefaultRemoteFolder,
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '允许自签名证书',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
-                                color: t.ink,
-                              ),
-                            ),
-                            Text(
-                              '自建 NAS 或无公网证书时开启',
-                              style: TextStyle(fontSize: 11.5, color: t.ink3),
-                            ),
-                          ],
+                      Text(
+                        _isConfigExpanded ? '收起配置' : '展开修改',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: t.brandInk,
                         ),
                       ),
-                      Switch(
-                        value: _allowSelfSigned,
-                        onChanged: (v) => setState(() => _allowSelfSigned = v),
+                      const SizedBox(width: 2),
+                      Icon(
+                        _isConfigExpanded
+                            ? LucideIcons.chevronUp
+                            : LucideIcons.chevronDown,
+                        size: 14,
+                        color: t.brandInk,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  FilledButton.tonal(
-                    onPressed: _saveConfig,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                ),
+              ],
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOutCubic,
+            child: _isConfigExpanded
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: t.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: t.lineSoft),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _FormField(
+                            label: '服务器地址 (URL)',
+                            hint: '例如 https://dav.jianguoyun.com/dav/',
+                            controller: _urlCtrl,
+                          ),
+                          const SizedBox(height: 12),
+                          _FormField(
+                            label: '账号 / 用户名',
+                            hint: 'WebDAV 登录用户名或邮箱',
+                            controller: _userCtrl,
+                          ),
+                          const SizedBox(height: 12),
+                          _FormField(
+                            label: '密码 / 应用授权码',
+                            hint: '坚果云等推荐使用应用授权密码',
+                            controller: _passCtrl,
+                            obscureText: _obscurePass,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePass ? LucideIcons.eyeOff : LucideIcons.eye,
+                                size: 17,
+                                color: t.ink3,
+                              ),
+                              onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _FormField(
+                            label: '云端保存文件夹',
+                            hint: '默认 $kDefaultRemoteFolder（留空自动使用默认）',
+                            controller: _folderCtrl,
+                            suffixIcon: _folderCtrl.text.trim() != kDefaultRemoteFolder
+                                ? IconButton(
+                                    tooltip: '恢复默认文件夹',
+                                    icon: Icon(LucideIcons.rotateCcw, size: 16, color: t.ink3),
+                                    onPressed: () => setState(
+                                      () => _folderCtrl.text = kDefaultRemoteFolder,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '允许自签名证书',
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: t.ink,
+                                      ),
+                                    ),
+                                    Text(
+                                      '自建 NAS 或无公网证书时开启',
+                                      style: TextStyle(fontSize: 11.5, color: t.ink3),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: _allowSelfSigned,
+                                onChanged: (v) => setState(() => _allowSelfSigned = v),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          FilledButton.tonal(
+                            onPressed: _saveConfig,
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text('保存配置'),
+                          ),
+                        ],
                       ),
                     ),
-                    child: const Text('保存配置'),
-                  ),
-                ],
-              ),
-            ),
+                  )
+                : const SizedBox.shrink(),
           ),
 
           // ---------------- 云端备份历史 ----------------
@@ -878,13 +971,16 @@ class _RemoteBackupRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final modStr = file.modifiedAt != null
+    final hasModTime = file.modifiedAt != null;
+    final modStr = hasModTime
         ? DateFormat('yyyy-MM-dd HH:mm').format(file.modifiedAt!)
         : '时间未知';
+    final isFull = file.name.contains('full');
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 36,
@@ -899,23 +995,21 @@ class _RemoteBackupRow extends StatelessWidget {
               color: isLatest ? t.live : t.brandInk,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
+                // 第一行：清晰的备份时间 + 状态标签，不与冗长文件名冲突
                 Row(
                   children: [
-                    Flexible(
-                      child: Text(
-                        file.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: t.ink,
-                        ),
+                    Text(
+                      modStr,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: t.ink,
                       ),
                     ),
                     if (isLatest) ...[
@@ -934,31 +1028,113 @@ class _RemoteBackupRow extends StatelessWidget {
                         child: Text(
                           '最新',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.w800,
                             color: t.live,
                           ),
                         ),
                       ),
                     ],
+                    if (isFull) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: t.brandSoft,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: t.brandInk.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Text(
+                          '全量',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: t.brandInk,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '$modStr · ${file.formattedSize}',
-                  style: TextStyle(fontSize: 11.5, color: t.ink3),
+                const SizedBox(height: 3),
+                // 第二行：大小前置高亮 + 紧凑单行文件名，绝不挤压换行
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 0.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: t.paperDeep,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        file.formattedSize,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: t.ink2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        file.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: t.ink3,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          IconButton(
-            tooltip: '从云端恢复',
-            icon: Icon(LucideIcons.cloudDownload, size: 18, color: t.brandInk),
-            onPressed: onRestore,
+          const SizedBox(width: 6),
+          // 右侧操作栏：恢复胶囊小按钮 + 紧凑删除图标，节约大量横向宽度
+          InkWell(
+            onTap: onRestore,
+            borderRadius: BorderRadius.circular(PoopRadii.pill),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: t.brandSoft,
+                borderRadius: BorderRadius.circular(PoopRadii.pill),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.cloudDownload, size: 12.5, color: t.brandInk),
+                  const SizedBox(width: 3),
+                  Text(
+                    '恢复',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: t.brandInk,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
+          const SizedBox(width: 2),
           IconButton(
             tooltip: '删除云端备份',
-            icon: Icon(LucideIcons.trash2, size: 17, color: t.ink4),
+            icon: Icon(LucideIcons.trash2, size: 15, color: t.ink4),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+            visualDensity: VisualDensity.compact,
             onPressed: onDelete,
           ),
         ],

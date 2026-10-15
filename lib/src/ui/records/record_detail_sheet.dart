@@ -157,9 +157,9 @@ class _Body extends ConsumerWidget {
               children: [
                 Expanded(
                   child: _TimeCard(
-                    label: '开始',
+                    label: '开始时间',
                     value: hhmm(r.startedAt),
-                    action: '改时间',
+                    action: '修改',
                     icon: LucideIcons.clock,
                     onTap: () => _editStart(context, ref),
                   ),
@@ -184,20 +184,14 @@ class _Body extends ConsumerWidget {
                 ),
                 Expanded(
                   child: _TimeCard(
-                    label: '结束',
+                    label: '结束时间',
                     value: r.endedAt == null
                         ? _endPlaceholder(state)
                         : hhmm(r.endedAt!),
-                    action: r.endedAt == null
-                        ? (state == RecordState.active ? '记结束' : '补记时间')
-                        : '改时间',
+                    action: '修改',
                     icon: LucideIcons.flag,
                     empty: r.endedAt == null,
                     onTap: () => _editEnd(context, ref),
-                    onSecondaryTap: r.endedAt != null
-                        ? () => _clearEnd(context, ref)
-                        : null,
-                    secondaryAction: r.endedAt != null ? '清除' : null,
                   ),
                 ),
               ],
@@ -464,6 +458,9 @@ class _Body extends ConsumerWidget {
       context,
       initial: detail.record.endedAt ?? DateTime.now(),
       baseStartTime: detail.record.startedAt,
+      onClear: detail.record.endedAt != null
+          ? () => _clearEnd(context, ref)
+          : null,
     );
     if (at == null || !context.mounted) return;
     final res = await ref.read(databaseProvider).updateEndedAt(recordId, at);
@@ -681,10 +678,8 @@ class _TimeCard extends StatefulWidget {
   const _TimeCard({
     required this.label,
     required this.value,
-    required this.action,
+    this.action = '修改',
     required this.onTap,
-    this.secondaryAction,
-    this.onSecondaryTap,
     this.empty = false,
     this.icon = LucideIcons.clock,
   });
@@ -693,8 +688,6 @@ class _TimeCard extends StatefulWidget {
   final String value;
   final String action;
   final VoidCallback onTap;
-  final String? secondaryAction;
-  final VoidCallback? onSecondaryTap;
   final bool empty;
   final IconData icon;
 
@@ -741,13 +734,13 @@ class _TimeCardState extends State<_TimeCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 顶部行：图标 + 标签 + 右侧操作小胶囊
+              // 顶部行：图标（颜色始终统一为品牌焦糖色，绝对对称） + 标签 + 右侧操作小胶囊
               Row(
                 children: [
                   Icon(
                     widget.icon,
                     size: 13,
-                    color: widget.empty ? t.ink4 : t.brandInk,
+                    color: t.brandInk,
                   ),
                   const SizedBox(width: 5),
                   Text(
@@ -760,36 +753,11 @@ class _TimeCardState extends State<_TimeCard> {
                     ),
                   ),
                   const Spacer(),
-                  // 可选辅助次级动作（如清除）
-                  if (widget.secondaryAction != null && widget.onSecondaryTap != null) ...[
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        widget.onSecondaryTap!();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: t.paperDeep,
-                          borderRadius: BorderRadius.circular(PoopRadii.pill),
-                        ),
-                        child: Text(
-                          widget.secondaryAction!,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: t.danger,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                  // 主操作胶囊（改时间 / 补记时间 / 记结束）
+                  // 右侧动作胶囊（统一显示「修改」，整洁纯粹）
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                     decoration: BoxDecoration(
-                      color: widget.empty ? t.brandSoft : t.paperDeep,
+                      color: t.paperDeep,
                       borderRadius: BorderRadius.circular(PoopRadii.pill),
                     ),
                     child: Text(
@@ -797,36 +765,38 @@ class _TimeCardState extends State<_TimeCard> {
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
-                        color: widget.empty ? t.brandInk : t.ink3,
+                        color: t.ink3,
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              // 主时间文字（得意黑展示大数字 / 空态标题）
-              if (isDone)
-                Text(
-                  widget.value,
-                  style: displayStyle(
-                    size: 23,
-                    letterSpacing: 0.5,
-                    color: t.ink,
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.5),
-                  child: Text(
-                    widget.value,
-                    style: TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                      color: t.ink3,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
+              // 主时间文字区域（采用固定 32px 高度锁定，彻底杜绝有无结束时间引起的卡片高度跳动！）
+              SizedBox(
+                height: 32,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: isDone
+                      ? Text(
+                          widget.value,
+                          style: displayStyle(
+                            size: 23,
+                            letterSpacing: 0.5,
+                            color: t.ink,
+                          ),
+                        )
+                      : Text(
+                          widget.value,
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                            color: t.ink3,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
                 ),
+              ),
             ],
           ),
         ),

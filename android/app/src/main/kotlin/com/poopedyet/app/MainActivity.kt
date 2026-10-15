@@ -145,6 +145,23 @@ class MainActivity : FlutterActivity() {
                     result.success(enabled)
                 }
                 "openNotificationSettings" -> {
+                    // 优先直达「如厕实时活动与状态栏胶囊」专属渠道设置，方便 vivo / 小米用户直接开启「悬浮通知」与「锁屏显示」
+                    val channelIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+                            putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                            putExtra(Settings.EXTRA_CHANNEL_ID, PoopLiveService.CHANNEL_ID)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                    } else null
+
+                    try {
+                        if (channelIntent != null && channelIntent.resolveActivity(packageManager) != null) {
+                            startActivity(channelIntent)
+                            result.success(true)
+                            return@setMethodCallHandler
+                        }
+                    } catch (_: Exception) {}
+
                     try {
                         val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                             putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
@@ -163,6 +180,32 @@ class MainActivity : FlutterActivity() {
                         } catch (e2: Exception) {
                             result.error("OPEN_SETTINGS_FAILED", e2.message, null)
                         }
+                    }
+                }
+                "getDeviceAbi" -> {
+                    // 获取当前 Android 硬件设备支持的首选指令集架构
+                    val abi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        Build.SUPPORTED_ABIS.firstOrNull() ?: "universal"
+                    } else {
+                        @Suppress("DEPRECATION")
+                        Build.CPU_ABI ?: "universal"
+                    }
+                    result.success(abi)
+                }
+                "openUrl" -> {
+                    val urlStr = call.argument<String>("url")
+                    if (!urlStr.isNullOrBlank()) {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(urlStr)).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("OPEN_URL_FAILED", "无法唤起浏览器打开链接: ${e.message}", null)
+                        }
+                    } else {
+                        result.error("INVALID_ARG", "url is null or empty", null)
                     }
                 }
                 else -> {

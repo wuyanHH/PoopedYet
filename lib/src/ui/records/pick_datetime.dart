@@ -12,6 +12,7 @@ Future<DateTime?> pickDateTime(
   DateTime? firstDate,
   DateTime? lastDate,
   DateTime? baseStartTime,
+  VoidCallback? onClear,
 }) {
   return showModalBottomSheet<DateTime>(
     context: context,
@@ -22,6 +23,7 @@ Future<DateTime?> pickDateTime(
       firstDate: firstDate,
       lastDate: lastDate,
       baseStartTime: baseStartTime,
+      onClear: onClear,
     ),
   );
 }
@@ -32,12 +34,14 @@ class _CustomDateTimePickerSheet extends StatefulWidget {
     this.firstDate,
     this.lastDate,
     this.baseStartTime,
+    this.onClear,
   });
 
   final DateTime initial;
   final DateTime? firstDate;
   final DateTime? lastDate;
   final DateTime? baseStartTime;
+  final VoidCallback? onClear;
 
   @override
   State<_CustomDateTimePickerSheet> createState() =>
@@ -381,6 +385,17 @@ class _CustomDateTimePickerSheetState
                     _scrollToTime(now.hour, now.minute);
                   },
                 ),
+                if (widget.onClear != null)
+                  _PresetChip(
+                    label: '清除结束时间',
+                    icon: LucideIcons.trash2,
+                    isDanger: true,
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      widget.onClear!();
+                      Navigator.of(context).pop();
+                    },
+                  ),
                 if (hasBaseStart) ...[
                   // 针对结束时间：在开始时间上添加对应分钟数
                   _PresetChip(
@@ -535,11 +550,13 @@ class _PresetChip extends StatefulWidget {
     required this.label,
     required this.onTap,
     this.icon,
+    this.isDanger = false,
   });
 
   final String label;
   final VoidCallback onTap;
   final IconData? icon;
+  final bool isDanger;
 
   @override
   State<_PresetChip> createState() => _PresetChipState();
@@ -551,6 +568,14 @@ class _PresetChipState extends State<_PresetChip> {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final bg = widget.isDanger
+        ? (t.isDark ? const Color(0x30D32F2F) : const Color(0x18D32F2F))
+        : t.paperDeep;
+    final borderColor = widget.isDanger
+        ? (t.isDark ? const Color(0x60D32F2F) : const Color(0x40D32F2F))
+        : t.lineSoft;
+    final textColor = widget.isDanger ? t.danger : t.ink2;
+    final iconColor = widget.isDanger ? t.danger : t.brandInk;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -565,15 +590,15 @@ class _PresetChipState extends State<_PresetChip> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5.5),
           decoration: BoxDecoration(
-            color: t.paperDeep,
+            color: bg,
             borderRadius: BorderRadius.circular(PoopRadii.pill),
-            border: Border.all(color: t.lineSoft),
+            border: Border.all(color: borderColor),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (widget.icon != null) ...[
-                Icon(widget.icon, size: 12, color: t.brandInk),
+                Icon(widget.icon, size: 12, color: iconColor),
                 const SizedBox(width: 4),
               ],
               Text(
@@ -581,7 +606,7 @@ class _PresetChipState extends State<_PresetChip> {
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
-                  color: t.ink2,
+                  color: textColor,
                 ),
               ),
             ],

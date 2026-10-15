@@ -214,18 +214,59 @@ class _DataBackupPageState extends ConsumerState<DataBackupPage> {
       await _loadLocalBackups();
 
       if (!mounted) return;
+      final fileName = file.path.split(Platform.pathSeparator).last;
+      final t = context.tokens;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(
           SnackBar(
-            content: Text(
-              '已成功导出备份文件：${file.path.split(Platform.pathSeparator).last}',
+            backgroundColor: t.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(
+                color: t.lineSoft.withValues(alpha: t.isDark ? 0.35 : 0.8),
+                width: 1.0,
+              ),
             ),
             behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: '立即分享',
-              textColor: Colors.white,
-              onPressed: () => service.shareBackupFile(file.path),
+            content: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '已成功导出备份文件：$fileName',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: t.ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: '立即分享此备份文件',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => service.shareBackupFile(file.path),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: t.brandSoft,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          LucideIcons.share2,
+                          size: 16,
+                          color: t.brandInk,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );

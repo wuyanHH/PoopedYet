@@ -22,14 +22,27 @@ import 'smooth_page_route.dart';
 ///
 /// 第 2、3 条合起来就是"刚装好还没开始用"。一旦记录过、或加过人，
 /// 提示条自己就消失了，不需要额外的状态。
-class FirstRunHint extends ConsumerWidget {
+class FirstRunHint extends ConsumerStatefulWidget {
   const FirstRunHint({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FirstRunHint> createState() => _FirstRunHintState();
+}
+
+class _FirstRunHintState extends ConsumerState<FirstRunHint> {
+  bool _dismissed = false;
+
+  void _dismiss(SharedPreferences prefs) {
+    if (_dismissed) return;
+    setState(() => _dismissed = true);
+    prefs.setBool(kFirstRunHintDismissed, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final t = context.tokens;
     final prefs = ref.watch(sharedPrefsProvider);
-    if (prefs.getBool(kFirstRunHintDismissed) ?? false) {
+    if (_dismissed || (prefs.getBool(kFirstRunHintDismissed) ?? false)) {
       return const SizedBox.shrink();
     }
 
@@ -45,88 +58,96 @@ class FirstRunHint extends ConsumerWidget {
     final hasAnyInMonth = records != null && records.isNotEmpty;
     if (hasAnyInMonth) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 9, 10, 0),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(11, 10, 9, 10),
-        decoration: BoxDecoration(
-          color: t.brandSoft,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x2E9A5219)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Row(
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                color: t.brandFill,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              alignment: Alignment.center,
-              child: const Icon(LucideIcons.users, size: 15, color: Colors.white),
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '已自动创建「${poopers.first.name}」',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: t.brandInk,
-                      height: 1.35,
-                    ),
-                  ),
-                  Text(
-                    '家里还有别人要记？可以加多个屙屎人',
-                    style: TextStyle(fontSize: 11, color: t.ink2, height: 1.4),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 6),
-            GestureDetector(
-              onTap: () {
-                // 点击「去添加」后标记提示已读，并顺畅导航至屙屎人管理列表页
-                prefs.setBool(kFirstRunHintDismissed, true);
-                Navigator.of(context).push(
-                  smoothPageRoute(const PooperListPage()),
-                );
-              },
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOutCubic,
+      child: _dismissed
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(10, 9, 10, 0),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                padding: const EdgeInsets.fromLTRB(11, 10, 8, 10),
                 decoration: BoxDecoration(
-                  color: t.brandFill,
-                  borderRadius: BorderRadius.circular(PoopRadii.pill),
+                  color: t.brandSoft,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0x2E9A5219)),
                 ),
-                child: const Text(
-                  '去添加',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.4,
-                    color: Colors.white,
-                  ),
+                clipBehavior: Clip.antiAlias,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: t.brandFill,
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(LucideIcons.users, size: 15, color: Colors.white),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '已自动创建「${poopers.first.name}」',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: t.brandInk,
+                              height: 1.35,
+                            ),
+                          ),
+                          Text(
+                            '家里还有别人要记？可以加多个屙屎人',
+                            style: TextStyle(fontSize: 11, color: t.ink2, height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () {
+                        // 点击「去添加」后标记提示已读，并顺畅导航至屙屎人管理列表页
+                        _dismiss(prefs);
+                        Navigator.of(context).push(
+                          smoothPageRoute(const PooperListPage()),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: t.brandFill,
+                          borderRadius: BorderRadius.circular(PoopRadii.pill),
+                        ),
+                        child: const Text(
+                          '去添加',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    // ✕ 优化触控热区与即时响应反馈，杜绝点不中的问题
+                    IconButton(
+                      onPressed: () => _dismiss(prefs),
+                      icon: Icon(LucideIcons.x, size: 16, color: t.ink3),
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.all(6),
+                      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                      splashRadius: 18,
+                      tooltip: '关闭提示',
+                    ),
+                  ],
                 ),
               ),
             ),
-            // ✕ 用 ink-3 而不是 ink-4：ink-4 是按白底算的 3.27:1，
-            // 放到 brandSoft 这种浅彩底上会掉到 2.66:1，不达标。
-            IconButton(
-              onPressed: () => prefs.setBool(kFirstRunHintDismissed, true),
-              icon: Icon(LucideIcons.x, size: 15, color: t.ink3),
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

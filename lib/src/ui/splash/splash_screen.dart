@@ -67,26 +67,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.initState();
     _currentTip = _randomTips[Random().nextInt(_randomTips.length)];
 
-    // 1. 入场缩放与淡入动画控制器 (650ms 紧凑顺滑)
+    // 1. 入场缩放与淡入控制器：起始即为 1.0 满不透明度，像素级无缝承接原生启动窗口，消除任何突兀的空白感
     _enterController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 650),
+      duration: const Duration(milliseconds: 350),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.94, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _enterController,
-        curve: Curves.easeOutBack,
-      ),
-    );
-
-    // 起始透明度设为 0.45，首帧即刻具备清晰视觉锚点，彻底消除 0.0 全透明导致的纯色空白感
-    _fadeAnimation = Tween<double>(begin: 0.45, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _enterController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.0).animate(_enterController);
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 1.0).animate(_enterController);
 
     // 2. 轻盈微浮呼吸控制器 (2400ms 循环)
     _floatController = AnimationController(
@@ -118,9 +106,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _checkBootstrapAndNavigate() async {
-    // 保证入场动画舒发展现完毕后，平滑淡入主界面
+    // 保证数据库初始化与必要数据就绪后，以轻快节奏即刻平滑淡入主界面，杜绝漫长等待
     await Future.wait([
-      Future.delayed(const Duration(milliseconds: 1100)),
+      Future.delayed(const Duration(milliseconds: 550)),
       ref.read(bootstrapProvider.future),
     ]);
 

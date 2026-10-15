@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 屙了么原生冷启动背景：采用纯净暖纸底色，与 Flutter 设计启动页无缝衔接，杜绝图标重复闪烁 -->
+<!-- 屙了么原生冷启动背景：第 0 毫秒直接居中呈现品牌启动图元，彻底根除纯色空白遮盖 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splash_background" />
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/splash_icon" />
+    </item>
 </layer-list>
