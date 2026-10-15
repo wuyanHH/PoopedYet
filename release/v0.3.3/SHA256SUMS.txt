@@ -1,5 +1,0 @@
-70aa42d74c7bb10d9713dd988449fb37be0f1cfdf959addfabd44f0498bac218  PoopedYet-v0.3.3-arm64-v8a.apk
-6bf2b5799a86f345d2ffaf421899e07dfde5aa049f31fc44fdc83727002c59d1  PoopedYet-v0.3.3-armeabi-v7a.apk
-8328fc46a388ef4230f1400ea8d83e8e06adaff14bf0bc76c9e34ade4b5a4b2e  PoopedYet-v0.3.3-universal.apk
-ea180455638ff64999832e244d36cd850d05b4f53b748682cc6705a0d39fb7ec  PoopedYet-v0.3.3-x86_64.apk
-58c2cfec2512ab986c96d9b6a0cc8ab8bcd024ca11cd115a932edf06d24442f1  PoopedYet-v0.3.3-release.aab
