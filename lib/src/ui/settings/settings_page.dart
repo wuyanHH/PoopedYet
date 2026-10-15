@@ -21,6 +21,7 @@ import '../widgets/smooth_page_route.dart';
 import 'backup/data_backup_page.dart';
 import 'backup/webdav_sync_page.dart';
 import 'changelog_page.dart';
+import '../../data/update/update_model.dart';
 import '../../data/update/update_service.dart';
 import '../widgets/update_dialog.dart';
 import 'note_template_page.dart';
