@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:drift/drift.dart';
 
+import '../widget/widget_binding.dart';
 import '../widget/widget_snapshot_service.dart';
 import 'database.dart';
 
@@ -111,5 +112,33 @@ extension PooperActions on AppDatabase {
     final q = select(poopers)..where((t) => t.name.equals(trimmed));
     final rows = await q.get();
     return rows.any((p) => p.id != exceptId);
+  }
+
+  // ─────────────────── 需要连带处理小组件绑定的生命周期操作 ───────────────────
+  //
+  // 归档 / 删除本身在 database.dart 里，是纯粹的数据操作。但凡是要经过
+  // 「成员从可用列表里消失」这条路的管理动作，都得顺带把指向 TA 的小组件
+  // 绑定收掉 —— 否则组件会静默显示成默认成员，用户只会看到「头像不对」。
+  // 所以这里包一层，UI 一律调这两个，不要直接调 database.dart 的裸方法。
+
+  /// 归档一个人，并解除所有指向 TA 的小组件绑定。
+  Future<void> archivePooperAndDetachWidgets(String id) async {
+    await archivePooper(id);
+    await const WidgetBindingService().clearBindingsFor(id);
+    // 绑定收干净之后再同步一次快照，让桌面拿到的是
+    // 「人已归档 + 绑定已收回」的最终状态，而不是中间态。
+    await WidgetSyncManager.sync(this);
+  }
+
+  /// **危险操作**：彻底删除一个人（连同其全部记录），并解除小组件绑定。
+  ///
+  /// 返回被删掉的记录条数，供 UI 告知用户实际损失。
+  Future<int> purgePooperAndDetachWidgets(String id) async {
+    // 先解绑再删：删完之后快照里就没有这个人了，
+    // 再想找出「哪些组件绑着 TA」只能靠残留的绑定键，容易漏。
+    await const WidgetBindingService().clearBindingsFor(id);
+    final deleted = await purgePooper(id);
+    await WidgetSyncManager.sync(this);
+    return deleted;
   }
 }

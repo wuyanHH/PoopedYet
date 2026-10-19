@@ -524,6 +524,25 @@ class _PooperEditPageState extends ConsumerState<PooperEditPage> {
                 ),
               ],
             ),
+            // ---------------- 危险操作（仅编辑已有成员） ----------------
+            if (!_isNew) ...[
+              const SettingsSectionLabel('危险操作'),
+              SettingsCard(
+                children: [
+                  SettingsRow(
+                    leading: LucideIcons.trash2,
+                    leadingColor: t.danger,
+                    leadingBackground: t.danger.withValues(alpha: 0.12),
+                    title: '彻底删除这位成员',
+                    subtitle: '连同 TA 的全部记录一起删除，删完无法恢复。'
+                        '如果只是想让他不再出现在打卡列表里，请用右上角的归档。',
+                    danger: true,
+                    trailing: const SettingsChevron(),
+                    onTap: () => _confirmPurge(context, ref),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       );
@@ -580,7 +599,10 @@ class _PooperEditPageState extends ConsumerState<PooperEditPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('归档「${p.name}」？'),
-        content: const Text('归档后不再出现在新建选择列表中，但日历历史记录与统计照常保留，可随时在列表下方恢复。'),
+        content: const Text(
+          '归档后不再出现在新建选择列表中，桌面上绑定他的小组件会自动改为跟随默认成员；'
+          '日历历史记录与统计照常保留，可随时在列表下方恢复。',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -593,11 +615,70 @@ class _PooperEditPageState extends ConsumerState<PooperEditPage> {
         ],
       ),
     );
-    if (ok != true || !mounted) return;
+    if (ok != true || !context.mounted) return;
 
-    await ref.read(databaseProvider).archivePooper(p.id);
+    await ref.read(databaseProvider).archivePooperAndDetachWidgets(p.id);
     _refresh(ref);
-    if (mounted) Navigator.of(context).pop();
+    if (context.mounted) Navigator.of(context).pop();
+  }
+
+  /// 彻底删除：**先把要删多少条记录摆出来**，再让用户确认。
+  ///
+  /// 这是整个 App 唯一不可逆的操作，所以文案必须给出确切损失，
+  /// 并且顺手把「你其实想用的是归档」这条路指出来。
+  Future<void> _confirmPurge(BuildContext context, WidgetRef ref) async {
+    final p = widget.pooper;
+    if (p == null) return;
+
+    final db = ref.read(databaseProvider);
+    final recordCount = await db.countRecordsOf(p.id);
+    if (!context.mounted) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('彻底删除「${p.name}」？'),
+        content: Text(
+          recordCount > 0
+              ? 'TA 名下的 $recordCount 条记录会一并删掉，删除后无法恢复。\n\n'
+                  '如果只是不想再在打卡列表里看到他，请改用「归档」—— 历史记录会完整保留。'
+              : '「${p.name}」名下还没有任何记录，删除后无法恢复。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              recordCount > 0 ? '永久删除 $recordCount 条' : '永久删除',
+              style: TextStyle(color: context.tokens.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+
+    final deleted = await db.purgePooperAndDetachWidgets(p.id);
+    _refresh(ref);
+    if (!context.mounted) return;
+
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            deleted > 0
+                ? '已删除「${p.name}」及其 $deleted 条记录'
+                : '已删除「${p.name}」',
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   Future<void> _save() async {

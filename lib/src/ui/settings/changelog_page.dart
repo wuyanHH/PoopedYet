@@ -24,6 +24,20 @@ class ChangelogItem {
 /// 离线版本历史更新日志
 const List<ChangelogItem> kAppChangelogs = [
   ChangelogItem(
+    version: '1.1.0',
+    date: '2026年10月',
+    title: '✨ 桌面小组件 2.0 体系 · 专属成员绑定与自动云同步升级',
+    isMilestone: true,
+    highlights: [
+      '【桌面小组件 2.0 全面进化】新增 34 种成员专属矢量图标头像体系，支持按成员定制专属小组件；',
+      '【长按小组件配置向导】新增 WidgetConfigActivity，长按桌面小组件即可即时指派成员与偏好；',
+      '【桌面小组件管理专页】设置页新增「桌面小组件」预览与管理面板，包含高清实机渲染效果与添加指南；',
+      '【全场景自动云同步】新增轻量后台自动云同步，打卡、编辑、删除后自动静默推送到 WebDAV；',
+      '【应用内智能更新与芯片架构识别】深度联动 GitHub Releases，按手机芯片（arm64-v8a 等）精准分发与下载更新；',
+      '【手帐转场动画与触觉体验打磨】全链路接入自研 SmoothPageRoute 平滑手帐翻页转场动效。',
+    ],
+  ),
+  ChangelogItem(
     version: '1.0.0',
     date: '2025年03月',
     title: '🎉 正式版里程碑首发 · 身心畅快之作',

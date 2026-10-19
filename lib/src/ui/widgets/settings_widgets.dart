@@ -212,6 +212,29 @@ class SettingsSectionLabel extends StatelessWidget {
 }
 
 /// 设置项卡片：把若干个 [SettingsRow] 装进一张白卡。
+///
+/// ## 这张卡为什么画得这么"素"
+///
+/// 它原来是「外层 `Container` 挂一圈 `blurRadius: 4` 的投影 + 内层 `Material`
+/// 用 `shape` 配 `clipBehavior: Clip.antiAlias` 裁圆角」。单看一张卡没问题，
+/// 但设置页一屏里就叠着 1~2 张**整卡大小**的卡，而这两笔开销都跟面积成正比：
+///
+/// - `BoxShadow` 的模糊要走一次离屏渲染，尺寸是整张卡片（设置页那张
+///   「日历与列表」有 7 行、五百多像素高，一屏几乎就是一整张）；
+/// - `Material` 一旦给了 `shape`，绘制就会退化成 `PhysicalShape`，
+///   裁剪用的是 `ShapeBorderClipper` 生成的通用 `Path`，引擎认不出
+///   它其实是个圆角矩形，也就走不了快速路径。
+///
+/// 在 release 的 Impeller 后端下这两笔钱**每帧都要重付**（它的图片层不做
+/// 光栅缓存），于是设置页上下滚动就一顿一顿的。现在改成：
+///
+/// - 卡片层次交给 `Border.all` 的 1px 描边承担。深色模式取深一档的 [t.line]，
+///   补上原先那层 20% 黑阴影的分离度；浅色模式的阴影本来就只有 3% alpha，
+///   去掉之后肉眼基本无感；
+/// - 圆角裁剪下沉到 `ClipRRect`（走 clipRRect 快速路径），并且**套在
+///   `Material` 外面** —— InkWell 的水波纹是由 `Material` 的墨水层绘制的，
+///   套在里面就裁不到它了，这也是 [SettingsRow] 里那些 `InkWell`
+///   依然被裁在圆角内的原因。
 class SettingsCard extends StatelessWidget {
   const SettingsCard({super.key, required this.children});
 
@@ -226,56 +249,28 @@ class SettingsCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         borderRadius: cardRadius,
-        border: Border.all(color: t.lineSoft),
-        boxShadow: [
-          BoxShadow(
-            color: t.isDark
-                ? Colors.black.withValues(alpha: 0.2)
-                : const Color(0x082D1B0D),
-            blurRadius: 4,
-            offset: const Offset(0, 1.5),
-          ),
-        ],
+        border: Border.all(color: t.isDark ? t.line : t.lineSoft),
       ),
-      child: Material(
-        color: t.surface,
-        shape: RoundedRectangleBorder(borderRadius: cardRadius),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < children.length; i++) ...[
-              if (i > 0)
-                Container(
-                  height: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  color: t.lineSoft,
-                ),
-              _wrapChild(children[i], i, children.length),
+      child: ClipRRect(
+        borderRadius: cardRadius,
+        child: Material(
+          color: t.surface,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0)
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    color: t.lineSoft,
+                  ),
+                children[i],
+              ],
             ],
-          ],
+          ),
         ),
       ),
-    );
-  }
-
-  Widget _wrapChild(Widget child, int index, int total) {
-    final r = PoopRadii.card;
-    BorderRadius radius;
-    if (total == 1) {
-      radius = BorderRadius.circular(r);
-    } else if (index == 0) {
-      radius = BorderRadius.vertical(top: Radius.circular(r));
-    } else if (index == total - 1) {
-      radius = BorderRadius.vertical(bottom: Radius.circular(r));
-    } else {
-      radius = BorderRadius.zero;
-    }
-
-    if (radius == BorderRadius.zero) return child;
-    return ClipRRect(
-      borderRadius: radius,
-      child: child,
     );
   }
 }

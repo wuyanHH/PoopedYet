@@ -88,12 +88,24 @@ class PooperListPage extends ConsumerWidget {
                     leading: LucideIcons.users,
                     title: p.name,
                     subtitle: '历史记录仍保留，日历与统计照常计入',
-                    trailing: TextButton(
-                      onPressed: () async {
-                        await ref.read(databaseProvider).unarchivePooper(p.id);
-                        _refresh(ref);
-                      },
-                      child: const Text('恢复'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton(
+                          onPressed: () async {
+                            await ref.read(databaseProvider).unarchivePooper(p.id);
+                            _refresh(ref);
+                          },
+                          child: const Text('恢复'),
+                        ),
+                        const SizedBox(width: 4),
+                        _ActionButton(
+                          icon: LucideIcons.trash2,
+                          tooltip: '彻底删除（含全部记录）',
+                          isDanger: true,
+                          onTap: () => _confirmPurge(context, ref, p),
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -102,7 +114,7 @@ class PooperListPage extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
               child: Text(
                 '归档的成员不出现在打卡选择列表中，但所有历史记录均完整保留 —— '
-                '所以日历上的次数不会莫名变少。',
+                '所以日历上的次数不会莫名变少。真要连记录一起清掉，用右侧的删除。',
                 style: TextStyle(fontSize: 11.5, color: t.ink3, height: 1.6),
               ),
             ),
@@ -110,6 +122,65 @@ class PooperListPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// 彻底删除确认：**先把要删多少条记录摆出来**。
+  ///
+  /// 不报数字的确认框等于没确认 —— 用户点下去之前得知道自己在损失什么。
+  static Future<void> _confirmPurge(
+    BuildContext context,
+    WidgetRef ref,
+    Pooper pooper,
+  ) async {
+    final db = ref.read(databaseProvider);
+    final recordCount = await db.countRecordsOf(pooper.id);
+    if (!context.mounted) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('彻底删除「${pooper.name}」？'),
+        content: Text(
+          recordCount > 0
+              ? 'TA 名下的 $recordCount 条记录会一并删掉，删除后无法恢复。\n\n'
+                  '如果只是不想再在打卡列表里看到他，请改用「恢复」旁边的归档 —— '
+                  '历史记录会完整保留。'
+              : '「${pooper.name}」名下还没有任何记录，删除后无法恢复。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              recordCount > 0 ? '永久删除 $recordCount 条' : '永久删除',
+              style: TextStyle(color: context.tokens.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final deleted = await db.purgePooperAndDetachWidgets(pooper.id);
+    _refresh(ref);
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            deleted > 0
+                ? '已删除「${pooper.name}」及其 $deleted 条记录'
+                : '已删除「${pooper.name}」',
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   static void _refresh(WidgetRef ref) {
@@ -308,7 +379,10 @@ class _PooperRow extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('归档「${pooper.name}」？'),
-        content: const Text('归档后不再出现在新建选择列表中，但日历历史记录与统计照常保留，可随时在列表下方恢复。'),
+        content: const Text(
+          '归档后不再出现在新建选择列表中，桌面上绑定他的小组件会自动改为跟随默认成员；'
+          '日历历史记录与统计照常保留，可随时在列表下方恢复。',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -326,7 +400,9 @@ class _PooperRow extends ConsumerWidget {
     );
     if (ok != true) return;
 
-    await ref.read(databaseProvider).archivePooper(pooper.id);
+    // 走带清理的版本：归档之后还要把指向 TA 的小组件绑定一并收回，
+    // 否则那些组件会静默变成「显示默认成员」，用户只会觉得头像不对。
+    await ref.read(databaseProvider).archivePooperAndDetachWidgets(pooper.id);
     onChanged();
   }
 }

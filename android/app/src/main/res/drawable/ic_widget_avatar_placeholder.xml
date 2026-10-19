@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 小组件选择器预览专用的头像占位人形图标（Lucide user）。
+     真实运行时头像会被 WidgetAvatarHelper 的位图替换，此图标不会出现在桌面上。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M12,7.5m-3.5,0a3.5,3.5 0,1 1,7 0a3.5,3.5 0,1 1,-7 0"
+        android:strokeColor="@color/widget_ink_3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M4.5,19.5v-2a4,4 0,0 1,4 -4h7a4,4 0,0 1,4 4v2"
+        android:strokeColor="@color/widget_ink_3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />
+</vector>

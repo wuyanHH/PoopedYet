@@ -2,7 +2,9 @@ package com.poopedyet.app
 
 import android.Manifest
 import android.app.Activity
+import android.appwidget.AppWidgetManager
 import android.content.ClipData
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -12,11 +14,13 @@ import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
 import com.poopedyet.app.service.PoopLiveService
-import com.poopedyet.app.widget.WidgetDataProvider
+import com.poopedyet.app.widget.LargeWidgetProvider
+import com.poopedyet.app.widget.MediumWidgetProvider
+import com.poopedyet.app.widget.SmallWidgetProvider
+import com.poopedyet.app.widget.WidgetChannelHandler
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -100,41 +104,32 @@ class MainActivity : FlutterActivity() {
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
         methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
-                "updateSnapshot" -> {
-                    val jsonStr = call.argument<String>("snapshotJson")
-                    if (jsonStr != null) {
-                        WidgetDataProvider.saveSnapshot(context, jsonStr)
-
-                        // 联动实时灵动胶囊 / 锁屏前台计时服务
-                        try {
-                            val json = JSONObject(jsonStr)
-                            val liveSession = json.optJSONObject("liveSession")
-                            val isLive = liveSession?.optBoolean("isLive", false) ?: false
-                            if (isLive) {
-                                checkAndRequestNotificationPermission()
-                                val recordId = liveSession?.optString("recordId", "") ?: ""
-                                val startedAt = liveSession?.optLong("startedAtMillis", System.currentTimeMillis()) ?: System.currentTimeMillis()
-                                val defaultPooper = json.optJSONObject("defaultPooper")
-                                val pooperName = defaultPooper?.optString("name", "我") ?: "我"
-                                val isIncognito = json.optBoolean("isIncognito", false)
-
-                                PoopLiveService.start(context, recordId, pooperName, startedAt, isIncognito)
-                            } else {
-                                PoopLiveService.stop(context)
-                            }
-                        } catch (e: Exception) {
-                            // 忽略解析非致命错误
-                        }
-
-                        result.success(true)
-                    } else {
-                        result.error("INVALID_ARG", "snapshotJson is null", null)
-                    }
-                }
+                // 快照推送 / 绑定读写统一在下面的 else 分支委托给 WidgetChannelHandler：
+                // 后台执行小组件动作时用的是同一份实现，两边行为不会漂移。
                 "getPendingDeepLink" -> {
                     val link = pendingDeepLink
                     pendingDeepLink = null
                     result.success(link)
+                }
+                // 从 App 内一键把小组件钉到桌面（Android 8.0+ 支持）。
+                // 返回 false 表示当前启动器不支持，调用方应引导用户手动长按桌面添加。
+                "requestPinWidget" -> {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                        result.success(false)
+                    } else {
+                        val type = call.argument<String>("type") ?: "small"
+                        val provider = when (type) {
+                            "medium" -> ComponentName(this, MediumWidgetProvider::class.java)
+                            "large" -> ComponentName(this, LargeWidgetProvider::class.java)
+                            else -> ComponentName(this, SmallWidgetProvider::class.java)
+                        }
+                        val manager = AppWidgetManager.getInstance(this)
+                        if (manager.isRequestPinAppWidgetSupported) {
+                            result.success(manager.requestPinAppWidget(provider, null, null))
+                        } else {
+                            result.success(false)
+                        }
+                    }
                 }
                 "requestNotificationPermission" -> {
                     checkAndRequestNotificationPermission()
@@ -209,6 +204,11 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 else -> {
+                    // 小组件通道里与 Activity 无关的那几个方法（快照推送、绑定读写）
+                    // 统一交给 WidgetChannelHandler —— 后台无界面引擎用的是同一份实现。
+                    if (WidgetChannelHandler.handle(context, call, result)) {
+                        return@setMethodCallHandler
+                    }
                     result.notImplemented()
                 }
             }

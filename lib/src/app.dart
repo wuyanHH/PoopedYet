@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/settings.dart';
+import 'state/sync_state.dart';
 import 'theme/tokens.dart';
 import 'ui/splash/splash_screen.dart';
 
@@ -14,6 +15,11 @@ class PoopedYetApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+
+    // 挂上自动同步协调器。watch 一次就够 —— 它在内部注册生命周期监听
+    // 与数据表变更监听，整个 App 生命周期只跑一份。
+    // 没配置 WebDAV 时它什么都不做，用户不会感知到它的存在。
+    ref.watch(autoSyncCoordinatorProvider);
 
     final lightTokens = PoopTokens.create(
       color: settings.themeColor,

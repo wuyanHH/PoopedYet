@@ -1,64 +1,96 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ═══════════════════════════════════════════════════════════════════
+     屙了么 · 小号小组件 (2×2) —— 现代卡片风「成员打卡卡」
+     ───────────────────────────────────────────────────────────────────
+     信息优先级（自上而下）：
+       ① 这是谁的组件 —— 44dp 头像 + 15sp 姓名（原设计仅 14dp / 10sp）
+       ② 今天记了几次 —— 焦糖胶囊
+       ③ 上一次什么时候 —— 次级文字
+       ④ 现在开屙 / 实时计时 —— 底部主按钮
+     ═══════════════════════════════════════════════════════════════════ -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/bg_widget_paper"
-    android:padding="13dp">
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp">
 
-    <!-- 顶部打孔撕历头 -->
+    <!-- ① 成员区：整块可点，进入成员选择 -->
     <LinearLayout
+        android:id="@+id/btn_switch_pooper"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/tv_month"
+        <ImageView
+            android:id="@+id/iv_small_avatar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_widget_avatar_placeholder" />
+
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="3月 MARCH"
-            android:textSize="10.5sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_ink_3" />
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
 
-        <LinearLayout
-            android:id="@+id/btn_switch_pooper"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_badge_soft"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="5dp"
-            android:paddingVertical="2dp">
+            <!-- 姓名紧跟一条下拉线。三款组件统一成这一套暗示（大号在胶囊里、
+                 4×2 在这里、2×2 也在这里），不再出现「有的能点、有的没提示」。
+                 maxWidth 兜底：2×2 的成员区只有 77dp，长名字不能把下拉线顶掉。 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <ImageView
-                android:id="@+id/iv_small_avatar"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:scaleType="centerCrop"
-                android:layout_marginEnd="4dp" />
+                <TextView
+                    android:id="@+id/tv_pooper_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxWidth="62dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="我"
+                    android:textColor="@color/widget_ink"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/iv_small_chevron"
+                    android:layout_width="13dp"
+                    android:layout_height="13dp"
+                    android:layout_marginStart="3dp"
+                    android:src="@drawable/ic_widget_chevron_down" />
+            </LinearLayout>
 
             <TextView
-                android:id="@+id/tv_pooper_badge"
-                android:layout_width="wrap_content"
+                android:id="@+id/tv_last_time"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="我"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_brand_ink" />
+                android:layout_marginTop="2dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="今日 2 次 · 4h前"
+                android:textColor="@color/widget_ink_3"
+                android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 中部信息区 (常态 vs 进行中) -->
+    <!-- ② 日期区（常态）/ 实时计时（进行中） -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:layout_marginTop="4dp">
 
-        <!-- 常态布局 -->
         <LinearLayout
             android:id="@+id/layout_normal"
             android:layout_width="match_parent"
@@ -71,58 +103,38 @@
                 android:id="@+id/tv_day_num"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="30"
-                android:textSize="38sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_ink" />
+                android:fontFamily="sans-serif-black"
+                android:includeFontPadding="false"
+                android:text="27"
+                android:textColor="@color/widget_ink"
+                android:textSize="32sp" />
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="end">
+                android:layout_marginStart="9dp"
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/tv_weekday"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="星期一"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/widget_ink_2" />
-
-                <TextView
-                    android:id="@+id/tv_today_count"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:background="@drawable/bg_badge_soft"
-                    android:paddingHorizontal="5dp"
-                    android:paddingVertical="1dp"
-                    android:text="今日 1 次"
-                    android:textSize="9.5sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/widget_brand_ink" />
-
-                <TextView
-                    android:id="@+id/tv_last_time"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="上次 08:30"
-                    android:textSize="9sp"
-                    android:textColor="@color/widget_ink_3" />
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:text="10月 · 周六"
+                    android:textColor="@color/widget_ink_2"
+                    android:textSize="12.5sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 进行中布局 -->
         <LinearLayout
             android:id="@+id/layout_live"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:gravity="center"
+            android:gravity="center_vertical"
             android:visibility="gone">
 
             <LinearLayout
@@ -132,62 +144,66 @@
                 android:gravity="center_vertical">
 
                 <ImageView
-                    android:layout_width="7dp"
-                    android:layout_height="7dp"
-                    android:layout_marginEnd="4dp"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_marginEnd="5dp"
                     android:src="@drawable/bg_dot_live" />
 
                 <TextView
                     android:id="@+id/tv_live_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="正在屙..."
-                    android:textSize="10.5sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/widget_live" />
+                    android:fontFamily="sans-serif-medium"
+                    android:text="正在屙…"
+                    android:textColor="@color/widget_live"
+                    android:textSize="11.5sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <Chronometer
                 android:id="@+id/chrono_timer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_ink" />
+                android:fontFamily="sans-serif-black"
+                android:includeFontPadding="false"
+                android:textColor="@color/widget_ink"
+                android:textSize="30sp" />
 
             <TextView
                 android:id="@+id/tv_elapsed"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="实时计时中"
-                android:textSize="10sp"
-                android:textColor="@color/widget_ink_2" />
+                android:text="如厕实时计时中"
+                android:textColor="@color/widget_ink_3"
+                android:textSize="10.5sp" />
         </LinearLayout>
     </FrameLayout>
 
-    <!-- 底部操作按钮（包含统一开屙/完成卷纸图标与操作文字） -->
+    <!-- ③ 主操作按钮 -->
     <LinearLayout
         android:id="@+id/btn_action"
         android:layout_width="match_parent"
-        android:layout_height="32dp"
+        android:layout_height="42dp"
         android:background="@drawable/bg_btn_brand"
         android:orientation="horizontal"
-        android:gravity="center">
+        android:gravity="center"
+        android:layout_marginTop="6dp">
 
         <ImageView
             android:id="@+id/iv_btn_action_icon"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
-            android:layout_marginEnd="5dp"
+            android:layout_width="17dp"
+            android:layout_height="17dp"
+            android:layout_marginEnd="6dp"
             android:src="@drawable/ic_widget_action_start" />
 
         <TextView
             android:id="@+id/tv_btn_action_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
             android:text="现在开屙"
-            android:textSize="11.5sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_surface" />
+            android:textColor="@color/widget_surface"
+            android:textSize="13.5sp"
+            android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>

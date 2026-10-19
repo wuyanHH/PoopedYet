@@ -1,343 +1,483 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ═══════════════════════════════════════════════════════════════════
+     屙了么 · 大号小组件 (4×4) —— 现代卡片风「家庭健康看板」
+     ───────────────────────────────────────────────────────────────────
+     与旧版的关键差别：
+       · 三列并排的小卡片（22dp 头像 / 10.5sp 姓名）改为三行列表，
+         头像放大到 38dp、姓名 14sp、状态 11sp 单行，信息可读性质变；
+       · 每位成员一行独立操作，配一颗「记一次 / 帮记」胶囊；
+       · 最新便签卡改为弹性区，成员多时自动让位，不再挤压底部按钮。
+     ═══════════════════════════════════════════════════════════════════ -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_large_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/bg_widget_paper"
-    android:padding="13dp">
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
 
-    <!-- 顶部标题与日期栏 -->
+    <!-- 顶部：标题 + 成员胶囊（可点换人）+ 日期 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingBottom="6dp">
+        android:layout_marginBottom="10dp">
 
         <TextView
             android:id="@+id/tv_large_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="屙了么 · 家庭健康手帐"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_ink" />
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="屙了么 · 家庭看板"
+            android:textColor="@color/widget_ink"
+            android:textSize="12.5sp"
+            android:textStyle="bold" />
+
+        <!-- 成员胶囊：与 2×2 / 4×2 一样，点它就能原地换人 -->
+        <LinearLayout
+            android:id="@+id/btn_large_switch_pooper"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_stat_pill"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="3dp"
+            android:paddingEnd="7dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp">
+
+            <ImageView
+                android:id="@+id/iv_large_avatar"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_widget_avatar_placeholder" />
+
+            <TextView
+                android:id="@+id/tv_large_pooper_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:maxWidth="56dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:text="我"
+                android:textColor="@color/widget_ink"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/iv_large_chevron"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:src="@drawable/ic_widget_chevron_down" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tv_large_date"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="3月30日 星期一"
-            android:textSize="10sp"
-            android:textColor="@color/widget_ink_2" />
+            android:layout_marginStart="8dp"
+            android:text="10月18日 周六"
+            android:textColor="@color/widget_ink_3"
+            android:textSize="10.5sp" />
     </LinearLayout>
 
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/widget_line"
-        android:layout_marginBottom="8dp" />
-
-    <!-- 全家成员状态卡片（前 3 位） -->
+    <!-- ② 内容区：占满标题栏与按钮之间的全部高度，内部整体垂直居中。
+         成员不足 3 位时（第 3 行 GONE）富余高度会均匀落在上下两侧，
+         而不是在成员行和小结卡之间留出一道难看的空洞。 -->
     <LinearLayout
-        android:id="@+id/layout_family_row"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical">
 
-        <!-- 成员 1 -->
+    <!-- 家庭成员行 1 -->
+    <LinearLayout
+        android:id="@+id/row_f_0"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:minHeight="40dp"
+        android:background="@drawable/bg_member_row"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:layout_marginBottom="6dp">
+
+        <ImageView
+            android:id="@+id/iv_f_avatar_0"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_widget_avatar_placeholder" />
+
         <LinearLayout
-            android:id="@+id/card_f_0"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/bg_cell_normal"
-            android:paddingHorizontal="4dp"
-            android:paddingVertical="6dp"
-            android:layout_marginEnd="3dp">
-
-            <ImageView
-                android:id="@+id/iv_f_avatar_0"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:scaleType="centerCrop" />
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tv_f_name_0"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="我"
-                android:textSize="10.5sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_ink"
+                android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
-                android:ellipsize="end" />
+                android:ellipsize="end"
+                android:text="我"
+                android:textColor="@color/widget_ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_f_time_0"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="1dp"
-                android:text="今日1次"
-                android:textSize="8.5sp"
-                android:textColor="@color/widget_ink_3"
                 android:maxLines="1"
-                android:ellipsize="end" />
-
-            <TextView
-                android:id="@+id/btn_f_0"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:background="@drawable/bg_badge_soft"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="1.5dp"
-                android:text="记一次"
-                android:textSize="8.5sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_brand_ink" />
+                android:ellipsize="end"
+                android:text="今日 2 次 · 上次 14:15"
+                android:textColor="@color/widget_ink_3"
+                android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- 成员 2 -->
+        <TextView
+            android:id="@+id/btn_f_0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_badge_soft"
+            android:paddingStart="11dp"
+            android:paddingEnd="11dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:text="记一次"
+            android:textColor="@color/widget_brand_ink"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- ① 家庭成员行 2 -->
+    <LinearLayout
+        android:id="@+id/row_f_1"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:minHeight="40dp"
+        android:background="@drawable/bg_member_row"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:layout_marginBottom="6dp">
+
+        <ImageView
+            android:id="@+id/iv_f_avatar_1"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_widget_avatar_placeholder" />
+
         <LinearLayout
-            android:id="@+id/card_f_1"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/bg_cell_normal"
-            android:paddingHorizontal="4dp"
-            android:paddingVertical="6dp"
-            android:layout_marginHorizontal="2dp">
-
-            <ImageView
-                android:id="@+id/iv_f_avatar_1"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:scaleType="centerCrop" />
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tv_f_name_1"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="咪咪"
-                android:textSize="10.5sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_ink"
+                android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
-                android:ellipsize="end" />
+                android:ellipsize="end"
+                android:text="咪咪"
+                android:textColor="@color/widget_ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_f_time_1"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="1dp"
-                android:text="今晨"
-                android:textSize="8.5sp"
-                android:textColor="@color/widget_ink_3"
                 android:maxLines="1"
-                android:ellipsize="end" />
-
-            <TextView
-                android:id="@+id/btn_f_1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:background="@drawable/bg_badge_soft"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="1.5dp"
-                android:text="帮记"
-                android:textSize="8.5sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_brand_ink" />
+                android:ellipsize="end"
+                android:text="今日 1 次 · 上次 07:20"
+                android:textColor="@color/widget_ink_3"
+                android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- 成员 3 -->
+        <TextView
+            android:id="@+id/btn_f_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_badge_soft"
+            android:paddingStart="11dp"
+            android:paddingEnd="11dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:text="帮记"
+            android:textColor="@color/widget_brand_ink"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- ① 家庭成员行 3 -->
+    <LinearLayout
+        android:id="@+id/row_f_2"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:minHeight="40dp"
+        android:background="@drawable/bg_member_row"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:layout_marginBottom="8dp">
+
+        <ImageView
+            android:id="@+id/iv_f_avatar_2"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_widget_avatar_placeholder" />
+
         <LinearLayout
-            android:id="@+id/card_f_2"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/bg_cell_normal"
-            android:paddingHorizontal="4dp"
-            android:paddingVertical="6dp"
-            android:layout_marginStart="3dp">
-
-            <ImageView
-                android:id="@+id/iv_f_avatar_2"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:scaleType="centerCrop" />
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tv_f_name_2"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="宝宝"
-                android:textSize="10.5sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_ink"
+                android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
-                android:ellipsize="end" />
+                android:ellipsize="end"
+                android:text="宝宝"
+                android:textColor="@color/widget_ink"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_f_time_2"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="1dp"
-                android:text="尚未排便"
-                android:textSize="8.5sp"
-                android:textColor="@color/widget_ink_3"
                 android:maxLines="1"
-                android:ellipsize="end" />
+                android:ellipsize="end"
+                android:text="昨天 · 19:40"
+                android:textColor="@color/widget_ink_3"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/btn_f_2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_badge_soft"
+            android:paddingStart="11dp"
+            android:paddingEnd="11dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:text="帮记"
+            android:textColor="@color/widget_brand_ink"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- ③ 本周小结 + 本周节律 + 最近一条便签
+         这里原来是「最新便签速记」的弹性区（weight=1，占近四成高度）。
+         便签是低频内容，那块常年显示「暂无近期便签速记」的一片空白，
+         还只读、点不动 —— 等于用最贵的位置放最没信息量的东西。
+
+         现在换成三行：本周总量与「谁最勤」、一条 7 天的节律带、
+         以及退成一行、有才显示的便签。卡片保留 weight 与浅底，
+         这样在不同启动器给的高度下都能撑满而不露馅。 -->
+    <LinearLayout
+        android:id="@+id/layout_summary_card"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.2"
+        android:minHeight="68dp"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_member_row"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/tv_week_summary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="本周 12 次 · 6 天有记录 · 最勤 xiaojie"
+            android:textColor="@color/widget_ink"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+
+        <!-- 本周节律：一格一天，「一3」表示周一 3 次，没记录显示成「一·」 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/btn_f_2"
+                android:id="@+id/tv_wd_0"
+                style="@style/WidgetWeekCell"
+                android:layout_marginEnd="3dp"
+                android:text="一·" />
+
+            <TextView
+                android:id="@+id/tv_wd_1"
+                style="@style/WidgetWeekCell"
+                android:layout_marginEnd="3dp"
+                android:text="二·" />
+
+            <TextView
+                android:id="@+id/tv_wd_2"
+                style="@style/WidgetWeekCell"
+                android:layout_marginEnd="3dp"
+                android:text="三·" />
+
+            <TextView
+                android:id="@+id/tv_wd_3"
+                style="@style/WidgetWeekCell"
+                android:layout_marginEnd="3dp"
+                android:text="四·" />
+
+            <TextView
+                android:id="@+id/tv_wd_4"
+                style="@style/WidgetWeekCell"
+                android:layout_marginEnd="3dp"
+                android:text="五·" />
+
+            <TextView
+                android:id="@+id/tv_wd_5"
+                style="@style/WidgetWeekCell"
+                android:layout_marginEnd="3dp"
+                android:text="六·" />
+
+            <TextView
+                android:id="@+id/tv_wd_6"
+                style="@style/WidgetWeekCell"
+                android:text="日·" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_recent_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_note_content"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="我 · 14:15 · 喝完温水后排空，感觉非常舒适顺畅。"
+                android:textColor="@color/widget_ink_2"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_note_tag"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:background="@drawable/bg_badge_soft"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="1.5dp"
-                android:text="补录"
-                android:textSize="8.5sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_brand_ink" />
+                android:layout_marginStart="6dp"
+                android:text="#顺畅"
+                android:textColor="@color/widget_brand_ink"
+                android:textSize="10sp"
+                android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 近期便签流水 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="4dp">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="最新便签速记"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_ink_2" />
-
-        <TextView
-            android:id="@+id/tv_note_tag"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="#顺畅"
-            android:textSize="9sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_brand_ink" />
     </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/layout_note_card"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/bg_cell_normal"
-        android:padding="8dp">
-
-        <TextView
-            android:id="@+id/tv_note_header"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="🐶 我 · 14:15 (用时 11m)"
-            android:textSize="9.5sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_ink" />
-
-        <TextView
-            android:id="@+id/tv_note_content"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="喝完温水后排空，感觉非常舒适顺畅。"
-            android:textSize="9sp"
-            android:textColor="@color/widget_ink_3"
-            android:maxLines="2"
-            android:ellipsize="end" />
-    </LinearLayout>
-
-    <!-- 弹性占位，保证底部按钮始终贴底 -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-    <!-- 底部三动作按钮栏 -->
+    <!-- ④ 底部三动作 -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="32dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="8dp"
         android:orientation="horizontal">
 
-        <!-- 极速开屙 (主按钮，包含统一开屙/完成卷纸图标) -->
         <LinearLayout
             android:id="@+id/btn_large_start"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1.3"
+            android:layout_weight="1.35"
             android:background="@drawable/bg_btn_brand"
             android:orientation="horizontal"
             android:gravity="center">
 
             <ImageView
                 android:id="@+id/iv_btn_large_start_icon"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:layout_marginEnd="4dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="5dp"
                 android:src="@drawable/ic_widget_action_start" />
 
             <TextView
                 android:id="@+id/tv_btn_large_start_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
                 android:text="极速开屙"
-                android:textSize="10.5sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_surface" />
+                android:textColor="@color/widget_surface"
+                android:textSize="12sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- 补录便签 -->
         <TextView
             android:id="@+id/btn_large_backfill"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/bg_cell_normal"
+            android:layout_marginStart="7dp"
+            android:background="@drawable/bg_btn_ghost"
+            android:fontFamily="sans-serif-medium"
             android:gravity="center"
             android:text="补录便签"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_ink" />
+            android:textColor="@color/widget_ink"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
 
-        <!-- 打开月历 -->
         <TextView
             android:id="@+id/btn_large_calendar"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1.1"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/bg_cell_normal"
+            android:layout_marginStart="7dp"
+            android:background="@drawable/bg_btn_ghost"
+            android:fontFamily="sans-serif-medium"
             android:gravity="center"
             android:text="打开日历"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_ink" />
+            android:textColor="@color/widget_ink"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>

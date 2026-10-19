@@ -5,6 +5,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/app.dart';
 import 'src/legal/third_party_licenses.dart';
 import 'src/state/settings.dart';
+import 'src/widget/widget_action_entry.dart';
+
+/// 桌面小组件「开屙 / 完成」的**后台入口**（原生按这个名字调用）。
+///
+/// ⚠ 必须定义在 `main.dart` 这个**根库**里，不能直接指向 `src/widget/` 下的函数：
+/// Flutter 的 `DartEntrypoint` 只会在根库的顶层作用域解析函数名，
+/// 放别处会直接报 `Could not resolve main entrypoint function`，
+/// 表现就是「点了没反应、也不报错给你看」。
+///
+/// `@pragma('vm:entry-point')` 保证 AOT 构建不会把它当死代码瘦掉。
+@pragma('vm:entry-point')
+void widgetActionMain() => runWidgetActionEntrypoint();
 
 Future<void> main() async {
   // SharedPreferences 的初始化是异步的。在这里 await 一次并通过 override 注入，

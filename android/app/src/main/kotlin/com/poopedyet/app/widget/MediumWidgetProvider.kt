@@ -1,24 +1,22 @@
 package com.poopedyet.app.widget
 
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
-import com.poopedyet.app.MainActivity
 import com.poopedyet.app.R
 import org.json.JSONObject
 
 /**
- * 屙了么 · 手帐周历中号组件 (4×2)
+ * 屙了么 · 桌面中号组件 (4×2) —— 现代卡片风「行动舱 + 7 天周历」。
  *
- * 支持：
- * 1. 独立绑定屙屎人与专属统计数据
- * 2. 点击左侧成员头像/姓名区域原地轮换切换屙屎人（无缝换人）
- * 3. 动态映射成员真实头像 Emoji（彻底消除硬编码小狗🐶）
+ * 交互设计：
+ * 1. 顶部成员通栏（40dp 头像 + 15sp 姓名 + 一行状态）整块可点，原地换人；
+ * 2. 左侧行动舱只承担「距上次多久 / 实时计时 + 主按钮」，避免与顶部信息重复；
+ * 3. 右侧周历高亮的是**当前绑定成员**本周的打卡，而不是全家汇总。
  */
 class MediumWidgetProvider : AppWidgetProvider() {
 
@@ -26,21 +24,7 @@ class MediumWidgetProvider : AppWidgetProvider() {
         updateWidgets(context, appWidgetManager, appWidgetIds)
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        if (intent.action == ACTION_SWITCH_POOPER) {
-            val widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
-            if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                // 原地切换到下一个家庭成员并立即局部刷新
-                WidgetDataProvider.cycleNextPooper(context, widgetId)
-                val appWidgetManager = AppWidgetManager.getInstance(context)
-                updateWidgets(context, appWidgetManager, intArrayOf(widgetId))
-            }
-        }
-    }
-
     companion object {
-        const val ACTION_SWITCH_POOPER = "com.poopedyet.app.widget.ACTION_SWITCH_POOPER_MEDIUM"
 
         fun updateWidgets(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
             val snapshot = WidgetDataProvider.getSnapshot(context)
@@ -54,15 +38,11 @@ class MediumWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_medium)
 
             val isIncognito = snapshot?.optBoolean("isIncognito", false) ?: false
-            val streak = snapshot?.optInt("weekStreakDays", 0) ?: 0
-            val liveSession = snapshot?.optJSONObject("liveSession")
-            val isLive = liveSession?.optBoolean("isLive", false) ?: false
-            val recordId = liveSession?.optString("recordId", "") ?: ""
-
+            val todaySummary = snapshot?.optJSONObject("todaySummary")
             val defaultPooper = snapshot?.optJSONObject("defaultPooper")
             val familyMembers = snapshot?.optJSONArray("familyMembers")
 
-            // 1. 读取当前中号小组件独立绑定的成员；未特别绑定则回退到默认成员
+            // ① 当前实例绑定的成员（未绑定 → 回退 App 默认成员）
             val boundPooperId = WidgetDataProvider.getWidgetPooperId(context, widgetId)
             var currentMember: JSONObject? = null
             if (familyMembers != null && boundPooperId != null) {
@@ -79,156 +59,207 @@ class MediumWidgetProvider : AppWidgetProvider() {
             val targetId = targetMember?.optString("id", "") ?: ""
             val targetName = targetMember?.optString("name", "我") ?: "我"
 
-            val todaySummary = snapshot?.optJSONObject("todaySummary")
-            val totalToday = currentMember?.optInt("todayCount", todaySummary?.optInt("totalCount", 0) ?: 0)
-                ?: (todaySummary?.optInt("totalCount", 0) ?: 0)
-            val hoursSinceLast = currentMember?.optInt("hoursSinceLast", todaySummary?.optInt("hoursSinceLast", -1) ?: -1)
-                ?: (todaySummary?.optInt("hoursSinceLast", -1) ?: -1)
-            val lastRemark = WidgetDataProvider.optNullableString(currentMember, "lastRemark")
-                ?: WidgetDataProvider.optNullableString(todaySummary, "lastRemark")
+            // 只看**绑定的这一位**在不在屙。以前读顶层 liveSession（全家最新一条），
+            // 于是别人开屙时，这张只显示自己的卡也会切成「完成打卡」。
+            val live = liveStateOf(familyMembers, targetId)
+            val isLive = live.isLive
+            val recordId = live.recordId
+            val startedAtMillis = live.startedAtMillis
 
-            // 1. 顶部标题与连续顺畅天数
-            val titleText = if (isIncognito) "PoopedYet · 日常轻体" else "屙了么 · 便签手帐"
-            views.setTextViewText(R.id.tv_medium_title, titleText)
+            // 统计一律取**这位成员自己的**，不退回全家汇总：
+            // 绑定 haohao 的组件不该显示 xiaojie 的次数。
+            // 数据从 familyMembers 按 id 查 —— 未绑定时 targetMember 是顶层的
+            // defaultPooper，那个对象身上并没有统计字段。
+            val memberData = findMember(familyMembers, targetId)
+            val totalToday = memberData?.optInt("todayCount", 0) ?: 0
+            val hoursSinceLast = memberData?.optInt("hoursSinceLast", -1) ?: -1
+            val lastTimeStr = WidgetDataProvider.optNullableString(memberData, "lastTimeStr")
+            val lastRemark = WidgetDataProvider.optNullableString(memberData, "lastRemark")
 
-            val streakText = if (isIncognito) "身心轻盈 ${streak} 天" else "连续顺畅 ${streak} 天"
-            views.setTextViewText(R.id.tv_medium_streak, streakText)
-
-            // 2. 左侧行动舱：展示真实头像（照片/首字色彩徽章）与绑定成员姓名（彻底消除 Emoji 狗）
-            val avatarBitmap = WidgetAvatarHelper.createAvatarBitmap(context, targetMember, 22)
-            views.setImageViewBitmap(R.id.iv_m_avatar, avatarBitmap)
+            // ② 顶部成员通栏
+            views.setImageViewBitmap(
+                R.id.iv_m_avatar,
+                WidgetAvatarHelper.createAvatarBitmap(context, targetMember, 36),
+            )
             views.setTextViewText(R.id.tv_m_name, targetName)
 
-            // 绑定点击左侧成员头像区域：原地轮换切换绑定的屙屎人
-            val switchIntent = Intent(context, MediumWidgetProvider::class.java).apply {
-                action = ACTION_SWITCH_POOPER
-                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-            }
-            val switchPendingIntent = PendingIntent.getBroadcast(
-                context, 20000 + widgetId, switchIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            views.setOnClickPendingIntent(R.id.iv_m_avatar, switchPendingIntent)
-            views.setOnClickPendingIntent(R.id.tv_m_name, switchPendingIntent)
-
-            val myStatusText = if (totalToday > 0) {
-                if (isIncognito) "已完成放空" else "今日已打卡"
+            val statusParts = mutableListOf<String>()
+            statusParts += if (totalToday > 0) {
+                if (isIncognito) "今日放空 $totalToday 次" else "今日 $totalToday 次"
             } else {
-                if (isIncognito) "待放空减负" else "今天尚未记录"
+                if (isIncognito) "今天还没放空" else "今天还没记录"
             }
-            views.setTextViewText(R.id.tv_m_status, myStatusText)
-
-            val lastHourText = if (hoursSinceLast >= 0) "距上次: ${hoursSinceLast}h" else "距上次: 暂无"
-            views.setTextViewText(R.id.tv_m_last_hours, lastHourText)
-
-            val remarkText = if (!lastRemark.isNullOrBlank()) {
-                "状态: $lastRemark"
-            } else {
-                if (isIncognito) "状态: 轻松无压力" else "状态: 顺畅无痛"
+            if (lastTimeStr != null) {
+                statusParts += if (isIncognito) "上次放空 $lastTimeStr" else "上次 $lastTimeStr"
             }
-            views.setTextViewText(R.id.tv_m_remark, remarkText)
-
-            // 卡片整体点击（打开主页）
-            val openAppIntent = Intent(context, MainActivity::class.java).apply {
-                action = Intent.ACTION_VIEW
-                data = Uri.parse("poopedyet://main")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            if (!lastRemark.isNullOrBlank()) {
+                statusParts += lastRemark
             }
-            val openAppPendingIntent = PendingIntent.getActivity(
-                context, 2000, openAppIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            views.setTextViewText(R.id.tv_m_status, statusParts.joinToString(" · "))
+
+            val switchPendingIntent = SmallWidgetProvider.buildConfigPendingIntent(context, widgetId, 20000)
+            views.setOnClickPendingIntent(R.id.btn_m_switch_pooper, switchPendingIntent)
+            views.setOnClickPendingIntent(R.id.iv_m_chevron, switchPendingIntent)
+
+            // 连续天数取**绑定这位**自己的。顶层的 weekStreakDays 是全家口径 ——
+            // 一个人天天记、另一个人从没记过，两个人的组件却会显示同一个数字。
+            val streak = memberData?.optInt("streakDays", 0) ?: 0
+            views.setTextViewText(
+                R.id.tv_medium_streak,
+                if (isIncognito) "身心轻盈 $streak 天" else "连续顺畅 $streak 天",
             )
-            views.setOnClickPendingIntent(R.id.widget_medium_root, openAppPendingIntent)
+            // 0 天时整颗胶囊没什么信息量，收起来让顶部更干净
+            views.setViewVisibility(
+                R.id.tv_medium_streak,
+                if (streak > 0) View.VISIBLE else View.GONE,
+            )
 
-            // 按钮状态与交互
+            // ③ 卡片整体点击（打开主页）
+            views.setOnClickPendingIntent(
+                R.id.widget_medium_root,
+                SmallWidgetProvider.buildOpenAppPendingIntent(context, "poopedyet://main", 2000),
+            )
+
+            // ④ 左侧行动舱：距上次多久 / 实时计时
             if (isLive) {
-                val finishText = if (isIncognito) "放空达成" else "完成打卡"
-                views.setTextViewText(R.id.tv_btn_m_action_text, finishText)
+                views.setViewVisibility(R.id.layout_m_normal, View.GONE)
+                views.setViewVisibility(R.id.layout_m_live, View.VISIBLE)
+
+                val elapsed = (System.currentTimeMillis() - startedAtMillis).coerceAtLeast(0)
+                views.setChronometer(
+                    R.id.chrono_m_timer,
+                    SystemClock.elapsedRealtime() - elapsed,
+                    "%s",
+                    true,
+                )
+                views.setTextViewText(
+                    R.id.tv_m_elapsed,
+                    if (isIncognito) "放空中" else "正在屙…",
+                )
+
+                views.setTextViewText(
+                    R.id.tv_btn_m_action_text,
+                    if (isIncognito) "放空达成" else "完成打卡",
+                )
                 views.setImageViewResource(R.id.iv_btn_m_action_icon, R.drawable.ic_widget_action_finish)
                 views.setInt(R.id.btn_m_action, "setBackgroundResource", R.drawable.bg_btn_live)
 
-                val finishIntent = Intent(context, MainActivity::class.java).apply {
-                    action = Intent.ACTION_VIEW
-                    data = Uri.parse("poopedyet://action/finish?recordId=$recordId")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                }
-                val finishPendingIntent = PendingIntent.getActivity(
-                    context, 2001, finishIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                views.setOnClickPendingIntent(
+                    R.id.btn_m_action,
+                    SmallWidgetProvider.buildFinishPendingIntent(context, recordId, widgetId, 2001),
                 )
-                views.setOnClickPendingIntent(R.id.btn_m_action, finishPendingIntent)
             } else {
-                val startText = if (isIncognito) "减负放空" else "现在开屙"
-                views.setTextViewText(R.id.tv_btn_m_action_text, startText)
+                views.setChronometer(R.id.chrono_m_timer, SystemClock.elapsedRealtime(), "%s", false)
+                views.setViewVisibility(R.id.layout_m_normal, View.VISIBLE)
+                views.setViewVisibility(R.id.layout_m_live, View.GONE)
+
+                val bigNum: String
+                val bigLabel: String
+                when {
+                    hoursSinceLast < 0 -> {
+                        bigNum = "—"
+                        bigLabel = if (isIncognito) "还没记录" else "暂无记录"
+                    }
+                    hoursSinceLast < 24 -> {
+                        bigNum = "${hoursSinceLast}h"
+                        bigLabel = if (isIncognito) "距上次放空" else "距上次"
+                    }
+                    else -> {
+                        bigNum = "${hoursSinceLast / 24}天"
+                        bigLabel = if (isIncognito) "距上次放空" else "距上次"
+                    }
+                }
+                views.setTextViewText(R.id.tv_m_big_num, bigNum)
+                views.setTextViewText(R.id.tv_m_big_label, bigLabel)
+
+                views.setTextViewText(
+                    R.id.tv_btn_m_action_text,
+                    if (isIncognito) "减负放空" else "现在开屙",
+                )
                 views.setImageViewResource(R.id.iv_btn_m_action_icon, R.drawable.ic_widget_action_start)
                 views.setInt(R.id.btn_m_action, "setBackgroundResource", R.drawable.bg_btn_brand)
 
-                val startUri = if (targetId.isNotEmpty()) "poopedyet://action/start?pooperId=$targetId" else "poopedyet://action/start"
-                val startIntent = Intent(context, MainActivity::class.java).apply {
-                    action = Intent.ACTION_VIEW
-                    data = Uri.parse(startUri)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                }
-                val startPendingIntent = PendingIntent.getActivity(
-                    context, 2002, startIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                views.setOnClickPendingIntent(
+                    R.id.btn_m_action,
+                    SmallWidgetProvider.buildStartPendingIntent(context, targetId, widgetId, 2002),
                 )
-                views.setOnClickPendingIntent(R.id.btn_m_action, startPendingIntent)
             }
 
-            // 3. 右侧迷你 7 天周历
-            val weekDays = snapshot?.optJSONArray("weekDays")
+            // ⑤ 右侧 7 天周历（只点亮当前成员自己的打卡）
+            renderWeekStrip(views, context, snapshot, widgetId, targetId, isIncognito, targetName)
+
+            return views
+        }
+
+        private fun renderWeekStrip(
+            views: RemoteViews,
+            context: Context,
+            snapshot: JSONObject?,
+            widgetId: Int,
+            targetPooperId: String,
+            isIncognito: Boolean,
+            targetName: String,
+        ) {
+            val weekDays = snapshot?.optJSONArray("weekDays") ?: return
+
             val numViewIds = intArrayOf(
                 R.id.tv_cell_num_0, R.id.tv_cell_num_1, R.id.tv_cell_num_2,
-                R.id.tv_cell_num_3, R.id.tv_cell_num_4, R.id.tv_cell_num_5, R.id.tv_cell_num_6
+                R.id.tv_cell_num_3, R.id.tv_cell_num_4, R.id.tv_cell_num_5,
+                R.id.tv_cell_num_6,
             )
             val dotViewIds = intArrayOf(
                 R.id.dot_cell_0, R.id.dot_cell_1, R.id.dot_cell_2,
-                R.id.dot_cell_3, R.id.dot_cell_4, R.id.dot_cell_5, R.id.dot_cell_6
+                R.id.dot_cell_3, R.id.dot_cell_4, R.id.dot_cell_5,
+                R.id.dot_cell_6,
             )
             val cellViewIds = intArrayOf(
                 R.id.cell_0, R.id.cell_1, R.id.cell_2,
-                R.id.cell_3, R.id.cell_4, R.id.cell_5, R.id.cell_6
+                R.id.cell_3, R.id.cell_4, R.id.cell_5,
+                R.id.cell_6,
             )
 
-            if (weekDays != null) {
-                for (i in 0 until 7) {
-                    if (i < weekDays.length()) {
-                        val dayObj = weekDays.optJSONObject(i)
-                        val dayNum = dayObj?.optInt("dayNum", 1) ?: (i + 1)
-                        val isToday = dayObj?.optBoolean("isToday", false) ?: false
-                        val count = dayObj?.optInt("count", 0) ?: 0
-                        val dateStr = dayObj?.optString("dateStr", "") ?: ""
+            for (i in 0 until 7) {
+                if (i >= weekDays.length()) break
+                val dayObj = weekDays.optJSONObject(i) ?: continue
 
-                        views.setTextViewText(numViewIds[i], dayNum.toString())
-                        views.setViewVisibility(dotViewIds[i], if (count > 0) View.VISIBLE else View.INVISIBLE)
+                val dayNum = dayObj.optInt("dayNum", i + 1)
+                val isToday = dayObj.optBoolean("isToday", false)
+                val dateStr = dayObj.optString("dateStr", "")
 
-                        if (isToday) {
-                            views.setInt(cellViewIds[i], "setBackgroundResource", R.drawable.bg_cell_today)
-                        } else {
-                            views.setInt(cellViewIds[i], "setBackgroundResource", R.drawable.bg_cell_normal)
-                        }
+                // 优先用「该成员在这一天的次数」；快照缺失时退回全家汇总计数。
+                val pooperCounts = dayObj.optJSONObject("pooperCounts")
+                val ownCount = if (targetPooperId.isNotEmpty()) {
+                    pooperCounts?.optInt(targetPooperId, 0) ?: 0
+                } else {
+                    dayObj.optInt("count", 0)
+                }
 
-                        // 点击日期格跳转定位该天
-                        val dayIntent = Intent(context, MainActivity::class.java).apply {
-                            action = Intent.ACTION_VIEW
-                            data = Uri.parse("poopedyet://calendar?date=$dateStr")
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        }
-                        val dayPendingIntent = PendingIntent.getActivity(
-                            context, 3000 + i, dayIntent,
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                        )
-                        views.setOnClickPendingIntent(cellViewIds[i], dayPendingIntent)
-                    }
+                views.setTextViewText(numViewIds[i], dayNum.toString())
+                views.setViewVisibility(dotViewIds[i], if (ownCount > 0) View.VISIBLE else View.INVISIBLE)
+                views.setInt(
+                    cellViewIds[i],
+                    "setBackgroundResource",
+                    if (isToday) R.drawable.bg_cell_today else R.drawable.bg_cell_normal,
+                )
+
+                val label = if (isIncognito) {
+                    "$targetName $dateStr 放空 $ownCount 次，点击查看当天详情"
+                } else {
+                    "$targetName $dateStr 打卡 $ownCount 次，点击查看当天详情"
+                }
+                views.setContentDescription(cellViewIds[i], label)
+
+                if (dateStr.isNotEmpty()) {
+                    views.setOnClickPendingIntent(
+                        cellViewIds[i],
+                        SmallWidgetProvider.buildOpenAppPendingIntent(
+                            context,
+                            "poopedyet://calendar?date=$dateStr",
+                            30000 + widgetId * 10 + i,
+                        ),
+                    )
                 }
             }
-
-            // 底部动态提示条
-            val tipText = if (isIncognito) "今日动态：全员生活作息良好" else "今日动态：全员排便节奏规律"
-            views.setTextViewText(R.id.tv_medium_tip, tipText)
-
-            return views
         }
     }
 }

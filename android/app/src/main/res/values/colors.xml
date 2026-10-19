@@ -6,16 +6,39 @@
     <color name="accent_yellow">#E4B34F</color>
     <color name="accent_sage">#76A08A</color>
 
-    <!-- 桌面小组件 (AppWidget) 原生主题色与质感色彩体系 -->
-    <color name="widget_paper">#FAF8F5</color>
+    <!-- ============================================================
+         桌面小组件 (AppWidget) · 现代卡片风色彩体系
+         ============================================================
+         与主 App 的手帐纸感区分：小组件改用「干净白卡片 + 大圆角 + 强字重
+         对比 + 焦糖强调块」，在系统桌面上更挺括、识别度更高。
+         品牌焦糖仍沿用主 App 的一色三分口径：
+           brand_fill = 焦糖底(上面盖白字，白字对其 4.85:1)
+           brand_ink  = 焦糖文字(对 brand_soft 5.94:1 / 对白 6.42:1)
+           brand_soft = 焦糖浅底
+         ============================================================ -->
+
+    <!-- 卡片底与层级底 -->
+    <color name="widget_paper">#FFFFFF</color>
     <color name="widget_surface">#FFFFFF</color>
-    <color name="widget_surface_2">#F5F1EB</color>
-    <color name="widget_line">#E8E2D8</color>
-    <color name="widget_ink">#2D1B0D</color>
-    <color name="widget_ink_2">#5C4033</color>
-    <color name="widget_ink_3">#8C7A6B</color>
-    <color name="widget_brand_fill">#9E521E</color>
-    <color name="widget_brand_ink">#803E14</color>
-    <color name="widget_brand_soft">#FFF0D4</color>
-    <color name="widget_live">#2E7D32</color>
+    <color name="widget_surface_2">#F5F2EF</color>
+    <color name="widget_surface_3">#FAF8F6</color>
+
+    <!-- 描边与分隔线（纯装饰） -->
+    <color name="widget_line">#ECE6E0</color>
+    <color name="widget_line_strong">#DED5CC</color>
+
+    <!-- 文字层级（对白底 16.1:1 / 7.2:1 / 4.6:1） -->
+    <color name="widget_ink">#1A1613</color>
+    <color name="widget_ink_2">#5F5852</color>
+    <color name="widget_ink_3">#8A817A</color>
+
+    <!-- 品牌焦糖 -->
+    <color name="widget_brand_fill">#A85F29</color>
+    <color name="widget_brand_ink">#8F4A15</color>
+    <color name="widget_brand_soft">#FDF0E4</color>
+
+    <!-- 状态色 -->
+    <color name="widget_live">#2F7A4F</color>
+    <color name="widget_off">#B03A2E</color>
+    <color name="widget_work">#3F6F80</color>
 </resources>

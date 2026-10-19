@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../widget/widget_snapshot_service.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
@@ -165,12 +168,29 @@ class AppDatabase extends _$AppDatabase {
             .write(const PoopersCompanion(isDefault: Value(true)));
       }
     });
+
+    // 桌面小组件读的是跨进程快照，不主动同步的话它会一直拿着旧成员表 ——
+    // 表现就是「人都归档了，小组件里还选得到他」。
+    unawaited(WidgetSyncManager.sync(this));
   }
 
   /// 取消归档。
   Future<void> unarchivePooper(String id) async {
     await (update(poopers)..where((t) => t.id.equals(id)))
         .write(const PoopersCompanion(archivedAt: Value(null)));
+    unawaited(WidgetSyncManager.sync(this));
+  }
+
+  /// 某个屙屎人名下一共有多少条记录。
+  ///
+  /// 彻底删除前用来明确告知「将删除 N 条记录」——
+  /// 不报数字的确认框等于没确认。
+  Future<int> countRecordsOf(String pooperId) async {
+    final row = await (selectOnly(poopRecords)
+          ..addColumns([poopRecords.id.count()])
+          ..where(poopRecords.pooperId.equals(pooperId)))
+        .getSingle();
+    return row.read(poopRecords.id.count()) ?? 0;
   }
 
   /// **危险操作**：彻底删除一个人，连同他的全部记录。
@@ -178,7 +198,7 @@ class AppDatabase extends _$AppDatabase {
   /// 返回被删掉的记录条数，让 UI 能明确告知"将删除 N 条记录"。
   /// 因为外键是 `restrict`，必须按顺序删：备注 → 记录 → 人。
   Future<int> purgePooper(String id) async {
-    return transaction(() async {
+    final deleted = await transaction(() async {
       final recordIds = await (selectOnly(poopRecords)
             ..addColumns([poopRecords.id])
             ..where(poopRecords.pooperId.equals(id)))
@@ -190,12 +210,15 @@ class AppDatabase extends _$AppDatabase {
               ..where((t) => t.recordId.isIn(recordIds)))
             .go();
       }
-      final deleted = await (delete(poopRecords)
+      final removed = await (delete(poopRecords)
             ..where((t) => t.pooperId.equals(id)))
           .go();
       await (delete(poopers)..where((t) => t.id.equals(id))).go();
-      return deleted;
+      return removed;
     });
+
+    unawaited(WidgetSyncManager.sync(this));
+    return deleted;
   }
 
   /// 设置默认屙屎人。先清空再设置，避免短暂违反唯一索引。
@@ -205,5 +228,9 @@ class AppDatabase extends _$AppDatabase {
       await (update(poopers)..where((t) => t.id.equals(id)))
           .write(const PoopersCompanion(isDefault: Value(true)));
     });
+
+    // 「跟随默认成员」的小组件全靠这份默认值，不同步的话换了默认人
+    // 桌面上那些组件还显示着旧的人（头像自然也不对）。
+    unawaited(WidgetSyncManager.sync(this));
   }
 }

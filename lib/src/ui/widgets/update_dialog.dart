@@ -7,20 +7,33 @@ import '../../data/update/update_service.dart';
 import '../../theme/tokens.dart';
 
 /// 深浅色完美兼容的检查更新弹窗
+///
+/// 自动检查触发时传 [skippable]（并在 [onSkip] 里落库），
+/// 用户就能明确告诉应用「这个版本别再来烦我」。
 class UpdateDialog extends StatefulWidget {
   const UpdateDialog({
     super.key,
     required this.releaseInfo,
     required this.deviceAbi,
+    this.skippable = false,
+    this.onSkip,
   });
 
   final UpdateReleaseInfo releaseInfo;
   final String deviceAbi;
 
+  /// 是否展示「跳过此版本」。
+  final bool skippable;
+
+  /// 点「跳过此版本」时的回调（调用方负责落盘）。
+  final VoidCallback? onSkip;
+
   static Future<void> show(
     BuildContext context, {
     required UpdateReleaseInfo releaseInfo,
     required String deviceAbi,
+    bool skippable = false,
+    VoidCallback? onSkip,
   }) {
     return showDialog(
       context: context,
@@ -28,6 +41,8 @@ class UpdateDialog extends StatefulWidget {
       builder: (ctx) => UpdateDialog(
         releaseInfo: releaseInfo,
         deviceAbi: deviceAbi,
+        skippable: skippable,
+        onSkip: onSkip,
       ),
     );
   }
@@ -290,6 +305,38 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 ),
               ],
             ),
+
+            // 可选出口：跳过这个版本，别再自动提醒。
+            // 手动检查时也提供 —— 用户看过一眼决定暂不升级，
+            // 那就该有一个「别再拿它烦我」的明确选项。
+            if (widget.skippable) ...[
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.center,
+                child: TextButton(
+                  onPressed: () {
+                    widget.onSkip?.call();
+                    Navigator.of(context).pop();
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: t.ink4,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                  ),
+                  child: Text(
+                    '跳过此版本 v${r.versionName}，不再自动提醒',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

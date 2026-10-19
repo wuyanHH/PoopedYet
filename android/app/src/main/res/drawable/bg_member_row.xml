@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 家庭成员行卡片（大号组件）：16dp 圆角浅底，承载放大的头像与状态。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/widget_surface_2" />
+    <corners android:radius="16dp" />
+</shape>

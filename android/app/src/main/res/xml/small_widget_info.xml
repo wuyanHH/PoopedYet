@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 小号 (2×2) · 成员打卡卡
+     previewLayout (Android 12+) 直接用真实布局静态渲染，
+     因此选择器里看到的就是组件放到桌面后的样子；
+     previewImage 是 Android 11 及以下的位图兜底。 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="140dp"
-    android:minHeight="140dp"
-    android:targetCellWidth="2"
-    android:targetCellHeight="2"
-    android:updatePeriodMillis="1800000"
-    android:initialLayout="@layout/widget_small"
+    android:configure="com.poopedyet.app.widget.WidgetConfigActivity"
     android:description="@string/widget_small_desc"
-    android:previewImage="@mipmap/ic_launcher"
+    android:initialLayout="@layout/widget_small"
+    android:minHeight="140dp"
+    android:minWidth="140dp"
+    android:previewImage="@drawable/widget_preview_small"
+    android:previewLayout="@layout/widget_small"
     android:resizeMode="none"
-    android:widgetCategory="home_screen" />
+    android:targetCellHeight="2"
+    android:targetCellWidth="2"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable" />

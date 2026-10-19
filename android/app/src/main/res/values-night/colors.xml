@@ -6,16 +6,24 @@
     <color name="accent_yellow">#E4B34F</color>
     <color name="accent_sage">#76A08A</color>
 
-    <!-- 桌面小组件 (AppWidget) 暗色主题色彩体系 -->
-    <color name="widget_paper">#191614</color>
-    <color name="widget_surface">#24201C</color>
-    <color name="widget_surface_2">#2F2B26</color>
-    <color name="widget_line">#3D3730</color>
-    <color name="widget_ink">#E8DFD3</color>
-    <color name="widget_ink_2">#B5A695</color>
-    <color name="widget_ink_3">#807365</color>
-    <color name="widget_brand_fill">#9E521E</color>
-    <color name="widget_brand_ink">#F5A962</color>
-    <color name="widget_brand_soft">#3D2814</color>
-    <color name="widget_live">#4CAF50</color>
+    <!-- 桌面小组件 (AppWidget) 暗色现代卡片体系 -->
+    <color name="widget_paper">#1C1917</color>
+    <color name="widget_surface">#262220</color>
+    <color name="widget_surface_2">#302B28</color>
+    <color name="widget_surface_3">#232120</color>
+
+    <color name="widget_line">#3A342F</color>
+    <color name="widget_line_strong">#4A423B</color>
+
+    <color name="widget_ink">#F5F1EC</color>
+    <color name="widget_ink_2">#BDB4AB</color>
+    <color name="widget_ink_3">#928880</color>
+
+    <color name="widget_brand_fill">#A85F29</color>
+    <color name="widget_brand_ink">#F0A05C</color>
+    <color name="widget_brand_soft">#3A2716</color>
+
+    <color name="widget_live">#5CB37E</color>
+    <color name="widget_off">#E06B5E</color>
+    <color name="widget_work">#6BA3B5</color>
 </resources>

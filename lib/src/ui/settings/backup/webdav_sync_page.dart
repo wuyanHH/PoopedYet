@@ -6,10 +6,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../data/backup/backup_model.dart';
 import '../../../data/backup/webdav_client.dart';
 import '../../../data/backup/webdav_config.dart';
+import '../../../data/sync/sync_model.dart';
 import '../../../providers.dart';
 import '../../../state/backup_state.dart';
 import '../../../state/calendar_data.dart';
 import '../../../state/settings.dart';
+import '../../../state/sync_state.dart';
 import '../../../theme/tokens.dart';
 import '../../widgets/settings_widgets.dart';
 
@@ -118,6 +120,12 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
     try {
       final client = ref.read(webDavClientProvider);
       final list = await client.listRemoteBackups();
+
+      // 同步文件不是"备份"：它是同步机制的内部状态。
+      // 混在这个列表里，用户迟早会手滑点到「恢复」或「删除」——
+      // 前者会把它当存档还原（语义完全不对），后者会让云端同步状态被重置。
+      list.removeWhere((f) => f.name == kSyncFileName);
+
       // 按修改时间倒序排列，若时间相同或为空则按文件名倒序，确保最新备份排在最前
       list.sort((a, b) {
         if (a.modifiedAt != null && b.modifiedAt != null) {
@@ -133,6 +141,64 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
     } finally {
       if (mounted) setState(() => _loadingRemoteFiles = false);
     }
+  }
+
+  // ==========================================================================
+  //  双向同步
+  // ==========================================================================
+
+  /// 立即执行一次**双向同步**。
+  ///
+  /// 它和「生成云端备份」是刻意分开的两件事，别混：
+  ///
+  /// - **同步**：目标是"两端一致"。先下载云端那份合并进本地，
+  ///   再把合并结果覆盖写回**同一个**同步文件。它会改动本地数据。
+  /// - **备份**：目标是"留一份存档"。每次新建一个带时间戳的文件，
+  ///   **只读本地、绝不改动本地数据**。
+  ///
+  /// 之所以不在同一个按钮里做，是因为两者的风险完全不同：
+  /// 备份点错了顶多多一个文件，同步点错了是数据被合并。
+  Future<void> _syncNow() async {
+    final cfg = ref.read(webDavConfigProvider);
+    if (!cfg.isConfigured) {
+      _showSnack('请先完善并保存 WebDAV 服务器配置', isError: true);
+      return;
+    }
+
+    setState(() => _syncing = true);
+    try {
+      final outcome = await ref
+          .read(autoSyncCoordinatorProvider)
+          .run(reason: '手动同步', manual: true);
+
+      if (!mounted) return;
+
+      if (outcome == null) {
+        _showSnack('同步未执行：上一次同步还在进行中', isError: true);
+        return;
+      }
+
+      _showSnack(
+        outcome.success ? '✓ ${outcome.statusLine}' : '✗ ${outcome.message}',
+        isError: !outcome.success,
+      );
+
+      _refreshAllProviders();
+      ref.invalidate(webDavConfigProvider);
+      await _loadRemoteFiles();
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  /// 开关自动同步。
+  Future<void> _setAutoSync(bool value) async {
+    final notifier = ref.read(webDavConfigProvider.notifier);
+    await notifier.updateConfig(
+      ref.read(webDavConfigProvider).copyWith(autoSync: value),
+    );
+    if (!mounted) return;
+    _showSnack(value ? '已开启自动同步' : '已关闭自动同步，仍可手动点「立即同步」');
   }
 
   // ==========================================================================
@@ -629,7 +695,7 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: _syncing || _testing ? null : _uploadBackupToCloud,
+                          onPressed: _syncing || _testing ? null : _syncNow,
                           icon: _syncing
                               ? const SizedBox(
                                   width: 16,
@@ -639,8 +705,8 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Icon(LucideIcons.cloudUpload, size: 16),
-                          label: Text(_syncing ? '正在同步...' : '立即备份到云端'),
+                              : const Icon(LucideIcons.refreshCw, size: 16),
+                          label: Text(_syncing ? '正在同步...' : '立即同步'),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -662,6 +728,42 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Text('测试连接'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '• 立即同步：与云端双向合并，两端保持一致\n'
+                    '• 生成备份：另存一份带时间戳的存档，不改动本地数据',
+                    style: TextStyle(fontSize: 11, color: t.ink3, height: 1.5),
+                  ),
+                  const SizedBox(height: 10),
+                  Divider(height: 1, thickness: 0.8, color: t.lineSoft),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '自动同步',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: t.ink,
+                              ),
+                            ),
+                            Text(
+                              '启动、回到前台与记完一笔后自动同步',
+                              style: TextStyle(fontSize: 11.5, color: t.ink3),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: cfg.autoSync,
+                        onChanged: _setAutoSync,
                       ),
                     ],
                   ),
@@ -836,7 +938,29 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
                     height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                else
+                else ...[
+                  // 归档备份单独留一个入口：同步负责"两端保持一致"，
+                  // 而"我想要一份能回到三天前的存档"是另一个需求，
+                  // 不该被同步功能吃掉。
+                  GestureDetector(
+                    onTap: _syncing ? null : _uploadBackupToCloud,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(LucideIcons.cloudUpload, size: 13, color: t.brandInk),
+                        const SizedBox(width: 4),
+                        Text(
+                          '生成备份',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: t.brandInk,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
                   GestureDetector(
                     onTap: _loadRemoteFiles,
                     child: Row(
@@ -855,6 +979,7 @@ class _WebDavSyncPageState extends ConsumerState<WebDavSyncPage> {
                       ],
                     ),
                   ),
+                ],
               ],
             ),
           ),

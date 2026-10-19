@@ -4,7 +4,11 @@ import 'package:flutter/services.dart';
 
 import 'update_model.dart';
 
-/// GitHub Releases 检查更新服务（零后台静默，纯手动克制触发）
+/// GitHub Releases 检查更新服务。
+///
+/// 这里只负责「查一次、解析一次」——什么时候查、查完要不要打扰用户，
+/// 由 `AutoUpdateChecker` 决定：启动后静默检查 + 24 小时节流，
+/// 或者用户在设置页手动点「检查新版本」。
 class UpdateService {
   UpdateService({
     this.owner = 'wuyanHH',

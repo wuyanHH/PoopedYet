@@ -38,8 +38,9 @@
      - `1.0.1` ➔ `version: 1.0.1+100100`
      - `1.1.0` ➔ `version: 1.1.0+101000`
      - `2.0.0` ➔ `version: 2.0.0+200000`
-2. **设置页版本常量** (`lib/src/ui/settings/settings_page.dart`)：
-   - 修改 `static const _version = 'X.Y.Z';`
+2. **应用版本常量** (`lib/src/data/update/app_version.dart`)：
+   - 修改 `const String kAppVersion = 'X.Y.Z';`
+   - 这是代码里唯一的版本号来源：设置页展示、手动检查更新、启动自动检查都读它。
 3. **离线更新日志数据源** (`lib/src/ui/settings/changelog_page.dart`)：
    - 在 `kAppChangelogs` 列表头部追加新版本的发版年月、核心亮点与说明条目。
 
@@ -126,3 +127,9 @@ gh release create vX.Y.Z `
    - 正常唤起自适应手帐风格更新弹窗；
    - 点击推荐下载按钮，验证是否正常拉起外部浏览器极速下载对应包；
    - 展开“其他架构安装包”，验证备选包列表与体积显示正确。
+4. **启动自动检查验收**（`lib/src/data/update/auto_update_checker.dart`）：
+   - 冷启动约 3 秒后自动请求 GitHub Releases，**无更新/失败时全程静默**；
+   - 距上次检查不足 24 小时时不再发请求（设置页「自动检查更新」副标题会显示上次检查时间）；
+   - 发现新版本时自动弹出更新弹窗，同一版本只弹一次；
+   - 点「跳过此版本，不再自动提醒」后，重启不再为该版本弹窗；
+   - 关闭设置页「自动检查更新」开关后，冷启动不再自动发请求，仅保留手动检查。

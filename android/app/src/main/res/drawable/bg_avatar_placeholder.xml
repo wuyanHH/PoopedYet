@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 头像占位底：仅在小组件选择器预览（previewLayout）中可见，
+     真实运行时会被 WidgetAvatarHelper 渲染的位图覆盖。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/widget_surface_2" />
+</shape>

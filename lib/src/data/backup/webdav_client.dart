@@ -286,6 +286,41 @@ class WebDavClient {
     }
   }
 
+  /// 下载文件；**文件不存在时返回 null，而不是抛异常**。
+  ///
+  /// 同步流程必须能把这两件事分清楚：
+  ///
+  /// - 「云端还没有这份文件」= 第一次同步的正常开局，接着上传即可；
+  /// - 「网络不通 / 密码错了 / 服务器 500」= 必须报错中止。
+  ///
+  /// 如果这里也一律抛异常、调用方统一 catch 成 null，第二种情况就会被
+  /// 静默当成"云端是空的"，然后拿本地数据把云端**覆盖**掉 ——
+  /// 那是要用户丢数据的事故，不是"同步失败重试一下"那么轻。
+  Future<String?> downloadFileIfExists({required String fileName}) async {
+    final client = _createHttpClient();
+    try {
+      final uri = _buildUri(fileName);
+      final request = await client.getUrl(uri).timeout(_connectTimeout);
+      request.headers.set(HttpHeaders.authorizationHeader, _getAuthHeader());
+      request.headers.set(HttpHeaders.userAgentHeader, 'PoopedYet/0.1.2');
+
+      final response = await request.close().timeout(_responseTimeout);
+
+      if (response.statusCode == 404) {
+        await response.drain<void>();
+        return null;
+      }
+      if (response.statusCode != 200) {
+        await response.drain<void>();
+        throw HttpException('下载失败：HTTP ${response.statusCode}');
+      }
+
+      return await response.transform(utf8.decoder).join();
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   // ==========================================================================
   //  列出远端备份文件
   // ==========================================================================

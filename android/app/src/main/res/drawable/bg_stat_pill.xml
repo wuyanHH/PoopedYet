@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 统计药丸（今日 N 次 / 连续顺畅 N 天）：浅底胶囊，配合 brand_ink 文字。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/widget_surface_2" />
+    <corners android:radius="99dp" />
+</shape>

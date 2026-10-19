@@ -1,162 +1,252 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ═══════════════════════════════════════════════════════════════════
+     屙了么 · 中号小组件 (4×2) —— 现代卡片风「行动舱 + 7 天周历」
+     ───────────────────────────────────────────────────────────────────
+     与旧版的关键差别：
+       · 成员信息从「左侧窄栏里的小头像」提升为「顶部通栏 + 40dp 头像 +
+         15sp 姓名」，一眼看清这个组件属于谁；
+       · 周历格加宽加高，日期数字与打卡点更清楚；
+       · 左侧只保留「距上次 / 实时计时 + 主按钮」，避免与顶部信息重复。
+     ═══════════════════════════════════════════════════════════════════ -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_medium_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/bg_widget_paper"
-    android:padding="12dp">
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
 
-    <!-- 顶部标题与打卡连击 -->
+    <!-- ① 成员通栏（整块可点 → 进入成员选择） -->
     <LinearLayout
+        android:id="@+id/btn_m_switch_pooper"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingBottom="5dp">
+        android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/tv_medium_title"
+        <ImageView
+            android:id="@+id/iv_m_avatar"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_widget_avatar_placeholder" />
+
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="屙了么 · 便签手帐"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_ink_3" />
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tv_medium_streak"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_badge_soft"
-            android:paddingHorizontal="7dp"
-            android:paddingVertical="1.5dp"
-            android:text="连续顺畅 5 天 ★"
-            android:textSize="9.5sp"
-            android:textStyle="bold"
-            android:textColor="@color/widget_brand_ink" />
-    </LinearLayout>
-
-    <!-- 中部双区分割 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="horizontal">
-
-        <!-- 左侧行动舱 -->
-        <LinearLayout
-            android:id="@+id/layout_m_action"
-            android:layout_width="116dp"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:paddingEnd="8dp">
-
+            <!-- 姓名和下拉线紧挨着，明确「点这里换人」。
+                 三款组件都用同一套暗示：整块成员区可点 + 一条下拉线。 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <ImageView
-                    android:id="@+id/iv_m_avatar"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:scaleType="centerCrop" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
+                <!-- 姓名用 wrap_content 而不是 weight=1：weight 会让它占满剩余宽度，
+                     把下拉线又顶到最右边去，看起来像是 streak 胶囊的一部分。
+                     maxWidth 兜底，防止长名字把下拉线挤出屏幕。 -->
+                <TextView
+                    android:id="@+id/tv_m_name"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="5dp"
-                    android:orientation="vertical">
+                    android:maxWidth="120dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="我"
+                    android:textColor="@color/widget_ink"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
 
-                    <TextView
-                        android:id="@+id/tv_m_name"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="我"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/widget_ink" />
-
-                    <TextView
-                        android:id="@+id/tv_m_status"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="今日已打卡"
-                        android:textSize="9sp"
-                        android:textColor="@color/widget_ink_3" />
-                </LinearLayout>
+                <ImageView
+                    android:id="@+id/iv_m_chevron"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginStart="3dp"
+                    android:src="@drawable/ic_widget_chevron_down" />
             </LinearLayout>
 
             <TextView
-                android:id="@+id/tv_m_last_hours"
-                android:layout_width="wrap_content"
+                android:id="@+id/tv_m_status"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:text="距上次: 4h"
-                android:textSize="10sp"
-                android:textColor="@color/widget_ink_2" />
-
-            <TextView
-                android:id="@+id/tv_m_remark"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="状态: 顺畅无痛"
-                android:textSize="9sp"
-                android:textColor="@color/widget_ink_3"
+                android:layout_marginTop="2dp"
                 android:maxLines="1"
-                android:ellipsize="end" />
+                android:ellipsize="end"
+                android:text="今日 2 次 · 上次 08:30 · 顺畅"
+                android:textColor="@color/widget_ink_3"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_medium_streak"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_badge_soft"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="连续顺畅 5 天"
+            android:textColor="@color/widget_brand_ink"
+            android:textSize="10.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="9dp"
+        android:background="@color/widget_line" />
+
+    <!-- ② 主体：左行动舱 + 右 7 天周历 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <!-- 左：行动舱 -->
+        <LinearLayout
+            android:id="@+id/layout_m_action"
+            android:layout_width="104dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
 
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1" />
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:id="@+id/layout_m_normal"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="visible">
+
+                    <TextView
+                        android:id="@+id/tv_m_big_num"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-black"
+                        android:includeFontPadding="false"
+                        android:text="4h"
+                        android:textColor="@color/widget_ink"
+                        android:textSize="24sp" />
+
+                    <TextView
+                        android:id="@+id/tv_m_big_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="5dp"
+                        android:maxLines="2"
+                        android:text="距上次"
+                        android:textColor="@color/widget_ink_3"
+                        android:textSize="10.5sp" />
+                </LinearLayout>
+
+                <!-- 计时器与状态**竖排**：横排时「12:22:09」会把 104dp 的左舱吃光，
+                     右边剩的那点宽度只够把「正在屙…」挤成一列竖字。 -->
+                <LinearLayout
+                    android:id="@+id/layout_m_live"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center_vertical"
+                    android:visibility="gone">
+
+                    <Chronometer
+                        android:id="@+id/chrono_m_timer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-black"
+                        android:includeFontPadding="false"
+                        android:textColor="@color/widget_live"
+                        android:textSize="20sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="1dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="6dp"
+                            android:layout_height="6dp"
+                            android:layout_marginEnd="4dp"
+                            android:src="@drawable/bg_dot_live" />
+
+                        <TextView
+                            android:id="@+id/tv_m_elapsed"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:text="正在屙…"
+                            android:textColor="@color/widget_live"
+                            android:textSize="10.5sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+            </FrameLayout>
 
             <LinearLayout
                 android:id="@+id/btn_m_action"
                 android:layout_width="match_parent"
-                android:layout_height="28dp"
+                android:layout_height="36dp"
+                android:layout_marginTop="5dp"
                 android:background="@drawable/bg_btn_brand"
                 android:orientation="horizontal"
                 android:gravity="center">
 
                 <ImageView
                     android:id="@+id/iv_btn_m_action_icon"
-                    android:layout_width="14dp"
-                    android:layout_height="14dp"
-                    android:layout_marginEnd="4dp"
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
+                    android:layout_marginEnd="5dp"
                     android:src="@drawable/ic_widget_action_start" />
 
                 <TextView
                     android:id="@+id/tv_btn_m_action_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
                     android:text="现在开屙"
-                    android:textSize="10.5sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/widget_surface" />
+                    android:textColor="@color/widget_surface"
+                    android:textSize="11.5sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 垂直分割细线 -->
+        <!-- 垂直分隔 -->
         <ImageView
             android:layout_width="1dp"
             android:layout_height="match_parent"
+            android:layout_marginStart="11dp"
+            android:layout_marginEnd="11dp"
             android:background="@color/widget_line" />
 
-        <!-- 右侧迷你 7 天周历 -->
+        <!-- 右：7 天迷你周历 -->
         <LinearLayout
             android:id="@+id/layout_m_calendar"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:paddingStart="8dp">
+            android:orientation="vertical">
 
-            <!-- 7 列日历格 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -164,129 +254,125 @@
                 android:orientation="horizontal"
                 android:gravity="center">
 
-                <!-- 星期一 -->
+                <!-- 周一 -->
                 <LinearLayout
                     android:id="@+id/col_0"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:layout_marginStart="1dp"
+                    android:layout_marginEnd="1dp"
                     android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:layout_marginHorizontal="1dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="一" android:textSize="8.5sp" android:textColor="@color/widget_ink_3" />
-                    <LinearLayout android:id="@+id/cell_0" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
-                        <TextView android:id="@+id/tv_cell_num_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="24" android:textSize="10.5sp" android:textStyle="bold" android:textColor="@color/widget_ink" />
-                        <ImageView android:id="@+id/dot_cell_0" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="2dp" android:src="@drawable/bg_cell_done" />
+                    android:gravity="center_horizontal">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="一" android:textColor="@color/widget_ink_3" android:textSize="9sp" />
+                    <LinearLayout android:id="@+id/cell_0" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="2dp" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/tv_cell_num_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="24" android:textColor="@color/widget_ink" android:textSize="11.5sp" android:textStyle="bold" />
+                        <ImageView android:id="@+id/dot_cell_0" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="3dp" android:src="@drawable/bg_cell_done" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- 星期二 -->
+                <!-- 周二 -->
                 <LinearLayout
                     android:id="@+id/col_1"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:layout_marginStart="1dp"
+                    android:layout_marginEnd="1dp"
                     android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:layout_marginHorizontal="1dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="二" android:textSize="8.5sp" android:textColor="@color/widget_ink_3" />
-                    <LinearLayout android:id="@+id/cell_1" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
-                        <TextView android:id="@+id/tv_cell_num_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="25" android:textSize="10.5sp" android:textStyle="bold" android:textColor="@color/widget_ink" />
-                        <ImageView android:id="@+id/dot_cell_1" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="2dp" android:src="@drawable/bg_cell_done" />
+                    android:gravity="center_horizontal">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="二" android:textColor="@color/widget_ink_3" android:textSize="9sp" />
+                    <LinearLayout android:id="@+id/cell_1" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="2dp" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/tv_cell_num_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="25" android:textColor="@color/widget_ink" android:textSize="11.5sp" android:textStyle="bold" />
+                        <ImageView android:id="@+id/dot_cell_1" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="3dp" android:src="@drawable/bg_cell_done" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- 星期三 -->
+                <!-- 周三 -->
                 <LinearLayout
                     android:id="@+id/col_2"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:layout_marginStart="1dp"
+                    android:layout_marginEnd="1dp"
                     android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:layout_marginHorizontal="1dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="三" android:textSize="8.5sp" android:textColor="@color/widget_ink_3" />
-                    <LinearLayout android:id="@+id/cell_2" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
-                        <TextView android:id="@+id/tv_cell_num_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="26" android:textSize="10.5sp" android:textStyle="bold" android:textColor="@color/widget_ink" />
-                        <ImageView android:id="@+id/dot_cell_2" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="2dp" android:src="@drawable/bg_cell_done" />
+                    android:gravity="center_horizontal">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="三" android:textColor="@color/widget_ink_3" android:textSize="9sp" />
+                    <LinearLayout android:id="@+id/cell_2" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="2dp" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/tv_cell_num_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="26" android:textColor="@color/widget_ink" android:textSize="11.5sp" android:textStyle="bold" />
+                        <ImageView android:id="@+id/dot_cell_2" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="3dp" android:src="@drawable/bg_cell_done" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- 星期四 -->
+                <!-- 周四 -->
                 <LinearLayout
                     android:id="@+id/col_3"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:layout_marginStart="1dp"
+                    android:layout_marginEnd="1dp"
                     android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:layout_marginHorizontal="1dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="四" android:textSize="8.5sp" android:textColor="@color/widget_ink_3" />
-                    <LinearLayout android:id="@+id/cell_3" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
-                        <TextView android:id="@+id/tv_cell_num_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="27" android:textSize="10.5sp" android:textStyle="bold" android:textColor="@color/widget_ink" />
-                        <ImageView android:id="@+id/dot_cell_3" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="2dp" android:visibility="invisible" android:src="@drawable/bg_cell_done" />
+                    android:gravity="center_horizontal">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="四" android:textColor="@color/widget_ink_3" android:textSize="9sp" />
+                    <LinearLayout android:id="@+id/cell_3" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="2dp" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/tv_cell_num_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="27" android:textColor="@color/widget_ink" android:textSize="11.5sp" android:textStyle="bold" />
+                        <ImageView android:id="@+id/dot_cell_3" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="3dp" android:src="@drawable/bg_cell_done" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- 星期五 -->
+                <!-- 周五 -->
                 <LinearLayout
                     android:id="@+id/col_4"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:layout_marginStart="1dp"
+                    android:layout_marginEnd="1dp"
                     android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:layout_marginHorizontal="1dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="五" android:textSize="8.5sp" android:textColor="@color/widget_ink_3" />
-                    <LinearLayout android:id="@+id/cell_4" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
-                        <TextView android:id="@+id/tv_cell_num_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="28" android:textSize="10.5sp" android:textStyle="bold" android:textColor="@color/widget_ink" />
-                        <ImageView android:id="@+id/dot_cell_4" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="2dp" android:src="@drawable/bg_cell_done" />
+                    android:gravity="center_horizontal">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="五" android:textColor="@color/widget_ink_3" android:textSize="9sp" />
+                    <LinearLayout android:id="@+id/cell_4" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="2dp" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/tv_cell_num_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="28" android:textColor="@color/widget_ink" android:textSize="11.5sp" android:textStyle="bold" />
+                        <ImageView android:id="@+id/dot_cell_4" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="3dp" android:src="@drawable/bg_cell_done" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- 星期六 -->
+                <!-- 周六 -->
                 <LinearLayout
                     android:id="@+id/col_5"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:layout_marginStart="1dp"
+                    android:layout_marginEnd="1dp"
                     android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:layout_marginHorizontal="1dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="六" android:textSize="8.5sp" android:textColor="@color/widget_ink_3" />
-                    <LinearLayout android:id="@+id/cell_5" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
-                        <TextView android:id="@+id/tv_cell_num_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="29" android:textSize="10.5sp" android:textStyle="bold" android:textColor="@color/widget_ink" />
-                        <ImageView android:id="@+id/dot_cell_5" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="2dp" android:src="@drawable/bg_cell_done" />
+                    android:gravity="center_horizontal">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="六" android:textColor="@color/widget_ink_3" android:textSize="9sp" />
+                    <LinearLayout android:id="@+id/cell_5" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="2dp" android:background="@drawable/bg_cell_normal" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/tv_cell_num_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="29" android:textColor="@color/widget_ink" android:textSize="11.5sp" android:textStyle="bold" />
+                        <ImageView android:id="@+id/dot_cell_5" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="3dp" android:src="@drawable/bg_cell_done" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- 星期日 (今天·高亮) -->
+                <!-- 周日（今天示例） -->
                 <LinearLayout
                     android:id="@+id/col_6"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:layout_marginStart="1dp"
+                    android:layout_marginEnd="1dp"
                     android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:layout_marginHorizontal="1dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="日" android:textSize="8.5sp" android:textColor="@color/widget_brand_ink" android:textStyle="bold" />
-                    <LinearLayout android:id="@+id/cell_6" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_cell_today" android:gravity="center" android:orientation="vertical">
-                        <TextView android:id="@+id/tv_cell_num_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="30" android:textSize="10.5sp" android:textStyle="bold" android:textColor="@color/widget_brand_fill" />
-                        <ImageView android:id="@+id/dot_cell_6" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="2dp" android:src="@drawable/bg_cell_done" />
+                    android:gravity="center_horizontal">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="日" android:textColor="@color/widget_brand_ink" android:textSize="9sp" android:textStyle="bold" />
+                    <LinearLayout android:id="@+id/cell_6" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="2dp" android:background="@drawable/bg_cell_today" android:gravity="center" android:orientation="vertical">
+                        <TextView android:id="@+id/tv_cell_num_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-black" android:includeFontPadding="false" android:text="30" android:textColor="@color/widget_brand_fill" android:textSize="11.5sp" />
+                        <ImageView android:id="@+id/dot_cell_6" android:layout_width="5dp" android:layout_height="5dp" android:layout_marginTop="3dp" android:src="@drawable/bg_cell_done" />
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
-
-            <TextView
-                android:id="@+id/tv_medium_tip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="今日动态：咪咪尚未排便"
-                android:textSize="9sp"
-                android:textColor="@color/widget_ink_3"
-                android:maxLines="1"
-                android:ellipsize="end" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

@@ -7,11 +7,20 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
+    <!-- android:enableOnBackInvokedCallback 打开 Android 13+ 的「返回事件预测」通道，
+         它是预测性返回手势（拖入时预览上一页）的前提 —— 不打开的话系统根本不会把
+         手势进度发给 Flutter，Dart 侧的观察者一个回调都收不到。低版本系统会忽略此属性。
+
+         注意：它一旦打开，系统不再调用 Activity.onBackPressed()，返回改由 Flutter 引擎
+         统一分发。本项目 MainActivity 没有覆写 onBackPressed，所以不存在被绕过的问题。
+         返回键 / 三键导航的返回仍然照常工作：Dart 侧把手势和按键事件分开处理
+         （见 PredictiveBackEvent.isButtonEvent），按键事件不会被跟手预览接管。 -->
     <application
         android:label="屙了么"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round">
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -41,10 +50,28 @@
             </intent-filter>
         </activity>
 
+        <!-- 桌面小组件「选择屙屎人」配置向导。
+             ① 系统在添加小组件时经 android:configure 拉起（APPWIDGET_CONFIGURE）；
+             ② 点击已放置小组件的成员区时由 PendingIntent 原地拉起。
+             两者都会带 EXTRA_APPWIDGET_ID，因此共用同一个 Activity。
+
+             刻意不加 noHistory / taskAffinity：配置流程中途被通知栏打断时，
+             Activity 若被销毁，系统会判定「配置取消」，用户白选一次。 -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:theme="@style/Theme.PoopedYet.WidgetConfig">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- 小号桌面小组件 (2×2) 撕历打卡 -->
         <receiver
             android:name=".widget.SmallWidgetProvider"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/widget_small_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -56,7 +83,8 @@
         <!-- 中号桌面小组件 (4×2) 手帐周历 -->
         <receiver
             android:name=".widget.MediumWidgetProvider"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/widget_medium_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -68,7 +96,8 @@
         <!-- 大号桌面小组件 (4×4) 健康工作台与便签流 -->
         <receiver
             android:name=".widget.LargeWidgetProvider"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/widget_large_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -76,6 +105,14 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/large_widget_info" />
         </receiver>
+
+        <!-- 小组件「现在开屙 / 完成打卡」的后台执行接收端。
+             这两个动作不该把用户拽进 App：广播进来之后由 WidgetActionRunner
+             临时拉一个无界面 FlutterEngine 直接写库，写完刷新桌面。
+             exported=false —— 只有本 App 自己创建的 PendingIntent 能触发。 -->
+        <receiver
+            android:name=".widget.WidgetActionReceiver"
+            android:exported="false" />
 
         <!-- 实时如厕状态栏灵动胶囊 & 锁屏前台计时服务 -->
         <service

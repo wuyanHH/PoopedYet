@@ -4,7 +4,7 @@ publish_to: 'none'
 
 # versionName+versionCode。上架后 versionCode 只能增不能减。
 # 采用工业标准万位语义映射规范：MAJOR * 100000 + MINOR * 10000 + PATCH * 100
-version: 1.0.0+100000
+version: 1.1.0+101000
 
 environment:
   # 本机 Flutter 3.47.7 / Dart 3.13.5。
@@ -72,6 +72,10 @@ flutter:
   assets:
     - assets/images/
     - assets/holidays/
+    # 三方组件预览图：设置页「桌面小组件」管理页里给用户看的长相。
+    # 与 android/app/src/main/res/drawable-nodpi/ 下的同名文件同源，
+    # 由 .design/build-widget-previews.py 一次生成两份。
+    - assets/widget_previews/
     # 第三方许可证文本。OFL 要求随分发附上 ——
     # 放这里而不是 assets/fonts/，否则字体文件会被当作普通资源再打包一遍（白多 2.5 MB）。
     - assets/licenses/

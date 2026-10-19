@@ -18,6 +18,7 @@ android/app/*.keystore
 android/app/upload-keystore.jks
 *.apk
 *.aab
+*.zip
 
 # ---- 签名与密钥，绝不入库 ----
 **/*.keystore
@@ -46,4 +47,12 @@ toilet_paper_*.png
 *_showcase.png
 temp_check/
 __pycache__/
+
+# ---- 例外：属于可复现构建的脚本，必须入库 ----
+# 小组件预览图（android res 的 previewImage + Flutter assets）由它生成，
+# 脚本丢了就再也没人能重新生成这两处资源。
+!.design/build-widget-previews.py
+# 成员内置图标的 Android 矢量图（res/drawable/ic_pooper_*.xml）由它从
+# Lucide SVG 生成；小组件绘制成员头像时按 iconKey 查找这些资源。
+!.design/build-widget-avatar-icons.py
 

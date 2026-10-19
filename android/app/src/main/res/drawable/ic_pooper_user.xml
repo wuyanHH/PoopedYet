@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 由 .design/build-widget-avatar-icons.py 从 Lucide SVG 生成，请勿手改。
+     源：.design/icons/svg/user.svg（lucide-static，ISC 许可）。
+     桌面小组件用它绘制成员的内置图标头像；描边色由 setTint 在运行时决定。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />
+</vector>

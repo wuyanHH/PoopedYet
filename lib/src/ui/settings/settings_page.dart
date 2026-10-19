@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../calendar/calendar_math.dart';
 import '../../data/database.dart';
 import '../../data/holiday_loader.dart';
+import '../../data/update/app_version.dart';
+import '../../data/update/auto_update_checker.dart';
+import '../../data/update/update_prefs.dart';
 import '../../dev/demo_seeder.dart';
 import '../../providers.dart';
 import '../../state/backup_state.dart';
@@ -18,14 +23,13 @@ import '../../theme/tokens.dart';
 import '../../widget/widget_snapshot_service.dart';
 import '../widgets/settings_widgets.dart';
 import '../widgets/smooth_page_route.dart';
+import '../widgets/update_dialog.dart';
 import 'backup/data_backup_page.dart';
 import 'backup/webdav_sync_page.dart';
 import 'changelog_page.dart';
-import '../../data/update/update_model.dart';
-import '../../data/update/update_service.dart';
-import '../widgets/update_dialog.dart';
 import 'note_template_page.dart';
 import 'pooper_list_page.dart';
+import 'widget_manager_page.dart';
 
 /// 设置主页（视觉稿 ⑩）。
 ///
@@ -44,12 +48,19 @@ class SettingsPage extends ConsumerWidget {
     final poopers = ref.watch(activePoopersProvider).value ?? const [];
     final templates = ref.watch(noteTemplatesProvider).value ?? const [];
     final webDavConfig = ref.watch(webDavConfigProvider);
+    final updatePrefs = ref.watch(updatePrefsProvider);
 
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return SettingsScaffold(
       title: '设置',
       child: ListView(
+        // 这里的卡片很高（「日历与列表」那张 7 行、五百多像素），而一张卡内部
+        // 有五十来个 widget（图标、双行文字、分段控件…）。默认的 250 缓存
+        // 等于把「建整棵 Element 树 + 首次布局 + 首次光栅化」全压在卡片进入
+        // 视口的那一帧上，滚动起来就是一顿一顿的。给到 600 让它提前一屏建完，
+        // 和 DaySection / HistoryPage 保持一致。
+        cacheExtent: 600.0,
         padding: EdgeInsets.fromLTRB(0, 0, 0, 32 + bottomInset),
         children: [
           // ---------------- 人员与主题 ----------------
@@ -224,10 +235,19 @@ class SettingsPage extends ConsumerWidget {
 
           // ---------------- 桌面小组件与灵动胶囊 ----------------
           const SettingsSectionLabel('桌面小组件与灵动胶囊'),
-          const SettingsCard(
+          SettingsCard(
             children: [
-              _WidgetIncognitoRow(),
-              _LiveIslandNotificationRow(),
+              SettingsRow(
+                leading: LucideIcons.layoutGrid,
+                leadingColor: t.brandInk,
+                leadingBackground: t.brandSoft,
+                title: '桌面小组件',
+                subtitle: '查看桌面上已放的组件，为每一个单独指定屙屎人',
+                trailing: const SettingsChevron(),
+                onTap: () => _push(context, const WidgetManagerPage()),
+              ),
+              const _WidgetIncognitoRow(),
+              const _LiveIslandNotificationRow(),
             ],
           ),
 
@@ -267,7 +287,25 @@ class SettingsPage extends ConsumerWidget {
               SettingsRow(
                 leading: LucideIcons.info,
                 title: '版本',
-                trailing: const SettingsValue('v$_version 正式版'),
+                trailing: const SettingsValue(kAppVersionLabel),
+              ),
+              SettingsRow(
+                leading: LucideIcons.refreshCw,
+                leadingColor: t.brandInk,
+                leadingBackground: t.brandSoft,
+                title: '自动检查更新',
+                subtitle: updatePrefs.autoCheck
+                    ? (updatePrefs.lastCheckAt == null
+                        ? '启动后静默检查，${AutoUpdateChecker.intervalLabel}'
+                        : '上次检查：'
+                            '${DateFormat('MM-dd HH:mm').format(updatePrefs.lastCheckAt!)}'
+                            ' · ${AutoUpdateChecker.intervalLabel}')
+                    : '已关闭 · 只能手动点「检查新版本」',
+                trailing: SettingsSwitch(
+                  value: updatePrefs.autoCheck,
+                  onChanged: (v) =>
+                      ref.read(updatePrefsProvider.notifier).setAutoCheck(v),
+                ),
               ),
               SettingsRow(
                 leading: LucideIcons.cloudDownload,
@@ -276,14 +314,14 @@ class SettingsPage extends ConsumerWidget {
                 title: '检查新版本',
                 subtitle: '连接 GitHub Releases 获取最新发布与架构专属包',
                 trailing: const SettingsChevron(),
-                onTap: () => _handleCheckUpdate(context),
+                onTap: () => _handleCheckUpdate(context, ref),
               ),
               SettingsRow(
                 leading: LucideIcons.scrollText,
                 leadingColor: t.brandInk,
                 leadingBackground: t.brandSoft,
                 title: '版本更新日志',
-                subtitle: '查看 1.0.0 正式版与历史里程碑演进记录',
+                subtitle: '查看 v$kAppVersion 正式版与历史里程碑演进记录',
                 trailing: const SettingsChevron(),
                 onTap: () => _push(context, const ChangelogPage()),
               ),
@@ -297,7 +335,7 @@ class SettingsPage extends ConsumerWidget {
                 onTap: () => showLicensePage(
                   context: context,
                   applicationName: '屙了么 PoopedYet',
-                  applicationVersion: 'v$_version 正式版',
+                  applicationVersion: kAppVersionLabel,
                 ),
               ),
             ],
@@ -323,109 +361,106 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  static const _version = '1.0.0';
-
-  static Future<void> _handleCheckUpdate(BuildContext context) async {
+  /// 手动检查更新：无视 24 小时节流与「跳过此版本」——
+  /// 用户主动来问，就必须给一个真实答案。
+  static Future<void> _handleCheckUpdate(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final t = context.tokens;
     // 弹出轻量 Loading 弹窗
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-          decoration: BoxDecoration(
-            color: t.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: t.lineSoft),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x142D1B0D),
-                blurRadius: 16,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: t.brandInk,
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+            decoration: BoxDecoration(
+              color: t.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: t.lineSoft),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x142D1B0D),
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Text(
-                '正在检查新版本...',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: t.ink,
-                  decoration: TextDecoration.none,
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: t.brandInk,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 14),
+                Text(
+                  '正在检查新版本...',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: t.ink,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
 
     try {
-      final service = UpdateService();
-      final futures = await Future.wait([
-        service.checkLatestRelease(currentVersion: _version),
-        UpdateService.getDeviceAbi(),
-      ]);
+      final store = ref.read(updatePrefsProvider.notifier);
+      final result = await AutoUpdateChecker.run(
+        prefs: ref.read(updatePrefsProvider),
+        store: store,
+        manual: true,
+      );
 
       if (!context.mounted) return;
       Navigator.of(context, rootNavigator: true).pop(); // 关闭 Loading
 
-      final releaseInfo = futures[0] as UpdateReleaseInfo?;
-      final deviceAbi = futures[1] as String? ?? 'arm64-v8a';
-
-      if (releaseInfo != null && releaseInfo.isNewer) {
-        UpdateDialog.show(
-          context,
-          releaseInfo: releaseInfo,
-          deviceAbi: deviceAbi,
+      if (result.hasUpdate) {
+        final release = result.release!;
+        unawaited(
+          UpdateDialog.show(
+            context,
+            releaseInfo: release,
+            deviceAbi: result.deviceAbi ?? 'arm64-v8a',
+            // 手动检查也允许「跳过」：跳过后自动检查同样不再为它弹窗。
+            skippable: true,
+            onSkip: () => store.skipVersion(release.versionName),
+          ),
         );
-      } else if (releaseInfo != null) {
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            SnackBar(
-              content: Text('🎉 当前已是最新正式版本 (v$_version)'),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+      } else if (result.status == AutoUpdateStatus.upToDate) {
+        _showSnack(context, '🎉 当前已是最新正式版本 (v$kAppVersion)');
       } else {
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            const SnackBar(
-              content: Text('未检测到新版本发布（若网络受限可稍后重试）'),
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
-            ),
-          );
+        _showSnack(context, '未检测到新版本发布（若网络受限可稍后重试）');
       }
     } catch (_) {
       if (!context.mounted) return;
       Navigator.of(context, rootNavigator: true).pop(); // 关闭 Loading
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('检查更新超时，请检查网络连接后重试'),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-          ),
-        );
+      _showSnack(context, '检查更新超时，请检查网络连接后重试');
     }
+  }
+
+  static void _showSnack(BuildContext context, String text) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(text),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   static void _showDevDemoDialog(BuildContext context, WidgetRef ref) {

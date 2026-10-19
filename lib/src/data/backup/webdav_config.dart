@@ -11,6 +11,7 @@ class WebDavConfig {
     this.password = '',
     this.remotePath = kDefaultRemoteFolder,
     this.allowSelfSignedCert = false,
+    this.autoSync = true,
     this.lastSyncAt,
     this.lastSyncStatus,
   });
@@ -29,6 +30,13 @@ class WebDavConfig {
 
   /// 允许自签名或非受信任证书（NAS自建用户常备）
   final bool allowSelfSignedCert;
+
+  /// 是否自动同步。
+  ///
+  /// 打开后会在三个时机静默同步：冷启动、回到前台、本地数据变更后防抖。
+  /// 默认 **true** —— 用户既然配了 WebDAV，意图就是"数据要跟着云走"；
+  /// 让他再去开关里找一次才生效，等于配了没用。
+  final bool autoSync;
 
   /// 上次同步时间
   final DateTime? lastSyncAt;
@@ -57,6 +65,7 @@ class WebDavConfig {
     String? password,
     String? remotePath,
     bool? allowSelfSignedCert,
+    bool? autoSync,
     DateTime? lastSyncAt,
     String? lastSyncStatus,
   }) {
@@ -66,6 +75,7 @@ class WebDavConfig {
       password: password ?? this.password,
       remotePath: remotePath ?? this.remotePath,
       allowSelfSignedCert: allowSelfSignedCert ?? this.allowSelfSignedCert,
+      autoSync: autoSync ?? this.autoSync,
       lastSyncAt: lastSyncAt ?? this.lastSyncAt,
       lastSyncStatus: lastSyncStatus ?? this.lastSyncStatus,
     );
@@ -78,6 +88,7 @@ class WebDavConfig {
   static const _kPass = 'webdav.password';
   static const _kPath = 'webdav.remotePath';
   static const _kCert = 'webdav.allowSelfSignedCert';
+  static const _kAutoSync = 'webdav.autoSync';
   static const _kSyncAt = 'webdav.lastSyncAt';
   static const _kSyncStatus = 'webdav.lastSyncStatus';
 
@@ -101,6 +112,7 @@ class WebDavConfig {
       password: prefs.getString(_kPass) ?? '',
       remotePath: cleanP,
       allowSelfSignedCert: prefs.getBool(_kCert) ?? false,
+      autoSync: prefs.getBool(_kAutoSync) ?? true,
       lastSyncAt: syncAtStr != null ? DateTime.tryParse(syncAtStr) : null,
       lastSyncStatus: prefs.getString(_kSyncStatus),
     );
@@ -112,6 +124,7 @@ class WebDavConfig {
     await prefs.setString(_kPass, password);
     await prefs.setString(_kPath, cleanFolderName);
     await prefs.setBool(_kCert, allowSelfSignedCert);
+    await prefs.setBool(_kAutoSync, autoSync);
     if (lastSyncAt != null) {
       await prefs.setString(_kSyncAt, lastSyncAt!.toIso8601String());
     }
@@ -126,6 +139,7 @@ class WebDavConfig {
     await prefs.remove(_kPass);
     await prefs.remove(_kPath);
     await prefs.remove(_kCert);
+    await prefs.remove(_kAutoSync);
     await prefs.remove(_kSyncAt);
     await prefs.remove(_kSyncStatus);
   }

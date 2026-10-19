@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../calendar/calendar_math.dart';
+import '../data/update/auto_update_checker.dart';
+import '../data/update/update_prefs.dart';
 import '../dev/demo_seeder.dart';
 import '../providers.dart';
 import '../state/calendar_data.dart';
@@ -23,6 +25,7 @@ import 'widgets/first_run_hint.dart';
 import 'widgets/ongoing_poop_badge.dart';
 import 'widgets/poop_button_icon.dart';
 import 'widgets/smooth_page_route.dart';
+import 'widgets/update_dialog.dart';
 
 /// 日历主页（视觉稿 ①）。
 ///
@@ -51,6 +54,38 @@ class HomePage extends ConsumerWidget {
           }
         });
       }
+    });
+
+    // 启动静默检查更新：延迟几秒、24 小时内最多一次、失败完全无声。
+    // 只有真发现新版本才弹窗，同一个版本只打扰一次。
+    ref.listen<AsyncValue<AutoUpdateResult>>(autoUpdateCheckProvider, (_, next) {
+      final result = next.value;
+      if (result == null || !result.hasUpdate) return;
+
+      final release = result.release!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+
+        // 首屏已经被别的页面或弹层盖住了，就别硬插一个弹窗打断用户。
+        // 这次放过，下次启动（或手动点「检查新版本」）还有机会。
+        final route = ModalRoute.of(context);
+        if (route != null && !route.isCurrent) return;
+
+        final store = ref.read(updatePrefsProvider.notifier);
+        if (ref.read(updatePrefsProvider).notifiedVersion ==
+            release.versionName) {
+          return;
+        }
+        store.markNotified(release.versionName);
+
+        UpdateDialog.show(
+          context,
+          releaseInfo: release,
+          deviceAbi: result.deviceAbi ?? 'arm64-v8a',
+          skippable: true,
+          onSkip: () => store.skipVersion(release.versionName),
+        );
+      });
     });
 
     final isLandscape =

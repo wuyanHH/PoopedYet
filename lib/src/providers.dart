@@ -14,6 +14,18 @@ import 'widget/widget_snapshot_service.dart';
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
   ref.onDispose(db.close);
+
+  // 库一就绪就同步一次桌面小组件快照。
+  //
+  // 为什么必须在这里做：快照此前只在「有写操作」时更新，而用户完全可能
+  // 改完头像、归档完成员就直接退出 —— 桌面上那些组件会一直拿着旧数据，
+  // 表现就是「头像不对」「人都归档了小组件里还选得到」。
+  //
+  // 挂在这里而不是某个页面：databaseProvider 是数据库的唯一创建点，
+  // 任何用到数据库的路径都必然先经过它，不会再出现「没人 watch 就不执行」
+  // 的情况（`bootReportProvider` 里那句同步就这么默默失效了很久）。
+  unawaited(WidgetSyncManager.sync(db));
+
   return db;
 });
 
