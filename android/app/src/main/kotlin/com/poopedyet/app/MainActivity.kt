@@ -72,6 +72,22 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /// 本应用当前是否被允许「安装未知来源应用」。
+    ///
+    /// Android 8.0 才有这个概念，更低版本一律视为已授权。
+    private fun canInstallApk(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            packageManager.canRequestPackageInstalls()
+        } else {
+            true
+        }
+    }
+
+    /// 安装失败的结构化返回。Dart 侧按 `code` 决定引导文案与跳转目标。
+    private fun installFailure(code: String): Map<String, Any?> {
+        return mapOf("ok" to false, "code" to code)
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_CODE_PICK_FILE) {
@@ -201,6 +217,83 @@ class MainActivity : FlutterActivity() {
                         }
                     } else {
                         result.error("INVALID_ARG", "url is null or empty", null)
+                    }
+                }
+                // ---- 应用内更新：安装未知来源 APK ----
+                // Dart 侧负责下载到应用私有目录（files/updates/），原生只负责把文件
+                // 交给系统安装器。返回的是结构化结果而不是抛异常 —— 「没授权」和
+                // 「文件不存在」是两种完全不同的用户引导，不能混成一句报错。
+                "canInstallApk" -> {
+                    result.success(canInstallApk())
+                }
+                "installApk" -> {
+                    val filePath = call.argument<String>("filePath")
+                    if (filePath.isNullOrBlank()) {
+                        result.success(installFailure("INVALID_ARG"))
+                        return@setMethodCallHandler
+                    }
+                    if (!canInstallApk()) {
+                        result.success(installFailure("NEED_PERMISSION"))
+                        return@setMethodCallHandler
+                    }
+                    val apkFile = File(filePath)
+                    if (!apkFile.exists() || apkFile.length() <= 0L) {
+                        result.success(installFailure("NOT_FOUND"))
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        // 必须走 FileProvider：Android 7.0 起直接把 file:// 路径
+                        // 塞进 Intent 会触发 FileUriExposedException。
+                        val apkUri = FileProvider.getUriForFile(
+                            this,
+                            "${applicationContext.packageName}.fileprovider",
+                            apkFile
+                        )
+                        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(apkUri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        if (installIntent.resolveActivity(packageManager) == null) {
+                            result.success(installFailure("NO_INSTALLER"))
+                            return@setMethodCallHandler
+                        }
+                        startActivity(installIntent)
+                        result.success(mapOf("ok" to true))
+                    } catch (e: Exception) {
+                        result.success(
+                            installFailure("FAILED").toMutableMap().apply {
+                                put("message", e.message ?: "")
+                            }
+                        )
+                    }
+                }
+                // 把用户送到本应用的「安装未知应用」授权页。
+                // 老系统（< 8.0）没有这个概念，直接当成功处理。
+                "openInstallPermissionSettings" -> {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                        result.success(true)
+                    } else {
+                        try {
+                            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                data = Uri.fromParts("package", packageName, null)
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            try {
+                                // 个别定制 ROM 收起了该页面，退回应用详情页让用户自己找。
+                                val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", packageName, null)
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                startActivity(fallback)
+                                result.success(true)
+                            } catch (e2: Exception) {
+                                result.success(false)
+                            }
+                        }
                     }
                 }
                 else -> {

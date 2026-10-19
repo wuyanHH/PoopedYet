@@ -108,7 +108,9 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
           ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
+      // 用 hardEdge 而不是 antiAlias：网格四周有 10px 内边距，永远碰不到
+      // 卡片的圆角，矩形裁剪的视觉效果完全一致，但不用走抗锯齿离屏绘制。
+      clipBehavior: Clip.hardEdge,
       padding: const EdgeInsets.fromLTRB(10, 12, 10, 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -157,13 +159,16 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
                 nav.nextWeek();
               }
             },
-            child: ClipRect(
-              child: AnimatedSize(
-                duration: Duration(milliseconds: isModeSwitch ? 320 : 260),
-                curve: Curves.fastEaseInToSlowEaseOut,
-                alignment: Alignment.topCenter,
-                clipBehavior: Clip.hardEdge,
-                child: AnimatedSwitcher(
+            child: AnimatedSize(
+              // 只有周↔月切换才需要高度折叠动画。同模式的左右翻页两套网格
+              // 高度完全相同，让 AnimatedSize 也跑 260ms 只是白开一条动画。
+              duration: isModeSwitch
+                  ? const Duration(milliseconds: 320)
+                  : Duration.zero,
+              curve: Curves.fastEaseInToSlowEaseOut,
+              alignment: Alignment.topCenter,
+              clipBehavior: Clip.hardEdge,
+              child: AnimatedSwitcher(
                   duration: Duration(milliseconds: isModeSwitch ? 320 : 260),
                   switchInCurve: Curves.fastEaseInToSlowEaseOut,
                   switchOutCurve: Curves.fastEaseInToSlowEaseOut,
@@ -294,7 +299,6 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
                   ),
                 ),
               ),
-            ),
           ),
 
           // 底部拖动小白条（紧凑衔接，不再冗余留白）

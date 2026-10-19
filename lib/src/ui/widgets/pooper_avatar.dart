@@ -131,10 +131,19 @@ class PooperAvatar extends StatelessWidget {
       child = _iconOrInitial(scheme, r);
     }
 
-    if (!dimmed) return RepaintBoundary(child: child);
-    return RepaintBoundary(
-      child: Opacity(opacity: 0.45, child: child),
-    );
+    if (dimmed) {
+      child = Opacity(opacity: 0.45, child: child);
+    }
+
+    // 只有列表 / 详情里的大头像才值得单独划一条重绘边界。
+    //
+    // 日历格里的迷你徽标（14px）一屏就可能出现几十个，每个都包一层
+    // RepaintBoundary 就是几十个独立图层——翻月、滚动时合成成本反而更高，
+    // 而且这些小图标本身几乎不重绘，边界带不来任何收益。
+    if (size < 24) {
+      return child;
+    }
+    return RepaintBoundary(child: child);
   }
 
   Widget _iconOrInitial(AvatarColor scheme, double r) {

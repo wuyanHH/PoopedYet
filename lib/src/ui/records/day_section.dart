@@ -37,6 +37,10 @@ class DaySection extends ConsumerWidget {
     final day = view.selectedDate;
     final isToday = isSameDay(day, today);
 
+    // 每次 build 只取一次当前时间，避免每张卡片各调一次 DateTime.now()
+    // 造成同一屏内状态基准不一致。
+    final now = DateTime.now();
+
     final recordsAsync = ref.watch(dayRecordsProvider(day));
     final records = recordsAsync.value ?? const [];
     final db = ref.read(databaseProvider);
@@ -207,29 +211,24 @@ class DaySection extends ConsumerWidget {
           ),
         ),
         Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            transitionBuilder: (child, animation) {
-              return FadeTransition(
-                opacity: CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOut,
-                ),
-                child: child,
-              );
-            },
-            child: recordsAsync.isLoading && records.isEmpty
-                ? const SizedBox.shrink(key: ValueKey('loading'))
-                : records.isEmpty
-                    ? _EmptyDay(
-                        key: const ValueKey('empty_day'),
-                        isToday: isToday,
-                      )
-                    : ListView.separated(
-                        key: ValueKey('list_${day.year}_${day.month}_${day.day}'),
-                        cacheExtent: 600.0,
+          // 这里以前用 AnimatedSwitcher 给整个列表做 180ms 淡入淡出。
+          // 切日期时新旧两套 ListView 会同时在场——当天记录一多，等于在
+          // 同一帧里渲染两倍数量的 RecordCard，切日和滚动都会掉帧。
+          // 日历切日本来就是即时动作，直接换列表更干脆。
+          child: recordsAsync.isLoading && records.isEmpty
+              ? const SizedBox.shrink()
+              : records.isEmpty
+                  ? _EmptyDay(
+                      key: const ValueKey('empty_day'),
+                      isToday: isToday,
+                    )
+                  : ListView.separated(
+                      key: ValueKey(
+                        'list_${day.year}_${day.month}_${day.day}',
+                      ),
+                      // 600 会让离屏两屏的卡片都保持挂载。RecordCard 的构建
+                      // 成本不低，收到 400 可以少挂一两张，滚动更稳。
+                      cacheExtent: 400.0,
                         physics: const AlwaysScrollableScrollPhysics(
                           parent: BouncingScrollPhysics(),
                         ),
@@ -240,6 +239,10 @@ class DaySection extends ConsumerWidget {
                           96 + MediaQuery.paddingOf(context).bottom,
                         ),
                         itemCount: records.length,
+                        // 每张卡片外面已经手动包了 RepaintBoundary（带稳定的
+                        // key），再让 ListView 自动包一层就是两个图层叠一起，
+                        // 滚动时合成成本直接翻倍。
+                        addRepaintBoundaries: false,
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (_, i) {
                           final item = records[i];
@@ -249,22 +252,22 @@ class DaySection extends ConsumerWidget {
                             child: RecordCard(
                               key: ValueKey('record_card_${r.id}'),
                               detail: item,
-                              now: DateTime.now(),
+                              now: now,
                               onTap: () => onTapRecord(r.id),
                               onAddNote: () => onTapRecord(r.id),
                             onQuickEnd: r.endedAt == null
                                 ? () async {
                                     HapticFeedback.mediumImpact();
-                                    final now = DateTime.now();
+                                    final endedAt = DateTime.now();
                                     final backupItem = item;
-                                    await db.endPoop(r.id, at: now);
+                                    await db.endPoop(r.id, at: endedAt);
                                     _refresh(ref);
                                     if (context.mounted) {
-                                      final mins = minutesBetween(r.startedAt, now);
+                                      final mins = minutesBetween(r.startedAt, endedAt);
                                       final durStr = formatDuration(Duration(minutes: mins));
                                       showUndoSnackBar(
                                         context,
-                                        title: '${item.pooper.name} 已结束打卡（结束时间 ${hhmm(now)}）',
+                                        title: '${item.pooper.name} 已结束打卡（结束时间 ${hhmm(endedAt)}）',
                                         subtitle: '本次打卡历时约 $durStr · 如需恢复可点击撤销',
                                         onUndo: () async {
                                           HapticFeedback.lightImpact();
@@ -299,7 +302,6 @@ class DaySection extends ConsumerWidget {
                         );
                       },
                     ),
-          ),
         ),
       ],
     );

@@ -11,6 +11,7 @@ import '../../calendar/calendar_math.dart';
 import '../../data/database.dart';
 import '../../data/holiday_loader.dart';
 import '../../data/update/app_version.dart';
+import '../../data/update/apk_downloader.dart';
 import '../../data/update/auto_update_checker.dart';
 import '../../data/update/update_prefs.dart';
 import '../../dev/demo_seeder.dart';
@@ -24,6 +25,7 @@ import '../../widget/widget_snapshot_service.dart';
 import '../widgets/settings_widgets.dart';
 import '../widgets/smooth_page_route.dart';
 import '../widgets/update_dialog.dart';
+import '../widgets/update_download_banner.dart';
 import 'backup/data_backup_page.dart';
 import 'backup/webdav_sync_page.dart';
 import 'changelog_page.dart';
@@ -49,6 +51,8 @@ class SettingsPage extends ConsumerWidget {
     final templates = ref.watch(noteTemplatesProvider).value ?? const [];
     final webDavConfig = ref.watch(webDavConfigProvider);
     final updatePrefs = ref.watch(updatePrefsProvider);
+    // 后台下载的实时状态：设置页也要能看到它，否则用户从主页点进设置就"失联"了。
+    final download = ref.watch(updateDownloadProvider);
 
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
@@ -63,6 +67,9 @@ class SettingsPage extends ConsumerWidget {
         cacheExtent: 600.0,
         padding: EdgeInsets.fromLTRB(0, 0, 0, 32 + bottomInset),
         children: [
+          // 应用内更新正在下载/已下载时，这条迷你条会浮在最上面（平时完全不占高）
+          const UpdateDownloadBanner(),
+
           // ---------------- 人员与主题 ----------------
           const SettingsSectionLabel('人员与主题'),
           SettingsCard(
@@ -312,7 +319,13 @@ class SettingsPage extends ConsumerWidget {
                 leadingColor: t.brandInk,
                 leadingBackground: t.brandSoft,
                 title: '检查新版本',
-                subtitle: '连接 GitHub Releases 获取最新发布与架构专属包',
+                subtitle: download.isDownloading
+                    ? '正在后台下载 v${download.release?.versionName ?? ''}'
+                        ' · ${download.percent}%'
+                    : download.isCompleted
+                        ? 'v${download.release?.versionName ?? ''}'
+                            ' 安装包已下载，点顶部进度条即可安装'
+                        : '连接 GitHub Releases 获取最新发布与架构专属包',
                 trailing: const SettingsChevron(),
                 onTap: () => _handleCheckUpdate(context, ref),
               ),

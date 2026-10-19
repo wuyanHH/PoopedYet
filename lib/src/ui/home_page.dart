@@ -26,6 +26,7 @@ import 'widgets/ongoing_poop_badge.dart';
 import 'widgets/poop_button_icon.dart';
 import 'widgets/smooth_page_route.dart';
 import 'widgets/update_dialog.dart';
+import 'widgets/update_download_banner.dart';
 
 /// 日历主页（视觉稿 ①）。
 ///
@@ -132,6 +133,8 @@ class HomePage extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const _AppBar(isLandscape: true),
+                        // 应用内更新的后台下载进度条（收起后只剩右上角一颗小圆环）
+                        const UpdateDownloadBanner(),
                         Expanded(
                           child: RepaintBoundary(
                             child: DaySection(
@@ -149,6 +152,8 @@ class HomePage extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const _AppBar(isLandscape: false),
+                  // 应用内更新的后台下载进度条（收起后只剩右上角一颗小圆环）
+                  const UpdateDownloadBanner(),
                   const FirstRunHint(),
                   const SizedBox(height: 4),
                   const RepaintBoundary(child: CalendarCard()),

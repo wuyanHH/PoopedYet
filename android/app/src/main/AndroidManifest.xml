@@ -7,6 +7,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
+    <!-- 应用内更新：下载完 APK 后自行拉起系统安装器。
+         Android 8.0+ 上这是一条「特殊权限」——声明只是让系统允许我们发起请求，
+         真正放行还要用户在「安装未知应用」里给本应用手动开一次。
+         没开时 MainActivity 的 installApk 会返回 NEED_PERMISSION，
+         由 Dart 侧引导用户去该设置页，而不是抛一个看不懂的异常。 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- android:enableOnBackInvokedCallback 打开 Android 13+ 的「返回事件预测」通道，
          它是预测性返回手势（拖入时预览上一页）的前提 —— 不打开的话系统根本不会把
          手势进度发给 Flutter，Dart 侧的观察者一个回调都收不到。低版本系统会忽略此属性。
@@ -150,6 +157,13 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11+ 的软件包可见性：不声明这一段，queryIntentActivities
+             查不到任何 APK 安装器，installApk 就会把「本机明明有安装器」
+             误判成「无法安装」。 -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="application/vnd.android.package-archive"/>
         </intent>
     </queries>
 </manifest>

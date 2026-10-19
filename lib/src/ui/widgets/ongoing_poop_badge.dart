@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../theme/tokens.dart';
 
@@ -37,7 +36,6 @@ class _OngoingPoopBadgeState extends State<OngoingPoopBadge>
   static const Color primaryCaramel = Color(0xFF5C4033);
   static const Color accentSage = Color(0xFF76A08A);
   static const Color darkSageText = Color(0xFF355846);
-  static const Color accentYellow = Color(0xFFE4B34F);
 
   late final AnimationController _controller;
 
@@ -69,90 +67,105 @@ class _OngoingPoopBadgeState extends State<OngoingPoopBadge>
     final verticalPadding = widget.compact ? 3.0 : 5.0;
     final fontSize = widget.compact ? 11.0 : 12.0;
 
-    return GestureDetector(
-      onTap: widget.onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          final breath = 0.5 + 0.5 * math.sin(_controller.value * 2 * math.pi);
-
-          return Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: horizontalPadding,
-              vertical: verticalPadding,
-            ),
-            decoration: BoxDecoration(
-              // 背景自适应：既保证鼠尾草绿呼吸，又杜绝不同底色下的生硬色差
-              color: isDark
-                  ? t.liveSoft.withValues(alpha: 0.20 + 0.12 * breath)
-                  : liveBaseColor.withValues(alpha: 0.12 + 0.08 * breath),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: isDark
-                    ? t.live.withValues(alpha: 0.35 + 0.25 * breath)
-                    : liveBaseColor.withValues(alpha: 0.35 + 0.30 * breath),
-                width: 1.2,
+    // 静态内容（文字 + 布局）不随呼吸动画变化，作为 AnimatedBuilder 的
+    // child 复用。这样 60fps 的呼吸/卷纸动画每帧只需要重建外层的背景装饰
+    // 和那枚 CustomPaint，而不是整行文字重新布局。
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // 1. 动态卷纸秒表 + 单向流淌打孔虚线 Icon
+        SizedBox(
+          width: widget.iconSize,
+          height: widget.iconSize,
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) => CustomPaint(
+              painter: _Scheme1AUnrollingPainter(
+                progress: _controller.value,
+                isDark: isDark,
+                caramelColor: isDark ? t.ink : primaryCaramel,
+                paperFillColor:
+                    isDark ? t.surface : Colors.white.withValues(alpha: 0.95),
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // 1. 动态卷纸秒表 + 单向流淌打孔虚线 Icon
-                SizedBox(
-                  width: widget.iconSize,
-                  height: widget.iconSize,
-                  child: CustomPaint(
-                    painter: _Scheme1AUnrollingPainter(
-                      progress: _controller.value,
-                      isDark: isDark,
-                      caramelColor: isDark ? t.ink : primaryCaramel,
-                      paperFillColor: isDark ? t.surface : Colors.white.withValues(alpha: 0.95),
-                    ),
-                  ),
-                ),
-                SizedBox(width: widget.compact ? 4 : 6),
+          ),
+        ),
+        SizedBox(width: widget.compact ? 4 : 6),
 
-                // 2. 状态文字「正在屙」
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.w800,
-                    color: textColor,
-                    height: 1.1,
-                  ),
-                ),
+        // 2. 状态文字「正在屙」
+        Text(
+          widget.label,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            color: textColor,
+            height: 1.1,
+          ),
+        ),
 
-                // 3. 可选动态时长（例如 "03:24"）
-                if (widget.durationText != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      '·',
-                      style: TextStyle(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.bold,
-                        color: textColor.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    widget.durationText!,
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? t.ink : primaryCaramel,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                      height: 1.1,
-                    ),
-                  ),
-                ],
-              ],
+        // 3. 可选动态时长（例如 "03:24"）
+        if (widget.durationText != null) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              '·',
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.bold,
+                color: textColor.withValues(alpha: 0.5),
+              ),
             ),
-          );
-        },
+          ),
+          Text(
+            widget.durationText!,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w700,
+              color: isDark ? t.ink : primaryCaramel,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              height: 1.1,
+            ),
+          ),
+        ],
+      ],
+    );
+
+    return RepaintBoundary(
+      // 这颗胶囊是常驻 60fps 的动画源。自己不划一条重绘边界的话，
+      // 首页顶栏（以及它所在的整棵子树）每一帧都会被拖着重绘。
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedBuilder(
+          animation: _controller,
+          child: content,
+          builder: (context, child) {
+            final breath =
+                0.5 + 0.5 * math.sin(_controller.value * 2 * math.pi);
+
+            return Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding,
+                vertical: verticalPadding,
+              ),
+              decoration: BoxDecoration(
+                // 背景自适应：既保证鼠尾草绿呼吸，又杜绝不同底色下的生硬色差
+                color: isDark
+                    ? t.liveSoft.withValues(alpha: 0.20 + 0.12 * breath)
+                    : liveBaseColor.withValues(alpha: 0.12 + 0.08 * breath),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: isDark
+                      ? t.live.withValues(alpha: 0.35 + 0.25 * breath)
+                      : liveBaseColor.withValues(alpha: 0.35 + 0.30 * breath),
+                  width: 1.2,
+                ),
+              ),
+              child: child,
+            );
+          },
+        ),
       ),
     );
   }

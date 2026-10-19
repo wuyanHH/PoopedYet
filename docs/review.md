@@ -411,6 +411,27 @@ Play 商店另需 512×512 的方形图。
 - **性能瓶颈分析**：打卡卡片包含实时呼吸脉冲动画（正在屙胶囊的放大与柔光淡入淡出），在列表上下滚动以及常态展示时，若没有重绘边界隔离，内部每一帧动画都会引起同一图层整个列表视图的重复 Paint。
 - **优化落地**：在 `DaySection` 的 `ListView.separated` 中为每个卡片项外层明确挂载了 `RepaintBoundary(key: ValueKey('card_boundary_${r.id}'))`，精确切断重绘波及链，大幅降低 GPU 光栅化开销与电池损耗，保障高刷屏幕下的丝滑流畅度。
 
+### 15. 页面转场回归官方预测性返回 + 滚动链路的离屏绘制治理
+
+#### 15.1 页面切换与「返回预览」
+
+- **现象**：切页时「底页缩小 + 当前页收圆角 + 双向视差」三层动画同时跑，方向依赖一个全局 `ValueNotifier`，看起来不符合直觉；真机上拖动返回时看不到上一页预览。
+- **根因**：
+  1. `smoothPageRoute` 继承 `PageRouteBuilder`，**绕过了 `PageTransitionsTheme`**。Flutter 3.24+ 的预测性返回（手势 start / update / commit / cancel，以及底页的 delegated transition）只由 `PredictiveBackPageTransitionsBuilder` 接管，而它只会被 `MaterialPageRoute.buildTransitions` 调用。自定义路由即便自己监听 `handleStartBackGesture`，也拿不到官方的底页编排——这正是实机上「没有预览」的根本原因。
+  2. 转场对整页做了 `ClipRRect` 圆角裁剪，再叠多层 `SlideTransition` / `ScaleTransition`。Impeller 不做图片层光栅缓存，一次转场就是整屏离屏裁剪 + 多次变换。
+- **修复**：
+  - `smoothPageRoute` 改为 `MaterialPageRoute`；
+  - `ThemeData` 显式配置 `PageTransitionsTheme`：Android 使用官方 `PredictiveBackPageTransitionsBuilder(fallbackColor: 纸张色)`，桌面使用 `FadeForwardsPageTransitionsBuilder`；
+  - 实机预览的前提（缺一即自动回退 FadeForwards，方向仍固定为「新页从右进、旧页向左退」）：手势导航、Android 14+、系统开启预测性返回动画、`AndroidManifest` 的 `enableOnBackInvokedCallback="true"`。
+
+#### 15.2 滚动帧率
+
+- **`RecordCard`**：去掉整卡 `BoxShadow`（模糊要按整卡面积离屏渲染，Impeller 每帧重付）与两层 `ClipRRect`；卡片圆角改由自身 decoration 与滑动背景层分别绘制；删除动画把 `cardContent` 作为 `AnimatedBuilder.child` 复用；顺带修掉弹簧回弹监听器只增不减、多次滑动后一帧内多次 `setState` 的泄漏。
+- **`DayCell`**：`AnimatedContainer` → `Container`。一个月 42 格、翻月时新旧两套网格同时在场，原先等于 84 个隐式动画控制器一起 tick；同时去掉每格的圆角裁剪与角标小阴影。
+- **`DaySection`**：去掉包住整个 `ListView` 的 `AnimatedSwitcher`（切日期时新旧两套列表同时渲染），关闭 `ListView` 自动 `RepaintBoundary`（卡片外已有手动一层），`cacheExtent` 600 → 400。
+- **`OngoingPoopBadge`**：文字与布局不再随 60fps 呼吸动画每帧重建，只重建背景透明度与卷纸 `CustomPaint`；自身挂 `RepaintBoundary`，避免把顶栏拖进每帧重绘。
+
+
 
 
 

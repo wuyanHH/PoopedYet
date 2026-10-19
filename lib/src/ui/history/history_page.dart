@@ -345,9 +345,13 @@ class _Timeline extends ConsumerWidget {
     }
 
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    // 整条时间线共用同一个「现在」，避免每张卡片各自 DateTime.now()。
+    final now = DateTime.now();
 
     return ListView.builder(
-      cacheExtent: 600.0,
+      // 600 会让离屏两屏的卡片都保持挂载；RecordCard 有头像、徽标、
+      // 备注气泡，构建成本不低，收到 400 能让滚动更稳。
+      cacheExtent: 400.0,
       physics: const AlwaysScrollableScrollPhysics(
         parent: BouncingScrollPhysics(),
       ),
@@ -381,21 +385,21 @@ class _Timeline extends ConsumerWidget {
                 child: RecordCard(
                   key: ValueKey('history_card_${d.record.id}'),
                   detail: d,
-                  now: DateTime.now(),
+                  now: now,
                   onTap: () => onTap(d.record.id),
                   onAddNote: () => onTap(d.record.id),
                   onQuickEnd: d.record.endedAt == null
                       ? () async {
-                          final now = DateTime.now();
+                          final endedAt = DateTime.now();
                           final backupDetail = d;
-                          await db.endPoop(d.record.id, at: now);
+                          await db.endPoop(d.record.id, at: endedAt);
                           refresh();
                           if (context.mounted) {
-                            final mins = minutesBetween(d.record.startedAt, now);
+                            final mins = minutesBetween(d.record.startedAt, endedAt);
                             final durStr = formatDuration(Duration(minutes: mins));
                             showUndoSnackBar(
                               context,
-                              title: '${d.pooper.name} 已结束打卡（结束时间 ${hhmm(now)}）',
+                              title: '${d.pooper.name} 已结束打卡（结束时间 ${hhmm(endedAt)}）',
                               subtitle: '本次打卡历时约 $durStr · 如需恢复可点击撤销',
                               onUndo: () async {
                                 await db.restoreRecord(backupDetail);

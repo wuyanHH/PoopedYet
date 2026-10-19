@@ -66,7 +66,14 @@ class _RecordCardState extends ConsumerState<RecordCard>
     vsync: this,
     duration: const Duration(milliseconds: 260),
   );
+
+  /// 当前正在跑的弹簧补间与其监听器。
+  ///
+  /// 必须持有引用才能在中途打断时把它摘掉。以前把匿名 listener 直接挂在
+  /// 复用的 controller 上，滑一次加一个、永远不摘 —— 滑过几次之后，
+  /// 每一帧都会连续触发好几次 setState。
   Animation<double>? _springAnimation;
+  VoidCallback? _springListener;
 
   // 丝滑删除动效控制器：向左滑出淡出 + 高度折叠闭合
   late final AnimationController _deleteController = AnimationController(
@@ -118,6 +125,7 @@ class _RecordCardState extends ConsumerState<RecordCard>
       _isDeleting = false;
       _isCompleting = false;
       _dragOffset = 0.0;
+      _stopSpring();
       _springController.reset();
       _deleteController.reset();
     }
@@ -125,30 +133,49 @@ class _RecordCardState extends ConsumerState<RecordCard>
 
   @override
   void dispose() {
+    _stopSpring();
     _springController.dispose();
     _deleteController.dispose();
     super.dispose();
   }
 
+  void _stopSpring() {
+    _springController.stop();
+    final animation = _springAnimation;
+    final listener = _springListener;
+    if (animation != null && listener != null) {
+      animation.removeListener(listener);
+    }
+    _springAnimation = null;
+    _springListener = null;
+  }
+
   void _resetPosition({bool spring = true}) {
     if (!spring || _dragOffset == 0.0) {
+      _stopSpring();
       setState(() {
         _dragOffset = 0.0;
         _isCompleting = false;
       });
       return;
     }
-    _springAnimation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
+
+    _stopSpring();
+    final animation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
       CurvedAnimation(parent: _springController, curve: Curves.easeOutCubic),
-    )..addListener(() {
-        setState(() {
-          _dragOffset = _springAnimation!.value;
-        });
-      });
-    _springController.forward(from: 0.0).then((_) {
-      if (mounted) {
-        setState(() => _isCompleting = false);
-      }
+    );
+    void listener() {
+      if (!mounted) return;
+      setState(() => _dragOffset = animation.value);
+    }
+
+    _springAnimation = animation;
+    _springListener = listener;
+    animation.addListener(listener);
+    _springController.forward(from: 0.0).whenComplete(() {
+      if (!mounted) return;
+      _stopSpring();
+      setState(() => _isCompleting = false);
     });
   }
 
@@ -230,7 +257,8 @@ class _RecordCardState extends ConsumerState<RecordCard>
               width: (isLive || state == RecordState.pending) ? 1.3 : 1.0,
             ),
           ),
-          clipBehavior: Clip.antiAlias,
+          // 不再 clip：卡片内的所有内容（头像自己裁圆角、文本有 14px 内边距）
+          // 都不会碰到这个圆角，裁剪只会白白多付一次离屏绘制。
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
             child: Column(
@@ -391,6 +419,9 @@ class _RecordCardState extends ConsumerState<RecordCard>
 
     return AnimatedBuilder(
       animation: _deleteController,
+      // cardContent 不随删除动画变化，作为 child 传进去复用：
+      // 删除的那 320ms 里只重建位移/折叠层，不再重建整棵卡片子树。
+      child: cardContent,
       builder: (context, child) {
         // 如果处于删除动效中，卡片沿原方向迅速加速滑出屏幕
         final effectiveOffset = _isDeleting
@@ -399,11 +430,9 @@ class _RecordCardState extends ConsumerState<RecordCard>
                     (MediaQuery.sizeOf(context).width + 120))
             : _dragOffset;
 
-        return SizeTransition(
-          sizeFactor: _deleteSizeAnimation,
-          axisAlignment: 0.0,
-          child: FadeTransition(
-            opacity: _deleteOpacityAnimation,
+        final collapsing = _deleteController.value > 0;
+        final card = FadeTransition(
+          opacity: _deleteOpacityAnimation,
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: cardRadius,
@@ -411,32 +440,27 @@ class _RecordCardState extends ConsumerState<RecordCard>
                   color: t.lineSoft.withValues(alpha: 0.35),
                   width: 1.0,
                 ),
+                // 保留一层「硬投影」：blurRadius 为 0 时它只是一块偏移的
+                // 纯色矩形，不会触发离屏模糊，滚动时几乎零成本，但足以把
+                // 卡片从纸色背景上托起来，不让层次完全塌掉。
                 boxShadow: [
                   BoxShadow(
-                    color: isLive
-                        ? (t.isDark
-                            ? Colors.black.withValues(alpha: 0.3)
-                            : const Color(0x1A2E7D32))
-                        : (t.isDark
-                            ? Colors.black.withValues(alpha: 0.25)
-                            : const Color(0x102D1B0D)),
-                    blurRadius: isLive ? 14 : 10,
-                    spreadRadius: -2,
-                    offset: const Offset(0, 3),
+                    color: t.isDark
+                        ? Colors.black.withValues(alpha: 0.28)
+                        : const Color(0x122D1B0D),
+                    offset: const Offset(0, 1.5),
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: cardRadius,
-                clipBehavior: Clip.antiAlias,
-                child: GestureDetector(
+              // 外层的 ClipRRect 也去掉了：它会把卡片的滑出动画硬裁在卡片
+              // 边界内（离屏幕边缘还有 14px 就"消失"），同时每帧多一次圆角
+              // 裁剪。卡片的圆角由 cardContent 自己的 decoration 绘制。
+              child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onHorizontalDragStart: (_) {
                     if (_isDeleting) return;
                     _hasTriggeredHaptic = false;
-                    if (_springController.isAnimating) {
-                      _springController.stop();
-                    }
+                    _stopSpring();
                   },
                   onHorizontalDragUpdate: (d) {
                     if (_isDeleting) return;
@@ -516,31 +540,49 @@ class _RecordCardState extends ConsumerState<RecordCard>
                     }
                   },
                   child: Stack(
+                    // 不裁剪：删除/滑出动画要让卡片真正滑出屏幕，
+                    // 而不是在卡片边界处被硬切掉。
+                    clipBehavior: Clip.none,
                     children: [
-                      // 底层动作背景层：展示丰富的操作反馈与提示，文字与图标层次分明
-                      Positioned.fill(
-                        child: _SeamlessSwipeBackground(
-                          dragOffset: effectiveOffset,
-                          isTriggerReady: effectiveOffset.abs() >= kTriggerThreshold,
-                          hasEnded: hasEnded,
-                          isCompleting: _isCompleting,
-                          endedAt: r.endedAt,
-                          now: widget.now,
+                      // 底层动作背景层：展示丰富的操作反馈与提示，文字与图标层次分明。
+                      // 没在拖动时（绝大多数时间）直接不挂这个子树，
+                      // 省掉每张卡片一个满尺寸的空盒子和一次布局。
+                      if (effectiveOffset != 0)
+                        Positioned.fill(
+                          child: _SeamlessSwipeBackground(
+                            dragOffset: effectiveOffset,
+                            isTriggerReady:
+                                effectiveOffset.abs() >= kTriggerThreshold,
+                            hasEnded: hasEnded,
+                            isCompleting: _isCompleting,
+                            endedAt: r.endedAt,
+                            now: widget.now,
+                          ),
                         ),
-                      ),
 
                       // 上层主内容卡片：随阻尼位移平移
                       Transform.translate(
                         offset: Offset(effectiveOffset, 0),
-                        child: cardContent,
+                        child: child,
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-          ),
-        );
+            );
+
+        // 只有真正在删除时才套 SizeTransition。
+        //
+        // SizeTransition 内部常年挂着一个 ClipRect：列表里几十张卡片就是
+        // 几十个裁剪层，而除了正在删除的那一张，其余卡片的 sizeFactor 恒为
+        // 1，这个裁剪纯属白付。删除结束后卡片已从列表移除，不会漏动画。
+        return collapsing
+            ? SizeTransition(
+                sizeFactor: _deleteSizeAnimation,
+                axisAlignment: 0.0,
+                child: card,
+              )
+            : card;
       },
     );
   }
@@ -644,10 +686,15 @@ class _SeamlessSwipeBackground extends StatelessWidget {
 
     return Stack(
       children: [
-        // 1. 满铺渐变背景，保证卡片移开时底色无缝且饱满
+        // 1. 满铺渐变背景，保证卡片移开时底色无缝且饱满。
+        //    圆角必须画在这一层：外层 ClipRRect 已经去掉了，
+        //    背景若还是矩形，滑开时四角会露出直角底色。
         Positioned.fill(
           child: Container(
-            decoration: BoxDecoration(gradient: gradient),
+            decoration: BoxDecoration(
+              gradient: gradient,
+              borderRadius: BorderRadius.circular(18),
+            ),
           ),
         ),
 

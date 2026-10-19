@@ -151,11 +151,17 @@ class _DayCellState extends State<DayCell> {
           scale: _pressed ? 0.94 : 1.0,
           duration: const Duration(milliseconds: 120),
           curve: Curves.easeOutCubic,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
+          // 这里以前是 AnimatedContainer（180ms 颜色渐变）。一个月的网格
+          // 有 42 格，每格一个隐式动画控制器：翻月时新旧两套网格同时在场，
+          // 84 个控制器一起 tick、一起重建装饰，正是切月掉帧的主要来源。
+          //
+          // 选中/今天本来就是「点下去立刻高亮」更干脆，不需要渐变；
+          // 换成普通 Container 后，翻月只做一次布局与绘制。
+          //
+          // 同时去掉 clipBehavior：格子的内容有 4px 内边距，不会碰到 9px
+          // 圆角，裁剪只是每帧多一次离屏绘制。
+          child: Container(
             alignment: Alignment.topLeft,
-            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               gradient: gradient,
               color: bg,
@@ -259,15 +265,6 @@ class _DayCellState extends State<DayCell> {
                         : t.lineSoft.withValues(alpha: 0.7),
                     width: 0.8,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: t.isDark
-                          ? Colors.black.withValues(alpha: 0.2)
-                          : const Color(0x0C2D1B0D),
-                      blurRadius: 2,
-                      offset: const Offset(0, 0.8),
-                    ),
-                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

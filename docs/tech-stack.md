@@ -352,3 +352,46 @@ flutter build apk --release --split-per-abi
    | 数据删除 | 只删"疑似同一次拉屎"的重复条目，绝不传播删除意图 | 没有墓碑机制的前提下，双向同步无法安全区分"另一端删了"和"另一端还没有"，宁可保留 |
    | 云端文件损坏 | 直接中止本次同步并报错 | 当成"云端是空的"继续走，等于拿本地数据覆盖云端，是丢数据事故 |
 
+---
+
+## 6. 应用内更新与静默后台下载
+
+更新链路：`auto_update_checker.dart`（什么时候查）→ `update_service.dart`（查什么）→
+`apk_downloader.dart`（怎么下）→ 原生 `installApk`（怎么装）。
+
+### 为什么不用系统 `DownloadManager`
+
+用户要的是**静默后台下载**：关掉弹窗继续下、通知栏干干净净。
+`DownloadManager` 的通知可见性（`setNotificationVisibility(VISIBILITY_HIDDEN)`）
+在不同 Android 版本与定制 ROM 上并不完全受应用控制，而自己用 `HttpClient`
+流式写文件则天然没有通知，进度也不需要轮询原生就能实时拿到。
+代价是下载活在 Dart isolate 里 —— 进程被系统杀掉就中断，因此做了**断点续传**兜底。
+
+### 三个关键设计
+
+| 设计 | 解决什么问题 |
+|---|---|
+| 状态放在全局 `updateDownloadProvider` | 弹窗、迷你进度条、设置页读的是同一份状态；关掉弹窗不等于停下载 |
+| 任务序号 `_taskSeq` | 用户在「其他架构安装包」里连点两个包时，旧任务的取消/失败**不能**回写覆盖新任务的状态 |
+| `.part` + `Range` 续传 | 网络中断、进程被杀、用户手动取消之后，下次从已下载字节处继续，不必重下 17 MB |
+
+### 安装环节（Android 侧）
+
+- 下载落在 `getApplicationSupportDirectory()/updates/`（应用私有目录，无需存储权限）。
+- 安装必须走 `FileProvider`：Android 7.0 起直接把 `file://` 塞进 Intent 会抛 `FileUriExposedException`。
+- Android 8.0+ 需要用户在「安装未知应用」里放行一次；`installApk` 返回 `NEED_PERMISSION`
+  而不是抛异常，Dart 侧据此弹「还差一步授权」并跳设置页。
+- `AndroidManifest.xml` 里因此声明了 `REQUEST_INSTALL_PACKAGES`，并在 `<queries>` 中
+  声明了 APK 安装器的可见性 —— 不声明的话 Android 11+ 会把「本机有安装器」误判成没有。
+- 桌面端（Windows）没有这套机制，按钮退回「前往发布页」走浏览器下载。
+
+### 更新日志预览
+
+Release 正文用自写的轻量 Markdown 解析（`changelog_parser.dart`）：
+块级支持标题/列表/任务列表/引用/分割线/代码块，行内支持粗体、斜体、删除线、
+行内代码、链接与裸链接；渲染层（`changelog_markdown.dart`）按手帐设计令牌重排。
+外加一层分类统计 —— 按 emoji 与关键词把条目归到「新增 / 优化 / 修复」，
+在弹窗顶部给出计数胶囊，回答用户「这次值得升吗」。
+
+> 不引 `flutter_markdown`：Release 正文只会用到这几个语法，第三方库还要再覆写一遍主题。
+

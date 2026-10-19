@@ -88,6 +88,33 @@ class PoopedYetApp extends ConsumerWidget {
       // 设计令牌挂上 ThemeExtension，业务代码用 `context.tokens` 取。
       extensions: [t],
 
+      // 页面转场统一走 Flutter 官方这套，别在页面里各自造轮子。
+      //
+      // Android 用 PredictiveBackPageTransitionsBuilder：它是唯一能接住
+      // 系统「预测性返回」逐帧进度的实现（拖入时缩小当前页、露出底页），
+      // 系统不支持时自动回退到 FadeForwards。fallbackColor 必须给纸张色 ——
+      // 默认的 ColorScheme.surface 在深色主题下转场会闪一块偏亮的底。
+      //
+      // iOS 不在这里显式配置：PageTransitionsTheme 找不到 iOS 的 key 时
+      // 会自动回落到 Cupertino 的横向推入 + 边缘返回，正好是想要的平台
+      // 直觉。（本项目只发 Android；桌面平台统一用 FadeForwards。）
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: PredictiveBackPageTransitionsBuilder(
+            fallbackColor: t.paper,
+          ),
+          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(
+            backgroundColor: t.paper,
+          ),
+          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(
+            backgroundColor: t.paper,
+          ),
+          TargetPlatform.fuchsia: FadeForwardsPageTransitionsBuilder(
+            backgroundColor: t.paper,
+          ),
+        },
+      ),
+
       textTheme: base.textTheme.apply(
         bodyColor: t.ink,
         displayColor: t.ink,

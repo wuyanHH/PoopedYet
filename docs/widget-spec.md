@@ -534,7 +534,7 @@ drift 的 `DateTime` 编码、`ux_active_record` 唯一索引（一个人同时�
 | 头像支持内置 Lucide 图标 | ✅ | `WidgetAvatarHelper` + `drawable/ic_pooper_*.xml` |
 | 冷启动同步快照 | ✅ | `databaseProvider` |
 | 彻底删除成员（含记录） | ✅ | `countRecordsOf` · `purgePooperAndDetachWidgets` · 列表页与编辑页两个入口 |
-| 返回转场跟随手势边缘 | ✅ | `smooth_page_route.dart` 读取 `PredictiveBackEvent.swipeEdge` |
+| 返回转场跟随手势边缘 | ✅ | 官方 `PredictiveBackPageTransitionsBuilder`（经 `MaterialPageRoute` + `PageTransitionsTheme`） |
 | 状态按绑定成员隔离 | ✅ | `liveStateOf()` · 三个 Provider 不再读顶层 `liveSession` |
 | 4×4 逐行显示各自计时 | ✅ | `LargeWidgetProvider` 每行独立判断 + 行内「完成」 |
 | 统计一律按成员取（不回落全家） | ✅ | 今日次数 / 上次时间 / 距上次 / `streakDays` |

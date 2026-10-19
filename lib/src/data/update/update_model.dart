@@ -1,3 +1,18 @@
+/// 字节数的人话格式化。
+///
+/// 放在模型层是刻意的：安装包体积（`ReleaseAssetInfo.formattedSize`）与
+/// 下载进度（`UpdateDownloadState`）必须用同一套口径，
+/// 否则弹窗上会同时出现「17.2 MB」和「17.20 MB」两种写法。
+String formatBytes(int bytes) {
+  if (bytes <= 0) return '大小未知';
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  if (bytes < 1024 * 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+}
+
 /// 对应 GitHub Releases Assets 安装包模型
 class ReleaseAssetInfo {
   const ReleaseAssetInfo({
@@ -12,13 +27,7 @@ class ReleaseAssetInfo {
   final int sizeBytes;
   final String archType; // 'arm64-v8a', 'armeabi-v7a', 'universal', 'x86_64', 'other'
 
-  String get formattedSize {
-    if (sizeBytes <= 0) return '大小未知';
-    if (sizeBytes < 1024 * 1024) {
-      return '${(sizeBytes / 1024).toStringAsFixed(1)} KB';
-    }
-    return '${(sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
+  String get formattedSize => formatBytes(sizeBytes);
 
   static String detectArch(String filename) {
     final lower = filename.toLowerCase();
