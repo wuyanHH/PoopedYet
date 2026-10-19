@@ -1,73 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ═══════════════════════════════════════════════════════════════════
-     桌面小组件 · 「选择屙屎人」配置向导浮层
+     桌面小组件 · 「选择屙屎人」浮层
      ───────────────────────────────────────────────────────────────────
      两个入口共用同一套界面：
        ① 添加到桌面时的系统配置流程（android:configure）
-       ② 点击已放置小组件的成员区（原地换人，无需删掉重加）
+       ② 点击已放置小组件的成员区（独立任务里的别名 Activity，原地换人）
+
+     结构说明：
+       · 最外层 FrameLayout 铺满窗口；窗口背景已经是半透明遮罩，
+         这里再放一层透明可点的 View 专门负责「点空白处关闭」；
+       · 卡片贴底居中，四周留 12dp；底部真实边距由 Activity 叠加导航栏 inset，
+         否则三键导航机型上「取消」会被压在手势条下面；
+       · 成员列表用 MaxHeightScrollView：它在 onMeasure 里就把高度封顶，
+         一次布局到位。旧实现是 post 一个 runnable 回填高度，
+         那一帧会先铺满再缩回去，视觉上就是「弹出来还抖一下」。
      ═══════════════════════════════════════════════════════════════════ -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/config_root"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="@drawable/bg_config_sheet"
-    android:orientation="vertical"
-    android:paddingStart="20dp"
-    android:paddingEnd="20dp"
-    android:paddingTop="22dp"
-    android:paddingBottom="18dp">
+    android:layout_height="match_parent">
 
-    <TextView
+    <!-- 点遮罩空白处 = 取消换人 -->
+    <View
+        android:id="@+id/config_scrim_touch"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <LinearLayout
+        android:id="@+id/config_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="sans-serif-medium"
-        android:text="选择屙屎人"
-        android:textColor="@color/widget_ink"
-        android:textSize="19sp"
-        android:textStyle="bold" />
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_config_sheet"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="22dp"
+        android:paddingBottom="18dp">
 
-    <TextView
-        android:id="@+id/config_subtitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
-        android:text="这个小组件只显示 TA 的记录与数据"
-        android:textColor="@color/widget_ink_3"
-        android:textSize="12.5sp" />
-
-    <ScrollView
-        android:id="@+id/config_scroll"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:overScrollMode="never"
-        android:scrollbars="none">
-
-        <LinearLayout
-            android:id="@+id/config_member_list"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
-    </ScrollView>
+            android:fontFamily="sans-serif-medium"
+            android:text="选择屙屎人"
+            android:textColor="@color/widget_ink"
+            android:textSize="19sp"
+            android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/config_hint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:textColor="@color/widget_ink_3"
-        android:textSize="11.5sp"
-        android:visibility="gone" />
+        <TextView
+            android:id="@+id/config_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="这个小组件只显示 TA 的记录与数据"
+            android:textColor="@color/widget_ink_3"
+            android:textSize="12.5sp" />
 
-    <TextView
-        android:id="@+id/config_btn_cancel"
-        android:layout_width="match_parent"
-        android:layout_height="46dp"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/bg_btn_ghost"
-        android:fontFamily="sans-serif-medium"
-        android:gravity="center"
-        android:text="取消"
-        android:textColor="@color/widget_ink"
-        android:textSize="13.5sp"
-        android:textStyle="bold" />
-</LinearLayout>
+        <com.poopedyet.app.widget.MaxHeightScrollView
+            android:id="@+id/config_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/config_member_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </com.poopedyet.app.widget.MaxHeightScrollView>
+
+        <TextView
+            android:id="@+id/config_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/widget_ink_3"
+            android:textSize="11.5sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/config_btn_cancel"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_btn_ghost"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:text="取消"
+            android:textColor="@color/widget_ink"
+            android:textSize="13.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</FrameLayout>

@@ -6,7 +6,7 @@
 /// 发版时必须与另外两处同步，见 `docs/release_workflow.md` 阶段一：
 ///   1. `pubspec.yaml` 的 `version:`（前缀部分）；
 ///   2. `lib/src/ui/settings/changelog_page.dart` 的 `kAppChangelogs` 头部条目。
-const String kAppVersion = '1.1.1';
+const String kAppVersion = '1.1.2';
 
 /// 带 `v` 前缀与渠道后缀的展示用版本号。
 const String kAppVersionLabel = 'v$kAppVersion 正式版';

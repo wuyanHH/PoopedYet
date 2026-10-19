@@ -12,25 +12,46 @@ import android.util.Log
  * 由它拉一个没有界面的 FlutterEngine 直接写库。用户点完就留在桌面，
  * 组件自己会刷新成新状态。
  *
- * 广播是「发射后不管」的，所以 onReceive 里只做入队，立刻返回 ——
- * 真正的引擎启动在后台线程，不占主线程。
+ * ## 为什么要 `goAsync()`（v1.1.2 修）
+ *
+ * App 进程不在时，这个进程是**被这条广播临时拉起来**的。`onReceive` 一返回，
+ * 系统立刻把它降级成"随时可回收"的空进程，而后面还有「加载 native 库 →
+ * 起 Dart VM → 写库 → 回推快照」将近一秒的活要干。低内存机型（尤其是国内
+ * 定制 ROM）完全可能在此之前就把进程清掉，用户看到的就是「点了没反应」。
+ *
+ * 攥住 `PendingResult` 能让系统在这段时间里把我们当"正在处理广播"对待。
+ * native 的初始化已经前移到主线程（见 [WidgetActionRunner] 里那段说明），
+ * 所以这段保活窗口足够覆盖整个动作。
  */
 class WidgetActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         Log.i(TAG, "收到小组件动作: ${intent.action}")
-        when (intent.action) {
-            ACTION_START -> {
-                val pooperId = intent.getStringExtra(EXTRA_POOPER_ID).orEmpty()
-                WidgetActionRunner.enqueue(context, PendingWidgetAction.Start(pooperId))
-            }
+
+        val action = when (intent.action) {
+            ACTION_START -> PendingWidgetAction.Start(
+                intent.getStringExtra(EXTRA_POOPER_ID).orEmpty(),
+            )
 
             ACTION_FINISH -> {
                 val recordId = intent.getStringExtra(EXTRA_RECORD_ID).orEmpty()
-                if (recordId.isNotEmpty()) {
-                    WidgetActionRunner.enqueue(context, PendingWidgetAction.Finish(recordId))
+                if (recordId.isEmpty()) {
+                    // 没有记录 id 就无从结束；打一条日志，别静默地什么都不做。
+                    Log.w(TAG, "完成动作缺少 recordId，已忽略")
+                    return
                 }
+                PendingWidgetAction.Finish(recordId)
             }
+
+            else -> return
+        }
+
+        val pendingResult = goAsync()
+        var reported = false
+        WidgetActionRunner.enqueue(context, action) {
+            if (reported) return@enqueue
+            reported = true
+            runCatching { pendingResult.finish() }
         }
     }
 

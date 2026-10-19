@@ -202,28 +202,60 @@ v2.0 确立四条支柱：
 | 入口 | 实现 | 适用时机 |
 |---|---|---|
 | **添加时配置向导** | `android:configure` → `WidgetConfigActivity` | 系统添加组件时自动弹出，选完才落桌面 |
-| **点击组件成员区** | 组件上的 `PendingIntent` 原地拉起同一个 `WidgetConfigActivity` | 日常换人，**不需要删掉组件重新添加** |
+| **点击组件成员区** | 组件上的 `PendingIntent` 拉起别名 `WidgetConfigFloatActivity`（独立任务） | 日常换人，**不需要删掉组件重新添加**，也**不会把 App 带到前台** |
 | **App 内管理页** | 设置 → 桌面小组件 → `WidgetManagerPage` | 总览桌面上所有组件、批量调整 |
 
 ### 4.2 系统契约（重要）
 
 Android 规定：`AppWidgetProvider` 的配置 Activity **只要没有 `setResult(RESULT_OK)`，这次添加就作废**。因此 `WidgetConfigActivity.onCreate()` 的第一件事就是把结果预设为 `RESULT_CANCELED` —— 用户中途按返回键时，桌面上不会留下一个「没配好的」空组件。
 
-配套声明：
+配套声明（**两个组件，职责分开，别合并**）：
 
 ```xml
+<!-- 真实 Activity：承接「添加到桌面」的系统配置流程。
+     系统走的是 startActivityForResult，所以它必须留在 App 自己的任务栈里。 -->
 <activity
     android:name=".widget.WidgetConfigActivity"
     android:exported="true"
     android:excludeFromRecents="true"
-    android:noHistory="true"
-    android:taskAffinity=""
     android:theme="@style/Theme.PoopedYet.WidgetConfig">
     <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
     </intent-filter>
 </activity>
+
+<!-- 别名：承接「点击组件成员区」的日常换人。
+     taskAffinity="" 让它跑在自己的空 affinity 任务里。 -->
+<activity-alias
+    android:name=".widget.WidgetConfigFloatActivity"
+    android:targetActivity=".widget.WidgetConfigActivity"
+    android:exported="false"
+    android:excludeFromRecents="true"
+    android:launchMode="singleInstance"
+    android:taskAffinity=""
+    android:theme="@style/Theme.PoopedYet.WidgetConfig" />
 ```
+
+### 4.2.1 为什么换人入口必须绕一个 activity-alias
+
+`PendingIntent.getActivity` 必须带 `FLAG_ACTIVITY_NEW_TASK`，而 Activity 的默认
+`taskAffinity` 就是包名 —— 于是系统会**复用 App 自己的任务栈**，把 MainActivity
+连同整个 App 一起顶到前台。用户看到的现象是「点小组件换个成员，怎么把软件打开了」，
+而且浮层关掉之后 App 还赖在屏幕上不走。
+
+那为什么不直接给真实 Activity 加 `taskAffinity=""`：**系统添加组件走的是
+`startActivityForResult`**，目标 Activity 一旦被挪进另一个任务，Android 会立刻按
+`RESULT_CANCELED` 回传（logcat 里那句 "Activity is launching as a new task,
+so canceling activity result"），桌面上就永远放不出组件。
+
+所以拆成两条路：**添加**走真实 Activity（保住 result 语义），**换人**走别名
+（独立任务 + `singleInstance`，全局只有一张换人卡片，连点两个组件不会叠一摞浮层，
+第二次点击走 `onNewIntent` 重画列表）。
+
+代码侧对应 `SmallWidgetProvider.buildConfigPendingIntent()`：用
+`Intent().setClassName(pkg, "...WidgetConfigFloatActivity")` 指向别名，
+并用 `resolveActivity` 兜底 —— 万一别名被某个定制 ROM 的清单合并吃掉，
+就退回真实类，至少换人能继续用。
 
 三个 `appwidget-provider` 里同步声明：
 
@@ -336,8 +368,34 @@ drift 的 `DateTime` 编码、`ux_active_record` 唯一索引（一个人同时�
 2. **入口所在的库必须被 import 进编译产物。**
    一个不含 UI 代码、没人引用的库不会被打进包，同样会解析失败。
 
+3. **`FlutterLoader` 的初始化只能在主线程，不能图省事扔后台线程。**
+   这是「App 没在后台时点组件毫无反应、App 一旦打开过就一切正常」的根因，
+   也是最难复现的一条：
+
+   ```text
+   App 进程还活着 → FlutterLoader.settings != null / initialized == true
+                  → startInitialization / ensureInitializationComplete 提前 return
+                  → 侥幸不报错，动作正常
+   App 进程被回收 → initialized == false → 走到 @UiThread 断言
+                  → IllegalStateException("... must be called on the main thread")
+                  → 被 catch 吞掉 → 动作直接丢弃，用户看到「点了没反应」
+   ```
+
+   引擎源码里这两个方法都带主线程断言。现在 `WidgetActionRunner` 全程在主线程
+   起引擎，同时 receiver 用 `goAsync()` 攥住 `PendingResult` 保活 ——
+   冷启动那一秒里进程随时可能被系统回收，不保活同样会丢动作。
+
+4. **冷启动的 Deep Link 不能在 `configureFlutterEngine` 里推给 Dart。**
+   那一刻 Dart 的 `main()` 还没开始跑，`setMethodCallHandler` 更没注册，
+   `invokeMethod("onDeepLink")` 是**百分之百丢**；而排队字段又已被清空，
+   Dart 稍后主动来拉也拉不到 —— 于是「锁屏胶囊点完成打卡，App 打开了、
+   记录却没结束」。现在改成拉取式握手：Dart 首次调用 `getPendingDeepLink`
+   才算"就绪"，那之前的链接一律排队。`configureFlutterEngine` 里同时把就绪
+   标志归零，因为 Activity 重建等于换了一个全新的 Dart isolate。
+
 诊断时直接看 `adb logcat | grep WidgetAction`：正常时能看到
-「收到小组件动作: ACTION_FINISH」，失败时紧跟一条 entrypoint 报错。
+「收到小组件动作: ACTION_FINISH」；初始化失败会有一条
+`后台引擎启动失败` 带 `IllegalStateException` 的堆栈。
 
 **有意保留进 App 的入口**：点卡片空白处（打开主页）、点成员区/胶囊（换人浮层）、
 大号的「补录便签」「打开日历」——后两件事本来就需要完整界面。
@@ -404,8 +462,8 @@ drift 的 `DateTime` 编码、`ux_active_record` 唯一索引（一个人同时�
 
 | 触发热区 | 路由 / 动作 | 行为 |
 |---|---|---|
-| 点击成员区（小/中号） | 原生 `WidgetConfigActivity` | **原地换人**，不打开 App |
-| 点击成员胶囊（大号顶部） | 原生 `WidgetConfigActivity` | 同上 —— 三款组件的换人入口位置与反应必须一致 |
+| 点击成员区（小/中号） | 别名 `WidgetConfigFloatActivity` | **原地换人**，独立任务，不打开 App |
+| 点击成员胶囊（大号顶部） | 别名 `WidgetConfigFloatActivity` | 同上 —— 三款组件的换人入口位置与反应必须一致 |
 | 点击「＋现在开屙」 | 广播 → 后台引擎 | **不打开 App**，为**绑定那一位**开屙 |
 | 点击「✓完成/完成打卡」 | 广播 → 后台引擎 | **不打开 App**，结束**绑定那一位**的计时 |
 | 点大号某一行 / 该行的记一次·帮记 | 广播 → 后台引擎 | **不打开 App**，只作用于**这一行那一位** |
@@ -541,4 +599,9 @@ drift 的 `DateTime` 编码、`ux_active_record` 唯一索引（一个人同时�
 | 开屙·完成后台执行不跳 App | ✅ | `WidgetActionReceiver` · `WidgetActionRunner` · 根库入口 `widgetActionMain` |
 | 4×4 底部为本周小结 + 7 天节律 | ✅ | `weeklySummary`；便签退成一行、无则隐藏 |
 | 换人暗示三款统一 | ✅ | 整块成员区可点 + 姓名紧跟下拉线 |
+| 换人不把 App 带到前台 | ✅ | `activity-alias` + `taskAffinity=""` + `singleInstance`（§4.2.1） |
+| 换人浮层有转场、不卡不抖 | ✅ | 遮罩随窗口淡入 + 卡片 26dp 上滑；`MaxHeightScrollView` 一次测量；头像 `loadAvatarAsync` 后台解码 + LruCache |
+| 进行中记录点「完成」真的结束 | ✅ | `record_detail_sheet` 的 `_endNow`（`endPoop`），已结束才保留"关闭弹层"语义 |
+| 冷启动点开屙 / 完成不丢动作 | ✅ | `WidgetActionRunner` 主线程初始化 + `WidgetActionReceiver.goAsync()` + 超时兜底 |
+| 冷启动 Deep Link 不丢 | ✅ | 拉取式握手：`getPendingDeepLink` 才算就绪；resume 补拉 |
 | iOS / 锁屏 / 灵动岛 | ⬜ | 本仓库暂无 iOS 工程，`docs` 中保留设计意向 |

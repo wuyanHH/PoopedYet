@@ -34,6 +34,21 @@ class MainActivity : FlutterActivity() {
     private var pendingDeepLink: String? = null
     private var pendingFilePickerResult: MethodChannel.Result? = null
 
+    /**
+     * Dart 侧的 Deep Link 处理函数是否已经注册好。
+     *
+     * 冷启动时的时序是这样的：`onCreate` → `configureFlutterEngine`（原生这边
+     * 通道就绪）→ **Dart 的 main() 才开始跑** → 启动页 → 主页才
+     * `setMethodCallHandler`。也就是说在 `configureFlutterEngine` 里
+     * `invokeMethod("onDeepLink")` 是**百分之百丢**：Dart 那边还没有 handler，
+     * 调用被直接丢弃，而排队字段又已经被清空，Dart 稍后主动来拉也拉不到 ——
+     * 于是「通知栏/锁屏点完成打卡，App 打开了但记录没结束」。
+     *
+     * 现在改成拉取式握手：Dart 首次调用 `getPendingDeepLink` 就说明它已就绪，
+     * 那之前来的链接一律先排队，那之后来的才直接推。
+     */
+    private var dartReady = false
+
     companion object {
         private const val REQUEST_CODE_PICK_FILE = 10086
         private const val REQUEST_CODE_NOTIFICATION = 10087
@@ -63,12 +78,22 @@ class MainActivity : FlutterActivity() {
     private fun handleIntent(intent: Intent?) {
         val uri: Uri? = intent?.data
         if (uri != null && uri.scheme == "poopedyet") {
-            val link = uri.toString()
-            if (methodChannel != null) {
-                methodChannel?.invokeMethod("onDeepLink", link)
-            } else {
-                pendingDeepLink = link
-            }
+            pushDeepLink(uri.toString())
+        }
+    }
+
+    /**
+     * 把一个 Deep Link 交给 Dart 侧处理。
+     *
+     * Dart 已就绪就直接推；否则存进 [pendingDeepLink] 等它自己来取 ——
+     * 排队字段保持"最后一次请求生效"，用户连点两下时按后一次执行。
+     */
+    private fun pushDeepLink(link: String) {
+        val channel = methodChannel
+        if (dartReady && channel != null) {
+            channel.invokeMethod("onDeepLink", link)
+        } else {
+            pendingDeepLink = link
         }
     }
 
@@ -117,12 +142,20 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        // FlutterActivity 不缓存引擎，Activity 重建就等于换了一个全新的 Dart isolate，
+        // 上一轮注册的 Deep Link handler 随之消失 —— 所以这里必须把就绪标志归零，
+        // 让这段时间里到达的链接重新回到排队状态，等新 isolate 起来再领走。
+        dartReady = false
+
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
         methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 // 快照推送 / 绑定读写统一在下面的 else 分支委托给 WidgetChannelHandler：
                 // 后台执行小组件动作时用的是同一份实现，两边行为不会漂移。
                 "getPendingDeepLink" -> {
+                    // Dart 能调到这一步，说明它的 setMethodCallHandler 已经挂上了，
+                    // 之后来的 Deep Link 都可以直接推给它。
+                    dartReady = true
                     val link = pendingDeepLink
                     pendingDeepLink = null
                     result.success(link)
@@ -395,10 +428,11 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        // 如果冷启动时有排队的 DeepLink，且此时引擎已就绪，向 Flutter 发送并重置排队状态，防止二次拉取重复执行
-        pendingDeepLink?.let { link ->
-            pendingDeepLink = null
-            methodChannel?.invokeMethod("onDeepLink", link)
-        }
+        // ⚠ 这里刻意**不**做「把排队的 Deep Link 推给 Flutter」。
+        //
+        // 曾经在这里 `invokeMethod("onDeepLink")`，但那一刻 Dart 的 main() 还没开始跑，
+        // 更没注册 setMethodCallHandler —— 调用被静默丢弃，排队字段又被清空，
+        // 于是冷启动的 deep link（例如锁屏胶囊的「完成打卡」）彻底丢失。
+        // 现在统一由 Dart 侧主动调用 getPendingDeepLink 领取，见 pushDeepLink()。
     }
 }

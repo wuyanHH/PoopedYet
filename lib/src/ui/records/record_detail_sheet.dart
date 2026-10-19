@@ -110,6 +110,14 @@ class _Body extends ConsumerWidget {
     final customNotes =
         detail.notes.where((n) => !templateSet.contains(n.content)).toList();
 
+    // 这条记录此刻是否还"挂着"（进行中 / 超过阈值待确认）。
+    //
+    // 注意**不能**用 `r.endedAt == null` 来判断：`endUnknown`（用户明确表示
+    // 没记结束时间）同样没有 endedAt，但它不是进行中 —— 给一条三天前的
+    // 「未记结束」记录补一个"现在结束"，只会把时长算得更离谱。
+    final isOngoing =
+        state == RecordState.active || state == RecordState.pending;
+
     return SheetShell(
       title: '${r.startedAt.year}年${r.startedAt.month}月${r.startedAt.day}日',
       subtitle: _stateHint(state),
@@ -129,7 +137,16 @@ class _Body extends ConsumerWidget {
           Expanded(
             flex: 2,
             child: _DetailDoneButton(
-              onTap: () => Navigator.of(context).pop(),
+              // 还在进行中时，这颗按钮必须**真的把记录结束掉**。
+              //
+              // 它以前无论什么状态都只 `pop()` 关掉弹层 —— 用户打开一条
+              // 正在屙的记录、点了底部那个醒目的「完 成」，记录却依然挂在
+              // 进行中，看起来就是「点了没反应」。已结束的记录才保留
+              // 「完成 = 关掉弹层」这个编辑收尾的语义。
+              label: isOngoing ? '完成打卡' : '完 成',
+              onTap: () => isOngoing
+                  ? _endNow(context, ref)
+                  : Navigator.of(context).pop(),
             ),
           ),
         ],
@@ -631,6 +648,30 @@ class _Body extends ConsumerWidget {
     _refresh(ref);
     if (context.mounted) Navigator.of(context).pop();
   }
+
+  /// 把这条进行中的记录就地结束掉 —— 底部「完成打卡」按钮的真正动作。
+  ///
+  /// 结束时间取"现在"，与记录卡左滑完成的语义完全一致（同一个 `endPoop`）。
+  /// 先弹提示再关弹层：关掉之后 `context` 就失效了，提示会丢。
+  Future<void> _endNow(BuildContext context, WidgetRef ref) async {
+    final navigator = Navigator.of(context);
+    final endedAt = DateTime.now();
+
+    try {
+      await ref.read(databaseProvider).endPoop(recordId, at: endedAt);
+    } catch (e) {
+      if (context.mounted) {
+        _toast(context, '结束失败：$e', error: true);
+      }
+      return;
+    }
+
+    _refresh(ref);
+    if (context.mounted) {
+      _toast(context, '已记录 ${hhmm(endedAt)} 为结束时间');
+    }
+    if (navigator.mounted) navigator.pop();
+  }
 }
 
 /// 单行文字编辑弹窗（改备注用）。空字符串会被拒绝，取消返回 null。
@@ -880,9 +921,12 @@ class _NoteRow extends StatelessWidget {
 }
 
 class _DetailDoneButton extends StatefulWidget {
-  const _DetailDoneButton({required this.onTap});
+  const _DetailDoneButton({required this.onTap, this.label = '完 成'});
 
   final VoidCallback onTap;
+
+  /// 按钮文案。进行中的记录是「完成打卡」（真的结束），否则是「完 成」（收尾关弹层）。
+  final String label;
 
   @override
   State<_DetailDoneButton> createState() => _DetailDoneButtonState();
@@ -917,7 +961,7 @@ class _DetailDoneButtonState extends State<_DetailDoneButton> {
               const PoopButtonIcon.finish(size: 19, onDarkButton: true),
               const SizedBox(width: 8),
               Text(
-                '完 成',
+                widget.label,
                 style: displayStyle(
                   size: 15,
                   letterSpacing: 2,

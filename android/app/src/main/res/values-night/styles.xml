@@ -13,13 +13,21 @@
         <item name="android:windowBackground">@color/splash_background</item>
     </style>
 
-    <!-- 深色系统模式下的「选择屙屎人」配置向导：同样为浮层卡片，仅换暗色父主题 -->
-    <style name="Theme.PoopedYet.WidgetConfig" parent="@android:style/Theme.Material.Dialog.NoActionBar">
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowIsFloating">true</item>
+    <!-- 深色系统模式下的「选择屙屎人」浮层：结构完全同浅色，只换暗色父主题 -->
+    <style name="Theme.PoopedYet.WidgetConfig" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@color/widget_scrim</item>
+        <item name="android:windowIsFloating">false</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
         <item name="android:windowCloseOnTouchOutside">false</item>
+        <item name="android:windowAnimationStyle">@style/Animation.PoopedYet.Sheet</item>
         <item name="android:colorAccent">@color/widget_brand_fill</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
     </style>
 </resources>

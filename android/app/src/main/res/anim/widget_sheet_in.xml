@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 换人浮层进入：整个窗口（= 半透明遮罩层）淡入。
+     卡片自身的上滑交给 WidgetConfigActivity 里的 ViewPropertyAnimator ——
+     窗口动画是整个窗口一起动的，用它做位移会把遮罩也拖走，看着像一层黑雾在爬。 -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="220"
+    android:fromAlpha="0.0"
+    android:interpolator="@android:interpolator/linear"
+    android:toAlpha="1.0" />

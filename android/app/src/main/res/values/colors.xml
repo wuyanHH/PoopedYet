@@ -41,4 +41,9 @@
     <color name="widget_live">#2F7A4F</color>
     <color name="widget_off">#B03A2E</color>
     <color name="widget_work">#3F6F80</color>
+
+    <!-- 换人浮层的遮罩。
+         不用系统 backgroundDim：它的变暗没有过渡，浮层一出来背景就"啪"地黑一下。
+         改成窗口背景自己画遮罩，跟着窗口 alpha 一起淡入，观感才是连续的。 -->
+    <color name="widget_scrim">#5C1A1613</color>
 </resources>

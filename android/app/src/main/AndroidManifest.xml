@@ -59,11 +59,16 @@
 
         <!-- 桌面小组件「选择屙屎人」配置向导。
              ① 系统在添加小组件时经 android:configure 拉起（APPWIDGET_CONFIGURE）；
-             ② 点击已放置小组件的成员区时由 PendingIntent 原地拉起。
-             两者都会带 EXTRA_APPWIDGET_ID，因此共用同一个 Activity。
+             ② 点击已放置小组件的成员区时由下面的 activity-alias 原地拉起。
+             两者都会带 EXTRA_APPWIDGET_ID，因此共用同一个 Activity 实现。
 
-             刻意不加 noHistory / taskAffinity：配置流程中途被通知栏打断时，
-             Activity 若被销毁，系统会判定「配置取消」，用户白选一次。 -->
+             刻意不加 noHistory：配置流程中途被通知栏打断时，
+             Activity 若被销毁，系统会判定「配置取消」，用户白选一次。
+
+             ⚠ 这里也**不能**加 taskAffinity="" —— 系统添加组件走的是
+             `startActivityForResult`，目标若被挪到另一个 task，Android 会立刻
+             按 RESULT_CANCELED 回传（"Activity is launching as a new task"），
+             桌面上就永远放不出组件。所以「换人浮层」另开一个别名。 -->
         <activity
             android:name=".widget.WidgetConfigActivity"
             android:excludeFromRecents="true"
@@ -73,6 +78,26 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+
+        <!-- 「点击小组件成员区」专用的换人浮层别名。
+             ─────────────────────────────────────────────────────────────
+             它指向同一个 WidgetConfigActivity，但跑在**自己的空 affinity 任务**里。
+             为什么要绕这一下：不带隔离时，PendingIntent 的
+             FLAG_ACTIVITY_NEW_TASK 会复用 App 自己的任务栈，于是「点组件换人」
+             会把整个 App 一起拽到前台，浮层关掉之后 App 还留在屏幕上 ——
+             用户看到的就是「切换人员怎么把软件打开了」。
+             隔离之后浮层只是桌面上方的一张卡片，关掉即回到桌面，App 原地不动。
+
+             singleInstance 保证全局只有一张换人卡片：连点两个组件的成员区
+             不会叠出一摞浮层，第二次点击走 onNewIntent 重渲染。 -->
+        <activity-alias
+            android:name=".widget.WidgetConfigFloatActivity"
+            android:targetActivity=".widget.WidgetConfigActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
+            android:theme="@style/Theme.PoopedYet.WidgetConfig" />
 
         <!-- 小号桌面小组件 (2×2) 撕历打卡 -->
         <receiver

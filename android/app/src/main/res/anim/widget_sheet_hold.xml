@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 「保持不动」占位动画。
+     浮层打开/关闭时，底下那个 Activity（桌面或 App）不该被牵连着做位移或淡出，
+     所以这一段显式给一个 1ms 的恒等动画把它钉住。 -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="1"
+    android:fromAlpha="1.0"
+    android:interpolator="@android:interpolator/linear"
+    android:toAlpha="1.0" />

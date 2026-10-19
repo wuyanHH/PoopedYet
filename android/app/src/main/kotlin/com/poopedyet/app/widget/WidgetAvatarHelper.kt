@@ -11,8 +11,12 @@ import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.os.Handler
+import android.os.Looper
 import android.util.Base64
+import android.util.LruCache
 import org.json.JSONObject
+import java.util.concurrent.Executors
 
 /**
  * 桌面小组件真实头像生成辅助工具。
@@ -29,6 +33,20 @@ import org.json.JSONObject
  *
  * 图标资源由 `.design/build-widget-avatar-icons.py` 从 Lucide SVG 生成，
  * 与 `pooper_icons.dart` 的 key 一一对应（camelCase → snake_case）。
+ *
+ * ## 关于缓存与线程（v1.1.2 补）
+ *
+ * 生成一张头像要 base64 解码 + 双线性缩放 + 圆角裁剪，单张 2~5ms。
+ * 换人浮层一次要铺十几行，全在主线程同步做就是肉眼可见的一次卡顿；
+ * 桌面上每刷新一次组件（开屙、完成、切人）也要重做一遍同样的活。
+ *
+ * 所以这里加了两层：
+ *   · [LruCache] 按「成员身份 + 尺寸 + 头像指纹」缓存已渲染的圆形头像；
+ *   · [loadAvatarAsync] 给界面用 —— 缓存命中就立刻回调，没命中就扔后台线程，
+ *     渲染完再回主线程填充。列表首帧因此不会再被 base64 解码拖住。
+ *
+ * RemoteViews 那条路（小组件本身）必须拿到同步的 Bitmap，所以
+ * [createAvatarBitmap] 的同步语义保持不变，只是顺带读/写同一份缓存。
  */
 object WidgetAvatarHelper {
 
@@ -36,15 +54,118 @@ object WidgetAvatarHelper {
     private val iconResIdCache = HashMap<String, Int>()
 
     /**
-     * 生成与 Flutter 端 `PooperAvatar` 同源的圆角头像 Bitmap。
+     * 已渲染头像的内存缓存。
+     *
+     * 容量按「条目数」算：一份 40dp 头像在 3x 屏上是 120×120×4B ≈ 56KB，
+     * 40 条最坏情况约 2.2MB，对桌面组件这种常驻进程是可以接受的量级。
+     */
+    private val bitmapCache = object : LruCache<String, Bitmap>(40) {
+        override fun sizeOf(key: String, value: Bitmap): Int = 1
+    }
+
+    /** 头像解码线程池：固定两个线程，避免霸占 CPU 影响桌面滑动。 */
+    private val decodeExecutor = Executors.newFixedThreadPool(2) { runnable ->
+        Thread(runnable, "widget-avatar").apply { isDaemon = true }
+    }
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    /**
+     * 生成与 Flutter 端 `PooperAvatar` 同源的圆角头像 Bitmap（同步，带缓存）。
      *
      * @param context 上下文
      * @param member 成员 JSON 数据（`avatarBase64` / `iconKey` / `initial` / `colorBg` / `colorFg`）
      * @param sizeDp 期望的输出尺寸（dp）
      */
     fun createAvatarBitmap(context: Context, member: JSONObject?, sizeDp: Int): Bitmap {
+        val appContext = context.applicationContext
+        val sizePx = sizePxOf(appContext, sizeDp)
+        val key = cacheKey(member, sizePx)
+
+        bitmapCache.get(key)?.let { return it }
+
+        val bitmap = renderAvatar(appContext, member, sizePx)
+        bitmapCache.put(key, bitmap)
+        return bitmap
+    }
+
+    /**
+     * 给界面用的异步版：缓存命中立即回调，否则后台渲染后回主线程回调。
+     *
+     * 回调保证只被调用一次，且总是在主线程。
+     */
+    fun loadAvatarAsync(
+        context: Context,
+        member: JSONObject?,
+        sizeDp: Int,
+        onReady: (Bitmap) -> Unit,
+    ) {
+        val appContext = context.applicationContext
+        val sizePx = sizePxOf(appContext, sizeDp)
+        val key = cacheKey(member, sizePx)
+
+        bitmapCache.get(key)?.let {
+            onReady(it)
+            return
+        }
+
+        decodeExecutor.execute {
+            // createAvatarBitmap 内部会再查一次缓存：并发进来的同一张图不会重复渲染。
+            val bitmap = createAvatarBitmap(appContext, member, sizeDp)
+            mainHandler.post { onReady(bitmap) }
+        }
+    }
+
+    /** 清掉指定成员的所有尺寸缓存（改过头像 / 图标 / 配色后调用）。 */
+    fun invalidate(memberId: String) {
+        val keys = mutableListOf<String>()
+        val snapshot = bitmapCache.snapshot()
+        for (key in snapshot.keys) {
+            if (key.startsWith("$memberId|")) keys.add(key)
+        }
+        keys.forEach { bitmapCache.remove(it) }
+    }
+
+    private fun sizePxOf(context: Context, sizeDp: Int): Int {
         val density = context.resources.displayMetrics.density
-        val sizePx = (sizeDp * density).toInt().coerceAtLeast(24)
+        return (sizeDp * density).toInt().coerceAtLeast(24)
+    }
+
+    /**
+     * 缓存键：成员身份 + 输出尺寸 + 决定外观的三要素指纹。
+     *
+     * 头像 base64 动辄十几 KB，整体 `hashCode()` 每次都要遍历一遍；
+     * 用「长度 + 首尾字符」足够区分不同图片，代价是常数级。
+     */
+    private fun cacheKey(member: JSONObject?, sizePx: Int): String {
+        if (member == null) return "null|$sizePx"
+        val avatar = member.optString("avatarBase64", "")
+        val avatarFingerprint = if (avatar.isEmpty() || avatar == "null") {
+            "-"
+        } else {
+            "${avatar.length}:${avatar.first()}:${avatar.last()}"
+        }
+        return buildString {
+            append(member.optString("id", ""))
+            append('|').append(sizePx)
+            append('|').append(avatarFingerprint)
+            append('|').append(member.optString("iconKey", ""))
+            append('|').append(member.optString("initial", ""))
+            append('|').append(member.optString("colorBg", ""))
+            append('|').append(member.optString("colorFg", ""))
+        }
+    }
+
+    /**
+     * 真正的绘制。
+     *
+     * 整体加锁：第 2 层要 `getDrawable` + `mutate` + `setTint`，
+     * 而矢量图的 ConstantState 是**跨实例共享**的，多线程同时 mutate
+     * 会互相串色。绘图本身只有几毫秒，串行化没有实际代价。
+     */
+    @Synchronized
+    private fun renderAvatar(context: Context, member: JSONObject?, sizePx: Int): Bitmap {
+        val density = context.resources.displayMetrics.density
         val cornerRadius = sizePx / 2.6f
 
         // ── 第 1 层：用户上传的照片 ──
@@ -142,13 +263,15 @@ object WidgetAvatarHelper {
 
     /** 查 `ic_pooper_<snake_case>` 资源；查不到返回 0 并缓存，避免反复反射查找。 */
     private fun pooperIconResId(context: Context, iconKey: String): Int {
-        iconResIdCache[iconKey]?.let { return it }
+        synchronized(iconResIdCache) {
+            iconResIdCache[iconKey]?.let { return it }
+        }
         val resId = context.resources.getIdentifier(
             "ic_pooper_${camelToSnake(iconKey)}",
             "drawable",
             context.packageName,
         )
-        iconResIdCache[iconKey] = resId
+        synchronized(iconResIdCache) { iconResIdCache[iconKey] = resId }
         return resId
     }
 

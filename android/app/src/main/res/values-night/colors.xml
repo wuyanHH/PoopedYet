@@ -26,4 +26,7 @@
     <color name="widget_live">#5CB37E</color>
     <color name="widget_off">#E06B5E</color>
     <color name="widget_work">#6BA3B5</color>
+
+    <!-- 暗色下遮罩要更重一点，否则白卡片在深色桌面上"浮"不起来 -->
+    <color name="widget_scrim">#8A000000</color>
 </resources>

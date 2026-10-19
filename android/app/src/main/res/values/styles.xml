@@ -16,16 +16,45 @@
         <item name="android:windowBackground">@color/splash_background</item>
     </style>
 
-    <!-- 桌面小组件「选择屙屎人」配置向导主题。
-         浮层卡片形态：添加小组件时 / 点击小组件成员区时弹出，
-         不进入最近任务、不占后台栈，选完即走。 -->
-    <style name="Theme.PoopedYet.WidgetConfig" parent="@android:style/Theme.Material.Light.Dialog.NoActionBar">
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowIsFloating">true</item>
+    <!-- 桌面小组件「选择屙屎人」浮层主题。
+         ─────────────────────────────────────────────────────────────
+         两个入口共用：添加组件时由系统拉起，日常换人由 activity-alias 在独立任务里拉起。
+
+         这里刻意**不再**用 Theme.Material.Dialog + windowIsFloating：
+           · Dialog 主题的变暗由系统 backgroundDim 直接切换，没有过渡，
+             浮层一出现背景就"啪"地暗一下，这正是「背景变化很奇怪」的来源；
+           · 浮动窗口自身带一套老的 Dialog 缩放动画，在新系统上要么不播、
+             要么和内容布局的二次测量叠在一起，看起来就是「没动画还很卡」。
+
+         现在改成：整窗半透明，遮罩由 windowBackground 自己画并跟着窗口淡入；
+         卡片贴底、上滑由 Activity 里的属性动画完成；系统 dim 关掉。 -->
+    <style name="Theme.PoopedYet.WidgetConfig" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@color/widget_scrim</item>
+        <item name="android:windowIsFloating">false</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
         <item name="android:windowCloseOnTouchOutside">false</item>
+        <item name="android:windowAnimationStyle">@style/Animation.PoopedYet.Sheet</item>
         <item name="android:colorAccent">@color/widget_brand_fill</item>
+        <!-- 遮罩要盖住状态栏，内容再靠 inset 避开导航栏 -->
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+    </style>
+
+    <!-- 浮层转场：进入/退出整窗淡入淡出；底下那一层显式"钉住"不做动画，
+         否则关闭浮层时桌面会跟着做一次淡出，看着像整个屏幕在闪。 -->
+    <style name="Animation.PoopedYet.Sheet" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/widget_sheet_in</item>
+        <item name="android:activityOpenExitAnimation">@anim/widget_sheet_hold</item>
+        <item name="android:activityCloseEnterAnimation">@anim/widget_sheet_hold</item>
+        <item name="android:activityCloseExitAnimation">@anim/widget_sheet_out</item>
+        <item name="android:windowEnterAnimation">@anim/widget_sheet_in</item>
+        <item name="android:windowExitAnimation">@anim/widget_sheet_out</item>
     </style>
     <!-- 4×4 底部「本周节律」的一个格子：一格一天，「一3」= 周一 3 次 -->
     <style name="WidgetWeekCell">

@@ -1,11 +1,10 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/database.dart';
 import '../data/record_actions.dart';
 import '../providers.dart';
 import '../state/calendar_data.dart';
@@ -42,7 +41,7 @@ final widgetDeepLinkHandlerProvider = Provider<WidgetDeepLinkHandler>((ref) {
   return handler;
 });
 
-class WidgetDeepLinkHandler {
+class WidgetDeepLinkHandler with WidgetsBindingObserver {
   WidgetDeepLinkHandler(this._ref);
 
   final Ref _ref;
@@ -55,12 +54,27 @@ class WidgetDeepLinkHandler {
 
     _channel.setMethodCallHandler(_onMethodCall);
 
+    // 回到前台时补一次拉取。
+    //
+    // 原生侧只在「Dart 已就绪」之后才主动推链接，就绪之前一律排队。
+    // 这里的 resume 补拉是第二道保险：某些 ROM 会在 Activity 冷启动的
+    // 极早期就把 intent 交过来，那一刻 Flutter 引擎可能还没跑起来。
+    WidgetsBinding.instance.addObserver(this);
+
     // 检查是否有冷启动时排队的 Deep Link
     unawaited(_checkPendingLink());
   }
 
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _channel.setMethodCallHandler(null);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_checkPendingLink());
+    }
   }
 
   Future<void> _checkPendingLink() async {

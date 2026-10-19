@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 配置向导的成员行：44dp 头像 + 15.5sp 姓名 + 今日状态，选中态换底并显勾。 -->
+<!-- 配置向导的成员行：44dp 头像 + 15.5sp 姓名 + 今日状态，选中态换底并显勾。
+
+     android:foreground 挂一层系统涟漪：背景是纯 shape，不给按压反馈的话
+     点下去整整一帧没有任何视觉变化 —— 那正是「弹窗很卡/不跟手」的体感来源之一。
+     minSdk 是 24，View 级 foreground 从 API 23 起可用。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="64dp"
@@ -7,6 +11,7 @@
     android:background="@drawable/bg_member_row"
     android:clickable="true"
     android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="10dp"

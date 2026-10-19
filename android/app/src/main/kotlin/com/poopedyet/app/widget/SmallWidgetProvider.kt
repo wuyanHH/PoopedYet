@@ -197,11 +197,38 @@ class SmallWidgetProvider : AppWidgetProvider() {
             )
         }
 
+        /**
+         * 「换人浮层」的独立任务别名。
+         *
+         * 它和 [WidgetConfigActivity] 是同一个实现，只是被声明在
+         * `AndroidManifest.xml` 里、带 `taskAffinity=""`，因此跑在自己的任务里。
+         *
+         * **为什么非要绕这一下**：`PendingIntent.getActivity` 必须带
+         * `FLAG_ACTIVITY_NEW_TASK`，而目标 Activity 的默认 taskAffinity 就是包名 ——
+         * 于是系统会复用 App 自己的任务栈，把整个 App 连同 MainActivity 一起
+         * 顶到前台。用户看到的就不是「弹个浮层换人」，而是「换个成员怎么把软件打开了」，
+         * 而且浮层关掉之后 App 还赖在屏幕上。
+         *
+         * 不能直接给真实 Activity 加 `taskAffinity=""`：系统添加组件走的是
+         * `startActivityForResult`，目标被挪进另一个任务时 Android 会立刻按
+         * `RESULT_CANCELED` 回传（"Activity is launching as a new task"），
+         * 结果就是组件永远放不上桌面。所以「添加」走真实 Activity、「换人」走别名。
+         */
+        private val FLOAT_CONFIG_ACTIVITY: String =
+            WidgetConfigActivity::class.java.name.substringBeforeLast('.') +
+                ".WidgetConfigFloatActivity"
+
         /** 原地拉起「选择屙屎人」浮层，requestCode 以 offset+widgetId 保证多实例互不覆盖。 */
         internal fun buildConfigPendingIntent(context: Context, widgetId: Int, offset: Int): PendingIntent {
-            val intent = Intent(context, WidgetConfigActivity::class.java).apply {
+            val intent = Intent().apply {
+                setClassName(context.packageName, FLOAT_CONFIG_ACTIVITY)
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            // 别名万一被某个定制 ROM 的清单合并吃掉，就退回真实 Activity：
+            // 至少换人还能用，代价只是会把 App 一并带到前台。
+            if (context.packageManager.resolveActivity(intent, 0) == null) {
+                intent.setClass(context, WidgetConfigActivity::class.java)
             }
             return PendingIntent.getActivity(
                 context,

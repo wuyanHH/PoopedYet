@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 换人浮层退出：比进入快一点（160ms），符合"退场要利落"的手感。 -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="160"
+    android:fromAlpha="1.0"
+    android:interpolator="@android:interpolator/linear"
+    android:toAlpha="0.0" />
