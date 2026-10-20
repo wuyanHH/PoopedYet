@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:drift/drift.dart' as drift;
@@ -15,6 +16,7 @@ import '../../providers.dart';
 import '../../state/calendar_data.dart';
 import '../../state/calendar_view.dart';
 import '../../theme/tokens.dart';
+import '../../widget/widget_snapshot_service.dart';
 import '../widgets/poop_button_icon.dart';
 import '../widgets/pooper_picker.dart';
 import '../widgets/sheet_shell.dart';
@@ -835,6 +837,9 @@ class _CreateRecordSheetState extends ConsumerState<CreateRecordSheet> {
       ref.invalidate(staleRecordsProvider);
       ref.invalidate(activePoopersProvider);
       ref.invalidate(noteTemplatesProvider);
+
+      // 主动推送最新数据快照至桌面小组件与状态栏灵动胶囊
+      unawaited(WidgetSyncManager.sync(db));
 
       if (!mounted) return;
       Navigator.of(context).pop();

@@ -79,17 +79,18 @@ abstract final class AutoUpdateChecker {
       }
     }
 
-    // 先落盘检查时间再发请求：断网时失败也算「查过了」，
-    // 否则每次冷启动都会对着一个连不通的地址再撞一次。
-    store.markChecked(DateTime.now());
-
     try {
       final info = await UpdateService().checkLatestRelease(
         currentVersion: currentVersion,
       );
       if (info == null) {
+        // 请求失败（网络超时/断网）时不记录成功节流，以便用户网络恢复后在下次启动时能够重新检查
         return const AutoUpdateResult(status: AutoUpdateStatus.failed);
       }
+
+      // 成功获得线上版本信息后，才正式落盘本次检查时间
+      store.markChecked(DateTime.now());
+
       if (!info.isNewer) {
         return const AutoUpdateResult(status: AutoUpdateStatus.upToDate);
       }

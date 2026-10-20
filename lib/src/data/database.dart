@@ -214,6 +214,10 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.pooperId.equals(id)))
           .go();
       await (delete(poopers)..where((t) => t.id.equals(id))).go();
+
+      // 保证始终至少有一个可用的默认屙屎人（若删除了唯一的默认人或最后一个人，自动提拔或补齐兜底人「我」）
+      await ensureDefaultPooper();
+
       return removed;
     });
 

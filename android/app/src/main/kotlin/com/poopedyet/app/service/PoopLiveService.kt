@@ -8,12 +8,16 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.poopedyet.app.MainActivity
 import com.poopedyet.app.R
 
@@ -28,8 +32,8 @@ class PoopLiveService : Service {
     constructor() : super()
 
     companion object {
-        // 使用 v5 渠道彻底避免旧渠道被 vivo OriginOS / 小米 HyperOS 静音降级残留
-        const val CHANNEL_ID = "poop_live_capsule_v5"
+        // 使用 v6 渠道彻底关闭应用桌面角标小红点/未读数字，并清理 v3 / v4 / v5 残留渠道
+        const val CHANNEL_ID = "poop_live_capsule_v6"
         const val NOTIFICATION_ID = 9527
 
         const val ACTION_START_LIVE = "com.poopedyet.app.START_LIVE"
@@ -71,10 +75,11 @@ class PoopLiveService : Service {
         fun createNotificationChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                // 清理历史旧渠道，确保全新 v5 渠道的高优先级和悬浮权限生效
+                // 清理历史旧渠道，确保全新 v6 渠道的无角标、高优先级与悬浮权限立即生效
                 try {
                     manager.deleteNotificationChannel("poop_live_island_v3")
                     manager.deleteNotificationChannel("poop_live_island_v4")
+                    manager.deleteNotificationChannel("poop_live_capsule_v5")
                 } catch (_: Exception) {}
 
                 val name = "如厕实时活动与状态栏胶囊"
@@ -82,13 +87,50 @@ class PoopLiveService : Service {
                 // 必须设为 IMPORTANCE_HIGH 才能被 vivo OriginOS、小米 HyperOS、OPPO 流体云识别为焦点通知/胶囊
                 val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
                     description = desc
-                    setShowBadge(true)
+                    // 彻底关闭桌面图标小红点/未读数字角标：进行中如厕计时是前台服务，不是未读消息
+                    setShowBadge(false)
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    enableLights(true)
+                    enableLights(false)
                     enableVibration(false)
                 }
                 manager.createNotificationChannel(channel)
             }
+        }
+
+        /**
+         * 动态生成全新品牌「落叶黄表盘卷纸时钟」圆形大图标。
+         *
+         * 彻底告别老旧的闹钟便便图标，与 App 主页 Header、开屙 FAB 及桌面小组件规范 100% 同源。
+         */
+        private fun getLiveLargeIcon(context: Context): Bitmap {
+            val density = context.resources.displayMetrics.density
+            val size = (64 * density).toInt().coerceAtLeast(128)
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+
+            // 绘制温润暖纸圆形底盘（#FAF5EC 配合细微手帐描边 #E9DDCA）
+            val radius = size / 2f
+            val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = 0xFFFAF5EC.toInt()
+                style = Paint.Style.FILL
+            }
+            val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = 0xFFE9DDCA.toInt()
+                style = Paint.Style.STROKE
+                strokeWidth = 1.5f * density
+            }
+            canvas.drawCircle(radius, radius, radius - borderPaint.strokeWidth, bgPaint)
+            canvas.drawCircle(radius, radius, radius - borderPaint.strokeWidth / 2f, borderPaint)
+
+            // 在中央居中绘制全工程统一的「落叶黄表盘卷纸时钟」矢量图标
+            val drawable = ContextCompat.getDrawable(context, R.drawable.vector_widget_action_start)
+            if (drawable != null) {
+                val pad = (size * 0.16f).toInt()
+                drawable.setBounds(pad, pad, size - pad, size - pad)
+                drawable.draw(canvas)
+            }
+
+            return bitmap
         }
     }
 
@@ -175,9 +217,8 @@ class PoopLiveService : Service {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val title = if (isIncognito) "$pooperName 正在深度放空中..." else "$pooperName 正在如厕中..."
-        val subText = if (isIncognito) "身心减负中" else "如厕计时进行中"
-        val contentText = if (isIncognito) "正在深度放空，身心减负中..." else "正在如厕计时中，点击进入应用"
+        val title = if (isIncognito) "$pooperName 正在放空身心" else "$pooperName 正在如厕"
+        val contentText = if (isIncognito) "放空减负中 · 完事可点击下方达成" else "计时进行中 · 完事可直接点击打卡"
         val finishBtnText = if (isIncognito) "放空达成" else "完成打卡"
 
         val extras = Bundle().apply {
@@ -188,11 +229,13 @@ class PoopLiveService : Service {
             putString("vivo.notification.type", "capsule")
             putInt("vivo.notification.importance", 4)
 
-            // 小米 HyperOS 澎湃 OS 焦点通知 / 灵动胶囊识别
+            // 小米 HyperOS 澎湃 OS 焦点通知 / 灵动胶囊识别，同时显式禁用桌面图标数字角标
             putString("android.substName", "屙了么")
             putBoolean("miui.enableFloat", true)
             putBoolean("miui.enableKeyguard", true)
             putBoolean("show_when_locked", true)
+            putBoolean("miui.enableBadge", false)
+            putInt("miui.message_count", 0)
 
             // OPPO / 一加 / realme (ColorOS 14+) 流体云胶囊识别
             putBoolean("com.coloros.notification.capsule", true)
@@ -205,9 +248,9 @@ class PoopLiveService : Service {
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_live_notification)
+            .setLargeIcon(getLiveLargeIcon(this))
             .setContentTitle(title)
             .setContentText(contentText)
-            .setSubText(subText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setContentIntent(openPendingIntent)
             .setOngoing(true)
@@ -226,6 +269,9 @@ class PoopLiveService : Service {
             // CATEGORY_STOPWATCH 是厂商灵动胶囊识别的核心标记
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setColor(0xFFA85F29.toInt()) // 焦糖品牌色
+            // 彻底关闭桌面应用图标角标与数字（进行中计时是前台服务，不是未读消息）
+            .setBadgeIconType(NotificationCompat.BADGE_ICON_NONE)
+            .setNumber(0)
             .setExtras(extras)
             // 添加一键完成 Action 按钮：统一使用鼠尾草绿对勾卷纸完成图标 (ic_widget_action_finish)
             .addAction(R.drawable.ic_widget_action_finish, finishBtnText, finishPendingIntent)

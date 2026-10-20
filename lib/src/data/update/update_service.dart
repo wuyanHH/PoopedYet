@@ -58,73 +58,78 @@ class UpdateService {
 
     final urlStr = 'https://api.github.com/repos/$targetOwner/$targetRepo/releases/latest';
 
-    HttpClient? client;
-    try {
-      client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 10);
-      final request = await client.getUrl(Uri.parse(urlStr));
-      // GitHub API 要求提供 User-Agent
-      request.headers.set('User-Agent', 'PoopedYet-App');
-      request.headers.set('Accept', 'application/vnd.github.v3+json');
+    for (int attempt = 0; attempt < 2; attempt++) {
+      HttpClient? client;
+      try {
+        client = HttpClient()..connectionTimeout = const Duration(seconds: 12);
+        final request = await client.getUrl(Uri.parse(urlStr));
+        // GitHub API 要求提供 User-Agent
+        request.headers.set('User-Agent', 'PoopedYet-App');
+        request.headers.set('Accept', 'application/vnd.github.v3+json');
 
-      final response = await request.close();
-      if (response.statusCode != 200) {
-        return null;
-      }
+        final response = await request.close();
+        if (response.statusCode != 200) {
+          return null;
+        }
 
-      final bodyStr = await response.transform(utf8.decoder).join();
-      final Map<String, dynamic> json = jsonDecode(bodyStr);
+        final bodyStr = await response.transform(utf8.decoder).join();
+        final Map<String, dynamic> json = jsonDecode(bodyStr);
 
-      final tagName = json['tag_name'] as String? ?? '';
-      final versionName = tagName.replaceFirst(RegExp(r'^[vV]'), '');
-      final htmlUrl = json['html_url'] as String? ?? '';
-      final body = json['body'] as String? ?? '暂无更新描述';
-      final publishedAtStr = json['published_at'] as String?;
-      final publishedAt = publishedAtStr != null ? DateTime.tryParse(publishedAtStr) : null;
+        final tagName = json['tag_name'] as String? ?? '';
+        final versionName = tagName.replaceFirst(RegExp(r'^[vV]'), '');
+        final htmlUrl = json['html_url'] as String? ?? '';
+        final body = json['body'] as String? ?? '暂无更新描述';
+        final publishedAtStr = json['published_at'] as String?;
+        final publishedAt =
+            publishedAtStr != null ? DateTime.tryParse(publishedAtStr) : null;
 
-      final rawAssets = json['assets'] as List<dynamic>? ?? [];
-      final assets = <ReleaseAssetInfo>[];
-      for (final a in rawAssets) {
-        if (a is Map<String, dynamic>) {
-          final asset = ReleaseAssetInfo.fromJson(a);
-          if (asset.name.toLowerCase().endsWith('.apk')) {
-            assets.add(asset);
+        final rawAssets = json['assets'] as List<dynamic>? ?? [];
+        final assets = <ReleaseAssetInfo>[];
+        for (final a in rawAssets) {
+          if (a is Map<String, dynamic>) {
+            final asset = ReleaseAssetInfo.fromJson(a);
+            if (asset.name.toLowerCase().endsWith('.apk')) {
+              assets.add(asset);
+            }
           }
         }
-      }
 
-      final deviceAbi = await getDeviceAbi();
-      final isNewer = UpdateReleaseInfo.compareSemVer(versionName, currentVersion) > 0;
+        final deviceAbi = await getDeviceAbi();
+        final isNewer =
+            UpdateReleaseInfo.compareSemVer(versionName, currentVersion) > 0;
 
-      // 智能架构匹配：
-      // 1. 优先找架构完全匹配的 APK（例如 arm64-v8a）
-      // 2. 其次找 universal 通用包
-      // 3. 再次取第一个 APK
-      ReleaseAssetInfo? recommended;
-      if (assets.isNotEmpty) {
-        recommended = assets.firstWhere(
-          (a) => a.archType == deviceAbi,
-          orElse: () => assets.firstWhere(
-            (a) => a.archType == 'universal',
-            orElse: () => assets.first,
-          ),
+        // 智能架构匹配：
+        // 1. 优先找架构完全匹配的 APK（例如 arm64-v8a）
+        // 2. 其次找 universal 通用包
+        // 3. 再次取第一个 APK
+        ReleaseAssetInfo? recommended;
+        if (assets.isNotEmpty) {
+          recommended = assets.firstWhere(
+            (a) => a.archType == deviceAbi,
+            orElse: () => assets.firstWhere(
+              (a) => a.archType == 'universal',
+              orElse: () => assets.first,
+            ),
+          );
+        }
+
+        return UpdateReleaseInfo(
+          tagName: tagName,
+          versionName: versionName,
+          publishedAt: publishedAt,
+          changelog: body,
+          htmlUrl: htmlUrl,
+          assets: assets,
+          recommendedAsset: recommended,
+          isNewer: isNewer,
         );
+      } catch (_) {
+        if (attempt == 1) return null;
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+      } finally {
+        client?.close(force: true);
       }
-
-      return UpdateReleaseInfo(
-        tagName: tagName,
-        versionName: versionName,
-        publishedAt: publishedAt,
-        changelog: body,
-        htmlUrl: htmlUrl,
-        assets: assets,
-        recommendedAsset: recommended,
-        isNewer: isNewer,
-      );
-    } catch (_) {
-      return null;
-    } finally {
-      client?.close(force: true);
     }
+    return null;
   }
 }

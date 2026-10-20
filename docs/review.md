@@ -411,25 +411,31 @@ Play 商店另需 512×512 的方形图。
 - **性能瓶颈分析**：打卡卡片包含实时呼吸脉冲动画（正在屙胶囊的放大与柔光淡入淡出），在列表上下滚动以及常态展示时，若没有重绘边界隔离，内部每一帧动画都会引起同一图层整个列表视图的重复 Paint。
 - **优化落地**：在 `DaySection` 的 `ListView.separated` 中为每个卡片项外层明确挂载了 `RepaintBoundary(key: ValueKey('card_boundary_${r.id}'))`，精确切断重绘波及链，大幅降低 GPU 光栅化开销与电池损耗，保障高刷屏幕下的丝滑流畅度。
 
-### 15. 页面转场回归官方预测性返回 + 滚动链路的离屏绘制治理
+### 16. 全景代码健康体检与瘦身优化（Codebase Health Polish）
 
-#### 15.1 页面切换与「返回预览」
+在系统性代码健康体检中，排查并修复了以下涉及数据完整性、小组件数据同步、包体冗余以及死代码的隐患：
 
-- **现象**：切页时「底页缩小 + 当前页收圆角 + 双向视差」三层动画同时跑，方向依赖一个全局 `ValueNotifier`，看起来不符合直觉；真机上拖动返回时看不到上一页预览。
-- **根因**：
-  1. `smoothPageRoute` 继承 `PageRouteBuilder`，**绕过了 `PageTransitionsTheme`**。Flutter 3.24+ 的预测性返回（手势 start / update / commit / cancel，以及底页的 delegated transition）只由 `PredictiveBackPageTransitionsBuilder` 接管，而它只会被 `MaterialPageRoute.buildTransitions` 调用。自定义路由即便自己监听 `handleStartBackGesture`，也拿不到官方的底页编排——这正是实机上「没有预览」的根本原因。
-  2. 转场对整页做了 `ClipRRect` 圆角裁剪，再叠多层 `SlideTransition` / `ScaleTransition`。Impeller 不做图片层光栅缓存，一次转场就是整屏离屏裁剪 + 多次变换。
-- **修复**：
-  - `smoothPageRoute` 改为 `MaterialPageRoute`；
-  - `ThemeData` 显式配置 `PageTransitionsTheme`：Android 使用官方 `PredictiveBackPageTransitionsBuilder(fallbackColor: 纸张色)`，桌面使用 `FadeForwardsPageTransitionsBuilder`；
-  - 实机预览的前提（缺一即自动回退 FadeForwards，方向仍固定为「新页从右进、旧页向左退」）：手势导航、Android 14+、系统开启预测性返回动画、`AndroidManifest` 的 `enableOnBackInvokedCallback="true"`。
+#### 16.1 彻底删除屙屎人 (`purgePooper`) 事务内不变式兜底修复
 
-#### 15.2 滚动帧率
+- **隐患排查**：在 `database.dart` 的 `purgePooper(String id)` 中，当用户从归档列表中彻底物理删除某成员及其历史记录后，如果被删人员恰好是唯一的默认人，库中将遗留零个默认屙屎人；若库中人员全部被清空，也未触发自动建档。
+- **根本原因**：`archivePooper` 包含了默认人转移逻辑，但 `purgePooper` 物理删除分支在删除 `poopers` 行后直接返回，漏掉了不变式维护。
+- **优化修复**：在 `purgePooper` 事务内完成删除后，显式执行 `await ensureDefaultPooper();`，确保库内始终至少存在一个默认成员，彻底保障系统数据模型的不变式约束。
 
-- **`RecordCard`**：去掉整卡 `BoxShadow`（模糊要按整卡面积离屏渲染，Impeller 每帧重付）与两层 `ClipRRect`；卡片圆角改由自身 decoration 与滑动背景层分别绘制；删除动画把 `cardContent` 作为 `AnimatedBuilder.child` 复用；顺带修掉弹簧回弹监听器只增不减、多次滑动后一帧内多次 `setState` 的泄漏。
-- **`DayCell`**：`AnimatedContainer` → `Container`。一个月 42 格、翻月时新旧两套网格同时在场，原先等于 84 个隐式动画控制器一起 tick；同时去掉每格的圆角裁剪与角标小阴影。
-- **`DaySection`**：去掉包住整个 `ListView` 的 `AnimatedSwitcher`（切日期时新旧两套列表同时渲染），关闭 `ListView` 自动 `RepaintBoundary`（卡片外已有手动一层），`cacheExtent` 600 → 400。
-- **`OngoingPoopBadge`**：文字与布局不再随 60fps 呼吸动画每帧重建，只重建背景透明度与卷纸 `CustomPaint`；自身挂 `RepaintBoundary`，避免把顶栏拖进每帧重绘。
+#### 16.2 新建记录弹层 (`CreateRecordSheet`) 补录模式小组件同步闭环
+
+- **隐患排查**：用户通过 `CreateRecordSheet` 切换为补录模式记录历史打卡并保存时，原代码执行了 `ref.invalidate(...)`，但漏掉了对 `WidgetSyncManager.sync(db)` 的调用。
+- **影响**：导致桌面小组件与前台实时灵动胶囊未能感知该成员补填的历史记录，小组件上的今日打卡统计与最新时间戳展示滞后。
+- **优化修复**：在保存成功闭环处补齐 `unawaited(WidgetSyncManager.sync(db));`，确保多入口打卡对桌面小组件的实时推流零遗漏。
+
+#### 16.3 静态资源目录安全瘦身（释放 ~2.37MB APK 包体体积）
+
+- **隐患排查**：`assets/images/` 目录下误存放了 5 张设计过程稿与重复图（`brand_guideline_scheme_a.png` 969KB、`splash_full_9x16.png` 751KB、`splash_logo_safezone.png` 650KB、`app_icon.png` 243KB 与 `app_icon_round.png` 247KB）。由于 `pubspec.yaml` 声明了打包整个 `assets/images/` 目录，这批资产全部被打包进了最终发布的 APK 中，无谓膨胀了安装包大小。
+- **优化修复**：将这批无需在运行时展示的设计草稿与重复资产安全迁移至 `.design/` 目录（设计源码资产归档），`assets/images/` 目录体积自 3.7MB 骤降至 900KB，直接缩减 APK 体积约 2.37MB。
+
+#### 16.4 清理完全孤立的死代码组件 (`poop_action_icon.dart`)
+
+- **清理内容**：全工程已统一由 `poop_button_icon.dart` 提供高保真矢量打卡与完成图标，原用于历史代理兼容的 `poop_action_icon.dart`（包含 `StartPoopIcon`, `FinishPoopIcon`, `PoopActionIcon`）在全工程及测试用例中均无任何引用，已彻底物理删除。
+
 
 
 
