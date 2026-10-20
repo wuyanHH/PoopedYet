@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -553,7 +551,7 @@ class _PooperEditPageState extends ConsumerState<PooperEditPage> {
   Future<void> _toggleOrSetDefault() async {
     if (_isNew) {
       setState(() => _makeDefault = !_makeDefault);
-      HapticFeedback.selectionClick();
+      await HapticFeedback.selectionClick();
       return;
     }
 
@@ -573,7 +571,7 @@ class _PooperEditPageState extends ConsumerState<PooperEditPage> {
       return;
     }
 
-    HapticFeedback.mediumImpact();
+    await HapticFeedback.mediumImpact();
     final db = ref.read(databaseProvider);
     await db.setDefaultPooper(p.id);
     _refresh(ref);

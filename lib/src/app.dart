@@ -1,3 +1,6 @@
+// CupertinoPageTransitionsBuilder 在 cupertino 包里（material 不导出它）。
+// 这里只借用它的转场实现，UI 仍然是 Material。
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -37,14 +40,14 @@ class PoopedYetApp extends ConsumerWidget {
       AppThemeMode.system =>
         MediaQuery.platformBrightnessOf(context) == Brightness.dark,
     };
-    final activeTokens = isDark ? darkTokens : lightTokens;
 
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-        systemNavigationBarColor: activeTokens.paper,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarContrastEnforced: false,
         systemNavigationBarIconBrightness:
             isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
@@ -88,30 +91,17 @@ class PoopedYetApp extends ConsumerWidget {
       // 设计令牌挂上 ThemeExtension，业务代码用 `context.tokens` 取。
       extensions: [t],
 
-      // 页面转场统一走 Flutter 官方这套，别在页面里各自造轮子。
-      //
-      // Android 用 PredictiveBackPageTransitionsBuilder：它是唯一能接住
-      // 系统「预测性返回」逐帧进度的实现（拖入时缩小当前页、露出底页），
-      // 系统不支持时自动回退到 FadeForwards。fallbackColor 必须给纸张色 ——
-      // 默认的 ColorScheme.surface 在深色主题下转场会闪一块偏亮的底。
-      //
-      // iOS 不在这里显式配置：PageTransitionsTheme 找不到 iOS 的 key 时
-      // 会自动回落到 Cupertino 的横向推入 + 边缘返回，正好是想要的平台
-      // 直觉。（本项目只发 Android；桌面平台统一用 FadeForwards。）
-      pageTransitionsTheme: PageTransitionsTheme(
+      // 页面转场统一采用清爽流畅的水平视差滑入滑出过渡（Cupertino 动效规范）：
+      // 摒弃带有怪异透明度渐变与缩放抖动的动效，自右向左自然推入下一级页面，
+      // 上一级产生柔和视差后退；返回时向右滑出，契合页面层级空间直觉。
+      pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
-          TargetPlatform.android: PredictiveBackPageTransitionsBuilder(
-            fallbackColor: t.paper,
-          ),
-          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(
-            backgroundColor: t.paper,
-          ),
-          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(
-            backgroundColor: t.paper,
-          ),
-          TargetPlatform.fuchsia: FadeForwardsPageTransitionsBuilder(
-            backgroundColor: t.paper,
-          ),
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: CupertinoPageTransitionsBuilder(),
         },
       ),
 

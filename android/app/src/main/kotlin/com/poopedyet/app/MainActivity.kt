@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
 import com.poopedyet.app.service.PoopLiveService
 import com.poopedyet.app.widget.LargeWidgetProvider
 import com.poopedyet.app.widget.MediumWidgetProvider
@@ -55,7 +56,9 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
+        PoopLiveService.createNotificationChannel(this)
         handleIntent(intent)
         checkAndRequestNotificationPermission()
     }
@@ -182,6 +185,10 @@ class MainActivity : FlutterActivity() {
                 }
                 "requestNotificationPermission" -> {
                     checkAndRequestNotificationPermission()
+                    result.success(true)
+                }
+                "stopLiveIsland" -> {
+                    com.poopedyet.app.service.PoopLiveService.stop(this)
                     result.success(true)
                 }
                 "isNotificationEnabled" -> {

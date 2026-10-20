@@ -217,7 +217,10 @@ class _DayCellState extends State<DayCell> {
                     ],
                   ),
                   if (widget.showBadges && widget.badges.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    // ⚠ 必须与 `layout.dart` 的 `_dateToBadgeGap` 保持一致：
+                    //   它是格子高度预算的一部分，两边差 1px 就会在 1.3× 字号下
+                    //   把内容挤出格子（底部一条黄黑警戒条）。
+                    const SizedBox(height: 1),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

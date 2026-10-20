@@ -178,7 +178,9 @@ void main() {
       final now = DateTime(2026, 2, 11, 9, 18);
       expect(recordStateOf(r, now: now), RecordState.active);
       expect(durationLabel(r, now: now), '已 6 分钟');
-      expect(endLabel(r, now: now), '正在屙');
+      // 「正在屙」是卡片上那枚状态胶囊的文案；
+      // endLabel 是时间行右半段（`09:12 → ???` 里的 ???），说的是「进行中」。
+      expect(endLabel(r, now: now), '进行中');
     });
 
     test('待确认：时长必须停在阈值，不能涨到「已 8 小时」', () {

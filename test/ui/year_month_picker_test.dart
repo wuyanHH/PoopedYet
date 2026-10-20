@@ -81,7 +81,8 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
 
-      expect(find.text('跳到哪个月'), findsOneWidget);
+      // 弹层标题现在是「选择月份 / 选择年份」，不再是从前的「跳到哪个月」。
+      expect(find.text('选择月份'), findsOneWidget);
       expect(find.text('3月'), findsOneWidget);
 
       await tester.tap(find.text('3月'));
@@ -89,7 +90,7 @@ void main() {
 
       expect(result.value, DateTime(2026, 3, 1),
           reason: '返回目标月的 1 号，调用方再交给 goToMonth');
-      expect(find.text('跳到哪个月'), findsNothing, reason: '选完弹层要收起来');
+      expect(find.text('选择月份'), findsNothing, reason: '选完弹层要收起来');
     });
 
     testWidgets('「回到今天」返回今天的月份', (tester) async {
@@ -104,7 +105,8 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
 
-      final todayBtn = find.textContaining('回到今天');
+      // 底部按钮文案现在是「回到本月 · 2026年10月」。
+      final todayBtn = find.textContaining('回到本月');
       expect(todayBtn, findsOneWidget);
 
       await tester.tap(todayBtn);
@@ -162,7 +164,9 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
 
-      expect(find.text('跳到哪一周'), findsOneWidget);
+      // 周选择器改成了「胶囊导航 + 周卡片」的结构，
+      // 旧版的「跳到哪一周」标题没有了，改成胶囊上的「共 N 周」。
+      expect(find.textContaining('共 5 周'), findsOneWidget);
       // 2026年2月按网格行切是 5 周（首行跨到 1 月）
       expect(find.text('第 1 周'), findsOneWidget);
       expect(find.text('第 5 周'), findsOneWidget);
@@ -177,7 +181,7 @@ void main() {
       expect((w as WeekRange).last, DateTime(2026, 2, 8));
     });
 
-    testWidgets('跨月的那一周被标记出来', (tester) async {
+    testWidgets('跨月的那一周，日期范围完整跨两个月', (tester) async {
       await tester.pumpWidget(host(
         result: result,
         useMonth: false,
@@ -189,11 +193,14 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
 
-      // 2026-02 的网格首行 1/26–2/1、末行 2/23–3/1 都跨月
-      expect(find.text('1/26 – 2/1'), findsOneWidget);
-      expect(find.text('2/23 – 3/1'), findsOneWidget);
-      expect(find.byIcon(LucideIcons.calendarRange), findsNWidgets(2),
-          reason: '两个跨月周各带一个图标');
+      // 2026-02 的网格首行 1/26–2/1、末行 2/23–3/1 都跨月。
+      // 注意文案格式是「1月26日 – 2月1日」（labelCn），不是「1/26 – 2/1」。
+      expect(find.text('1月26日 – 2月1日'), findsOneWidget);
+      expect(find.text('2月23日 – 3月1日'), findsOneWidget);
+
+      // 旧版这里靠 calendarRange 图标做跨月标记，重构后图标已移除 ——
+      // 跨月周的区分改由右侧日期条里「非本月日期淡化」承担，
+      // 那个是绘制层面的颜色差异，没有可断言的 widget，所以不再断言图标。
     });
   });
 }

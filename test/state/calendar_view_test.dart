@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pooped_yet/src/calendar/calendar_math.dart';
 import 'package:pooped_yet/src/state/calendar_view.dart';
+import 'package:pooped_yet/src/state/settings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 日历视图状态的转换规则。
 ///
@@ -11,9 +13,20 @@ import 'package:pooped_yet/src/state/calendar_view.dart';
 ///
 /// 测试里把 `todayProvider` override 成固定的 2026-02-11（周三），
 /// 否则跑测试当天的日期一变，断言就全变了。
+///
+/// 另外还必须注入 `sharedPrefsProvider`：日历视图要读「每周起始日」这类设置，
+/// 而 `sharedPrefsProvider` 的默认实现会直接抛 `UnimplementedError`
+/// （它约定只由 `main()` 注入）。早先这条依赖链还不存在，用例能过；
+/// 设置接进来之后，整个文件 20 条会一起挂掉 —— 症状是那句
+/// 「sharedPrefsProvider 必须在 main() 里 overrideWithValue 注入」。
+late SharedPreferences _prefs;
+
 ProviderContainer _makeContainer() {
   final c = ProviderContainer(
-    overrides: [todayProvider.overrideWithValue(DateTime(2026, 2, 11))],
+    overrides: [
+      todayProvider.overrideWithValue(DateTime(2026, 2, 11)),
+      sharedPrefsProvider.overrideWithValue(_prefs),
+    ],
   );
   addTearDown(c.dispose);
   return c;
@@ -23,6 +36,11 @@ CalendarView _view(ProviderContainer c) => c.read(calendarViewProvider.notifier)
 CalendarViewState _state(ProviderContainer c) => c.read(calendarViewProvider);
 
 void main() {
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    _prefs = await SharedPreferences.getInstance();
+  });
+
   group('初始状态', () {
     test('默认选中今天、显示本月、月视图', () {
       final c = _makeContainer();

@@ -40,7 +40,7 @@ class NoteTemplatePage extends ConsumerWidget {
             triggerMode: TooltipTriggerMode.longPress,
             child: InkWell(
               onTap: () async {
-                HapticFeedback.lightImpact();
+                await HapticFeedback.lightImpact();
                 final db = ref.read(databaseProvider);
                 await db.sortNoteTemplatesByUse();
                 ref.invalidate(noteTemplatesProvider);
@@ -76,7 +76,7 @@ class NoteTemplatePage extends ConsumerWidget {
           waitDuration: const Duration(milliseconds: 200),
           triggerMode: TooltipTriggerMode.longPress,
           child: InkWell(
-            onTap: () => _promptNew(context, ref),
+            onTap: () => promptNew(context, ref),
             borderRadius: BorderRadius.circular(11),
             child: SizedBox(
               width: 40,
@@ -117,7 +117,7 @@ class NoteTemplatePage extends ConsumerWidget {
     );
   }
 
-  static Future<void> _promptNew(BuildContext context, WidgetRef ref) async {
+  static Future<void> promptNew(BuildContext context, WidgetRef ref) async {
     final text = await _promptText(context, title: '新建便便感受', initial: '');
     if (text == null) return;
     await ref.read(databaseProvider).createNoteTemplate(text);

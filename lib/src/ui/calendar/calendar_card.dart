@@ -161,10 +161,19 @@ class _CalendarCardState extends ConsumerState<CalendarCard> {
             },
             child: AnimatedSize(
               // 只有周↔月切换才需要高度折叠动画。同模式的左右翻页两套网格
-              // 高度完全相同，让 AnimatedSize 也跑 260ms 只是白开一条动画。
+              // 高度基本一致，让 AnimatedSize 也跑 320ms 只是白开一条动画。
+              //
+              // ⚠ 这里**必须给一个非零时长**，不能用 `Duration.zero`。
+              //   AnimationController 在时长为零时会走一条同步捷径
+              //   （`_animateToInternal` 里直接 `notifyListeners()`），而
+              //   RenderAnimatedSize 的监听器会在值变化时 `markNeedsLayout()` ——
+              //   这条路径是在 `performLayout` 内部被调用的，于是触发框架断言
+              //   「A RenderObject must not re-dirty itself while still being laid out」。
+              //   非零时长走 ticker 分支，值的变化发生在帧回调里，不会自脏。
+              //   1ms 在观感上等同瞬时，代价可以忽略。
               duration: isModeSwitch
                   ? const Duration(milliseconds: 320)
-                  : Duration.zero,
+                  : const Duration(milliseconds: 1),
               curve: Curves.fastEaseInToSlowEaseOut,
               alignment: Alignment.topCenter,
               clipBehavior: Clip.hardEdge,

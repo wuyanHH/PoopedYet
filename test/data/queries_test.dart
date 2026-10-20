@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pooped_yet/src/calendar/calendar_math.dart';
 import 'package:pooped_yet/src/data/database.dart';
 import 'package:pooped_yet/src/data/queries.dart';
+import 'package:pooped_yet/src/state/settings.dart';
 
 /// 日历与记录列表的查询。
 ///
@@ -167,7 +168,7 @@ void main() {
   });
 
   group('recordsOn —— 排序与完整性', () {
-    test('「正在屙」置顶，其余按开始时间升序', () async {
+    test('「正在屙」置顶，其余按开始时间倒序（默认）', () async {
       final a = await person('阿狗');
       final now = DateTime(2026, 2, 11, 15, 0);
 
@@ -183,6 +184,29 @@ void main() {
       expect(list.length, 3);
       expect(list.first.record.startedAt, DateTime(2026, 2, 11, 14, 50),
           reason: '正在屙的要置顶，因为它需要用户立刻操作');
+      // 默认 sortOrder 是 desc —— 当天列表的常态是"最新的在最上面"。
+      expect(list[1].record.startedAt, DateTime(2026, 2, 11, 13, 40));
+      expect(list[2].record.startedAt, DateTime(2026, 2, 11, 9, 12));
+    });
+
+    test('显式 asc 时其余升序，但「正在屙」照样置顶', () async {
+      final a = await person('阿狗');
+      final now = DateTime(2026, 2, 11, 15, 0);
+
+      await poop(a.id, DateTime(2026, 2, 11, 9, 12),
+          end: DateTime(2026, 2, 11, 9, 26));
+      await poop(a.id, DateTime(2026, 2, 11, 13, 40),
+          end: DateTime(2026, 2, 11, 13, 52));
+      await poop(a.id, DateTime(2026, 2, 11, 14, 50));
+
+      final list = await db.recordsOn(
+        DateTime(2026, 2, 11),
+        now: now,
+        sortOrder: RecordSortOrder.asc,
+      );
+
+      expect(list.first.record.startedAt, DateTime(2026, 2, 11, 14, 50),
+          reason: '置顶优先于排序方向');
       expect(list[1].record.startedAt, DateTime(2026, 2, 11, 9, 12));
       expect(list[2].record.startedAt, DateTime(2026, 2, 11, 13, 40));
     });

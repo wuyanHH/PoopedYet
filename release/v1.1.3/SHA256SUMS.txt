@@ -1,0 +1,11 @@
+dd9079ff4a06052c8b0cc88211adcf85a95344522d145cb903db2163b6d0c781  PoopedYet-v1.1.3-all-apks.zip
+8678760ef7f59f27507b0f5c7beeb07907ea929da3b56e11ab591bf3c6fd804f  PoopedYet-v1.1.3-arm64-v8a.apk
+491b327ab44e4b93ba0955342eef243358885a3a4bcc5a8efc5c1c6e75b1ab1f  PoopedYet-v1.1.3-arm64-v8a.zip
+59e2c840a1d79b98ebc61152a99ed09e04bbdbdbd1ef573cec393e419e659972  PoopedYet-v1.1.3-armeabi-v7a.apk
+9bd17cbb6b1fd943b955ea16992e61289dde29259b8429ebcd32dfc123fcc9ab  PoopedYet-v1.1.3-armeabi-v7a.zip
+bea3d3dca8d2465640c09ce8be7f30a17006ff29d74ee92f3afe9c74d6dbc8dd  PoopedYet-v1.1.3-release-aab.zip
+a771b4c739847d42ef67e33718304d2709da513f4f30c67fc32beeed4485cf7a  PoopedYet-v1.1.3-release.aab
+858e6f55cf51586512fa75a74a710d37b03a786573294ac136e70c4278f2efc7  PoopedYet-v1.1.3-universal.apk
+e315f8b64c8cac96a6a4b8873a7c9afb3c44ae88a963968731f494f537f4b3c2  PoopedYet-v1.1.3-universal.zip
+c8334feb2e2a689a62cd8e70e6022c7ef723ba34edf59a299cbb3375170aa6c7  PoopedYet-v1.1.3-x86_64.apk
+140f770faadd62491a9e0e8d8ba9bb91cac783a069f483a9175bc76dd8fc2e45  PoopedYet-v1.1.3-x86_64.zip

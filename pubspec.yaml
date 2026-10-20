@@ -4,7 +4,7 @@ publish_to: 'none'
 
 # versionName+versionCode。上架后 versionCode 只能增不能减。
 # 采用工业标准万位语义映射规范：MAJOR * 100000 + MINOR * 10000 + PATCH * 100
-version: 1.1.2+101200
+version: 1.1.3+101301
 
 environment:
   # 本机 Flutter 3.47.7 / Dart 3.13.5。

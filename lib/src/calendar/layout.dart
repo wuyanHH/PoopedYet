@@ -30,6 +30,19 @@ const double kDateRowBase = 14.5;
 /// 徽标行基础高度 —— 由头像图标高度决定，不随字号线性变化。
 const double kBadgeIconSize = 14.0;
 
+/// 一行徽标的**实际行高**。
+///
+/// 它比图标本身（[kBadgeIconSize]）高 1px：DayCell 里每个徽标行都是
+/// `SizedBox(height: 15)`，那 1px 是容器上下留的呼吸位。
+///
+/// ⚠ 早先这里直接拿 `kBadgeIconSize` 当行高，每个徽标行少算 1px、
+///   两行就是 2px；再叠上日期行漏算的那 1px，字号一到 1.3× 就把
+///   58px 的格子挤爆（真机上表现为格子底部一条黄黑警戒条）。
+const double kBadgeRowHeight = 15.0;
+
+/// 日期数字上方那层 `Padding(top: 1)`。
+const double _dateTopInset = 1.0;
+
 /// 计数文字基础字号。
 const double kBadgeTextBase = 10.0;
 
@@ -37,7 +50,11 @@ const double kBadgeTextBase = 10.0;
 const double _cellPaddingV = 5.0;
 
 /// 日期行与徽标区之间的间距。
-const double _dateToBadgeGap = 2.0;
+///
+/// ⚠ 从 2 收到 1，是为了把 1.3× 字号下的内容真正压回 58px 以内。
+///   把行高与内边距算准之后，1.3× 仍需 57.85px —— 只差 0.15px 的余量太脆，
+///   任何一个字体版本变化都可能再溢出；收掉这 1px 后余量变成 1.15px。
+const double _dateToBadgeGap = 1.0;
 
 /// 徽标行之间的间距。
 const double _badgeGap = 2.0;
@@ -68,13 +85,22 @@ double effectiveCalendarScale(double systemScale, double userScale) {
   return math.min(capped, kMaxTotalScale);
 }
 
-/// 一行徽标需要的高度：取"头像固定高度"和"计数文字高度"的较大者。
+/// 一行徽标需要的高度。
+///
+/// 恒为 [kBadgeRowHeight]：DayCell 里每行都写死 `SizedBox(height: 15)`，
+/// 内部再用 `FittedBox(scaleDown)` 把内容压进去 —— 所以文字放大时被压的是
+/// 内容，行高不变。字号小到 10×scale 也超不过 15，取 max 只是兜底。
 double badgeRowHeight(double scale) =>
-    math.max(kBadgeIconSize, kBadgeTextBase * scale);
+    math.max(kBadgeRowHeight, kBadgeTextBase * scale);
 
 /// 日期行的高度：取"日期数字"和"角标药丸（文字 + 上下内边距）"的较大者。
-double dateRowHeight(double scale) =>
-    math.max(kDateRowBase * scale, kBadgeTextBase * scale + 4);
+///
+/// `+_dateTopInset` 对应 DayCell 里日期数字外层那圈 `Padding(top: 1)`，
+/// 漏掉它会让算出来的格高比实际需要的少 1px。
+double dateRowHeight(double scale) => math.max(
+      kDateRowBase * scale + _dateTopInset,
+      kBadgeTextBase * scale + 4,
+    );
 
 /// 格子至少要多高，内容才不会被压扁。
 ///

@@ -135,19 +135,23 @@ class _Body extends ConsumerWidget {
             ),
           ),
           Expanded(
-            flex: 2,
-            child: _DetailDoneButton(
-              // 还在进行中时，这颗按钮必须**真的把记录结束掉**。
-              //
-              // 它以前无论什么状态都只 `pop()` 关掉弹层 —— 用户打开一条
-              // 正在屙的记录、点了底部那个醒目的「完 成」，记录却依然挂在
-              // 进行中，看起来就是「点了没反应」。已结束的记录才保留
-              // 「完成 = 关掉弹层」这个编辑收尾的语义。
-              label: isOngoing ? '完成打卡' : '完 成',
-              onTap: () => isOngoing
-                  ? _endNow(context, ref)
-                  : Navigator.of(context).pop(),
-            ),
+            // 只有"进行中"才配得上一个主按钮 —— 它的动作是真的（结束这条记录）。
+            //
+            // 已完成的记录呢？那颗按钮什么都不做，只是关掉弹层。可它又大、
+            // 又是焦糖渐变、还写着「完 成」，看起来像"最该点的那个" ——
+            // 点下去什么也没发生，用户只会以为坏了。所以这里降成普通次要
+            // 按钮「关闭」，和「删除」等宽并列；顶部右上角本来也有个 ✕。
+            flex: isOngoing ? 2 : 1,
+            child: isOngoing
+                ? _DetailDoneButton(
+                    label: '完成打卡',
+                    onTap: () => _endNow(context, ref),
+                  )
+                : SheetGhostButton(
+                    icon: LucideIcons.x,
+                    label: '关闭',
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
           ),
         ],
       ),
@@ -979,6 +983,7 @@ class _DetailDoneButtonState extends State<_DetailDoneButton> {
 /// 详情与修改弹窗中的排便主题胶囊（与新建页保持 100% 视觉语言一致）。
 class _DetailTopicChip extends StatefulWidget {
   const _DetailTopicChip({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,
@@ -1008,43 +1013,44 @@ class _DetailTopicChipState extends State<_DetailTopicChip> {
       onTap: widget.onTap,
       child: AnimatedScale(
         scale: _pressed ? 0.94 : 1.0,
-        duration: const Duration(milliseconds: 100),
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            gradient: isSelected
-                ? LinearGradient(
-                    colors: [t.brand, t.brandFill],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: isSelected ? null : t.paperDeep,
+            // ⚠ 选中态不要再用 `gradient ↔ color` 来表达：
+            //   BoxDecoration.lerp 没法在渐变和纯色之间插值，切换时会硬切一下。
+            //   统一走 color，才能真的淡入淡出。
+            color: isSelected ? t.brandFill : t.paperDeep,
             borderRadius: BorderRadius.circular(PoopRadii.pill),
             border: Border.all(
-              color: isSelected ? Colors.transparent : t.lineSoft,
+              color: isSelected ? t.brandFill : t.lineSoft,
               width: 1.0,
             ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: t.brandFill.withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
+            // 未选中也给一层完全透明的同参数阴影：让插值有起点，
+            // 选中时阴影是"长出来"的，而不是啪地出现。
+            boxShadow: [
+              BoxShadow(
+                color: t.brandFill.withValues(alpha: isSelected ? 0.28 : 0),
+                blurRadius: 7,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: Text(
-            widget.label,
+          // 文字颜色必须跟着一起过渡，否则胶囊变了色、字还在黑/白之间跳。
+          // 字重固定 w700：w600↔w800 会改变字宽，胶囊会跟着抽一下。
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: isSelected ? Colors.white : t.ink,
               letterSpacing: 0.2,
             ),
+            child: Text(widget.label),
           ),
         ),
       ),
@@ -1075,14 +1081,14 @@ class _DetailTopicGridState extends State<_DetailTopicGrid> {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    // 排序策略：已选中的标签置顶排在前面，其余按原顺序排列，保证已选标签不被折叠掩盖
-    final sortedTemplates = [...widget.templates]..sort((a, b) {
-        final aSelected = widget.existingTagNotes.containsKey(a.content);
-        final bSelected = widget.existingTagNotes.containsKey(b.content);
-        if (aSelected && !bSelected) return -1;
-        if (!aSelected && bSelected) return 1;
-        return a.sortOrder.compareTo(b.sortOrder);
-      });
+    // 顺序固定按模板原有的 sortOrder，**不因为选中而重排**。
+    //
+    // 早先会把已选项提到最前（初衷是折叠时别被藏住），但那样每点一下
+    // 整个 Wrap 都会重排：自己跳到第一格、其余胶囊集体左移。
+    // Wrap 没有可用的重排动画（它按顺序排版，不是 sliver / Flow），
+    // 于是观感就是"点一下全乱了" —— 这是胶囊动画显得奇怪的主要来源。
+    // 现在位置不动，只用颜色 + 阴影 + 文字颜色表达选中，反馈就干净了。
+    final sortedTemplates = widget.templates;
 
     final hasOverflow = sortedTemplates.length > 7;
 
@@ -1092,6 +1098,9 @@ class _DetailTopicGridState extends State<_DetailTopicGrid> {
       children: [
         for (final item in sortedTemplates)
           _DetailTopicChip(
+            // 稳定标识：胶囊文案会和备注行文字重名，只靠 find.text 定位
+            // 会在"已选中"时同时命中两个 widget，没法写测试。
+            key: ValueKey('noteChip:${item.content}'),
             label: item.content,
             selected: widget.existingTagNotes.containsKey(item.content),
             onTap: () => widget.onToggleTag(item),

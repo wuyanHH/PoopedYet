@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pooped_yet/src/data/database.dart';
 import 'package:pooped_yet/src/data/queries.dart';
 import 'package:pooped_yet/src/domain/record_state.dart';
+import 'package:pooped_yet/src/state/calendar_data.dart';
 import 'package:pooped_yet/src/theme/tokens.dart';
 import 'package:pooped_yet/src/ui/records/record_card.dart';
 
@@ -51,15 +53,29 @@ void main() {
 
   Future<void> pump(WidgetTester tester, RecordDetail d) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Theme(
-            data: ThemeData(extensions: [t]),
-            child: RecordCard(detail: d, now: today),
+      // RecordCard 是 ConsumerStatefulWidget：它会读备注模板，把备注分成
+      // 「便便感受标签」和「自定义文字备注」两类来渲染。早先还没有这层依赖，
+      // 用例直接 pump 就行；现在不包 ProviderScope 会在 build 阶段抛
+      // `Bad state: No ProviderScope found`，整个文件的 9 条会一起挂。
+      //
+      // 这里把模板 override 成空表：所有备注一律按「自定义文字备注」渲染，
+      // 这些用例关心的四种状态文案就不受分类规则影响。
+      ProviderScope(
+        overrides: [
+          noteTemplatesProvider.overrideWith((ref) => const <NoteTemplate>[]),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: Theme(
+              data: ThemeData(extensions: [t]),
+              child: RecordCard(detail: d, now: today),
+            ),
           ),
         ),
       ),
     );
+    // 第二次 pump：让 FutureProvider 的首个值落地后重建一次。
+    await tester.pump();
     await tester.pump();
   }
 

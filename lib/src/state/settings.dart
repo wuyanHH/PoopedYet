@@ -58,6 +58,7 @@ class Settings {
     this.themeColor = AppThemeColor.caramel,
     this.defaultCalendarMode = CalendarMode.month,
     this.recordSortOrder = RecordSortOrder.desc,
+    this.liveIslandEnabled = true,
   });
 
   /// 每周起始日。日历网格的偏移量直接依赖它。
@@ -92,6 +93,10 @@ class Settings {
   /// 记录列表的排序规则（时间倒序 / 时间正序，默认时间倒序）。
   final RecordSortOrder recordSortOrder;
 
+  /// 实时灵动胶囊 / vivo 原子岛 / 状态栏与锁屏前台跳秒通知。
+  /// 关闭后，开屙时不展示前台通知，不调用前台服务。
+  final bool liveIslandEnabled;
+
   Settings copyWith({
     WeekStart? weekStart,
     bool? showBadges,
@@ -103,6 +108,7 @@ class Settings {
     AppThemeColor? themeColor,
     CalendarMode? defaultCalendarMode,
     RecordSortOrder? recordSortOrder,
+    bool? liveIslandEnabled,
   }) {
     return Settings(
       weekStart: weekStart ?? this.weekStart,
@@ -115,6 +121,7 @@ class Settings {
       themeColor: themeColor ?? this.themeColor,
       defaultCalendarMode: defaultCalendarMode ?? this.defaultCalendarMode,
       recordSortOrder: recordSortOrder ?? this.recordSortOrder,
+      liveIslandEnabled: liveIslandEnabled ?? this.liveIslandEnabled,
     );
   }
 }
@@ -129,6 +136,7 @@ const _kThemeMode = 'settings.themeMode';
 const _kThemeColor = 'settings.themeColor';
 const _kDefaultCalMode = 'settings.defaultCalendarMode';
 const _kRecordSortOrder = 'settings.recordSortOrder';
+const _kLiveIslandEnabled = 'settings.liveIslandEnabled';
 
 /// 首启的「已自动创建『我』」提示条是否已被关掉。
 /// 关过就永不再出现。
@@ -178,6 +186,7 @@ class SettingsNotifier extends Notifier<Settings> {
         (e) => e.name == rso,
         orElse: () => RecordSortOrder.desc,
       ),
+      liveIslandEnabled: p.getBool(_kLiveIslandEnabled) ?? true,
     );
   }
 
@@ -231,6 +240,11 @@ class SettingsNotifier extends Notifier<Settings> {
   void setThemeColor(AppThemeColor v) {
     state = state.copyWith(themeColor: v);
     _p.setString(_kThemeColor, v.name);
+  }
+
+  void setLiveIslandEnabled(bool v) {
+    state = state.copyWith(liveIslandEnabled: v);
+    _p.setBool(_kLiveIslandEnabled, v);
   }
 }
 

@@ -24,9 +24,26 @@ class ChangelogItem {
 /// 离线版本历史更新日志
 const List<ChangelogItem> kAppChangelogs = [
   ChangelogItem(
+    version: '1.1.3',
+    date: '2026年10月',
+    title: '设置页拆分四个专页 · 日历字号溢出修复与胶囊过渡打磨',
+    highlights: [
+      '【设置页拆分成四个专页】原先一整页的长列表按用途拆开：「外观与主题」负责深浅模式与五套手账色系，「日历与打卡视图」负责默认视图、每周起始日、排序、格内字号与角标，「通知与实时胶囊」负责实时胶囊开关与厂商适配说明，「关于屙了么」负责版本、更新与开源许可。找设置项不用再一路往下滚。',
+      '【实时胶囊可单独关闭】新增「开屙实时灵动胶囊」总开关，默认开启。关闭后开屙不再展示前台通知，也不再启动前台服务；原生侧补充 stopLiveIsland 通道方法，运行中可立即收掉胶囊。',
+      '【修复】系统字号放大到 1.3× 时，日历格底部溢出 1 像素（真机上表现为格子下方一条黄黑警戒条）。格高预算漏算了徽标行实际的 15px 行高与日期数字外层 1px 内边距，两处补齐后 1.3× 下仍有余量。',
+      '【修复】左右滑动切换月份时偶发的布局时序异常。日历卡的高度动画原先用零时长，会走 AnimationController 的同步通知分支，在布局过程中把自身标脏；改为 1ms 后走 ticker 分支，值的变化发生在帧回调里。',
+      '【便便感受胶囊】选中与取消改为整套联动过渡：底色、描边、阴影与文字颜色同时淡入淡出，不再出现「胶囊变色了但文字还在跳」；点击时也不再引起位置重排。',
+      '【页面转场】回归官方 MaterialPageRoute 与 PageTransitionsTheme：Android 使用 PredictiveBackPageTransitionsBuilder，iOS 使用原生 Cupertino 滑入，桌面使用 FadeForwards，方向关系在各平台都符合直觉。',
+      '【沉浸式边到边】接入 edgeToEdge 与透明系统导航栏，关闭导航栏对比度强制，内容延伸到状态栏与手势条之后，不再出现一条硬边色带。',
+      '【记录详情】已完成的记录，底部主按钮由「完成」降为次要样式的「关闭」。它本来就只是关掉弹层，不该以焦糖渐变大按钮的姿态冒充一个可执行的动作；只有进行中的记录才保留「完成打卡」。',
+      '【防社死暗号入口迁移】暗号模式开关并入「桌面小组件」管理页，切换后立即重推小组件快照，桌面文案即时生效。',
+      '【厂商胶囊兼容】通知渠道升级为 v5 并显式清理 v3 / v4 残留，避免旧渠道被系统静音降级的设置带过来；补齐 vivo 原子岛、小米焦点通知与 ColorOS 流体云的识别字段。',
+    ],
+  ),
+  ChangelogItem(
     version: '1.1.2',
     date: '2026年10月',
-    title: '🪟 桌面小组件交互全面修复 · 换人浮层重做与冷启动稳定性',
+    title: '桌面小组件交互全面修复 · 换人浮层重做与冷启动稳定性',
     highlights: [
       '【换人不再打开 App】点小组件成员区改为在独立任务里弹出浮层，不再把整个应用拽到前台，关掉浮层即回到桌面；',
       '【换人浮层重做】遮罩改为随窗口淡入、卡片自下而上滑入，去掉系统 Dialog 那套没有过渡的变暗与老旧缩放动画；',
@@ -40,7 +57,7 @@ const List<ChangelogItem> kAppChangelogs = [
   ChangelogItem(
     version: '1.1.1',
     date: '2026年10月',
-    title: '⬇️ 应用内直下安装 · 预测性返回手势与滚动性能治理',
+    title: '应用内直下安装 · 预测性返回手势与滚动性能治理',
     highlights: [
       '【应用内直下安装】更新弹窗支持应用内流式下载 APK，实时显示百分比、速度与剩余时间，下载完一键拉起系统安装器；',
       '【静默后台下载】点「后台下载并隐藏」后弹窗关闭、下载继续，通知栏不出现任何下载通知，主页只留一条可收起的迷你进度环；',
@@ -54,7 +71,7 @@ const List<ChangelogItem> kAppChangelogs = [
   ChangelogItem(
     version: '1.1.0',
     date: '2026年10月',
-    title: '✨ 桌面小组件 2.0 体系 · 专属成员绑定与自动云同步升级',
+    title: '桌面小组件 2.0 体系 · 专属成员绑定与自动云同步',
     isMilestone: true,
     highlights: [
       '【桌面小组件 2.0 全面进化】新增 34 种成员专属矢量图标头像体系，支持按成员定制专属小组件；',
@@ -68,7 +85,7 @@ const List<ChangelogItem> kAppChangelogs = [
   ChangelogItem(
     version: '1.0.0',
     date: '2025年03月',
-    title: '🎉 正式版里程碑首发 · 身心畅快之作',
+    title: '正式版里程碑首发 · 身心畅快之作',
     isMilestone: true,
     highlights: [
       '【桌面小组件就绪】小号撕历打卡 (2×2)、中号手帐周历 (4×2)、大号健康工作台 (4×4) 全面就绪，支持桌面一键开屙与完事；',
@@ -127,7 +144,6 @@ class ChangelogPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return SettingsScaffold(

@@ -274,8 +274,17 @@ void main() {
       final res = await db.startPoop(pooperId: a.id, at: DateTime(2026, 2, 11, 13));
       expect(res, isA<StartPoopOk>());
 
-      // 而 b 被占着，开不了
-      final blocked = await db.startPoop(pooperId: b.id, at: DateTime(2026, 2, 11, 14));
+      // 而 b 被占着，开不了。
+      //
+      // ⚠ 必须显式关掉 autoSettlePrevious：它默认是 true，会把 b 那条
+      //   （9:12 开始、此时已过 1 小时）自动收敛成「未记结束」再开新的，
+      //   于是拿到的是 StartPoopOk。这里要测的是**唯一索引这条约束本身**，
+      //   不是自动收敛的兜底行为。
+      final blocked = await db.startPoop(
+        pooperId: b.id,
+        at: DateTime(2026, 2, 11, 14),
+        autoSettlePrevious: false,
+      );
       expect(blocked, isA<StartPoopAlreadyActive>());
     });
   });

@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../data/database.dart';
 import '../../providers.dart';
 import '../../state/calendar_data.dart';
+import '../../state/settings.dart';
 import '../../theme/tokens.dart';
 import '../../widget/widget_binding.dart';
 import '../../widget/widget_snapshot_service.dart';
@@ -28,6 +29,7 @@ class WidgetManagerPage extends ConsumerStatefulWidget {
 
 class _WidgetManagerPageState extends ConsumerState<WidgetManagerPage> {
   static const _service = WidgetBindingService();
+  static const _keyIncognito = 'pref_incognito_mode';
 
   /// `null` 表示仍在读取中。
   List<WidgetBinding>? _bindings;
@@ -36,11 +38,30 @@ class _WidgetManagerPageState extends ConsumerState<WidgetManagerPage> {
   /// 之前这个按钮点下去毫无动静，用户根本不知道它到底在更新什么。
   double _refreshTurns = 0;
   bool _refreshing = false;
+  bool _isIncognito = false;
 
   @override
   void initState() {
     super.initState();
+    _loadIncognito();
     _reload();
+  }
+
+  Future<void> _loadIncognito() async {
+    final prefs = ref.read(sharedPrefsProvider);
+    if (mounted) {
+      setState(() {
+        _isIncognito = prefs.getBool(_keyIncognito) ?? false;
+      });
+    }
+  }
+
+  Future<void> _toggleIncognito(bool value) async {
+    setState(() => _isIncognito = value);
+    final prefs = ref.read(sharedPrefsProvider);
+    await prefs.setBool(_keyIncognito, value);
+    final db = ref.read(databaseProvider);
+    await WidgetSyncManager.sync(db);
   }
 
   /// 手动刷新 —— 做两件事，缺一不可：
@@ -102,6 +123,8 @@ class _WidgetManagerPageState extends ConsumerState<WidgetManagerPage> {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final bindings = _bindings;
 
+    final t = context.tokens;
+
     return SettingsScaffold(
       title: '桌面小组件',
       child: ListView(
@@ -111,6 +134,81 @@ class _WidgetManagerPageState extends ConsumerState<WidgetManagerPage> {
             onRefresh: _reload,
             refreshing: _refreshing,
             turns: _refreshTurns,
+          ),
+
+          // ---------------- 防社死暗号设置 ----------------
+          const SettingsSectionLabel('暗号设置'),
+          SettingsCard(
+            children: [
+              SettingsRow(
+                leading: LucideIcons.shieldCheck,
+                leadingColor: t.brandInk,
+                leadingBackground: t.brandSoft,
+                title: '暗号模式（防社死）',
+                subtitle: '小组件标题和打卡动作替换为健康生活暗号，杜绝窥屏尴尬',
+                trailing: SettingsSwitch(
+                  value: _isIncognito,
+                  onChanged: _toggleIncognito,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: t.paperDeep,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: t.lineSoft),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '常规展示效果',
+                              style: TextStyle(fontSize: 10.5, color: t.ink3),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '💩 屙了么 · 今日已屙 2 次',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: _isIncognito ? t.ink3 : t.brandInk,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(width: 1, height: 28, color: t.lineSoft),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '暗号保护效果',
+                              style: TextStyle(fontSize: 10.5, color: t.ink3),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '🌱 日常轻体 · 放空减负 2 次',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: _isIncognito ? t.brandInk : t.ink3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
 
           // 三款组件的真实预览图 —— 让用户在 App 里就能比较「哪个更适合我」，

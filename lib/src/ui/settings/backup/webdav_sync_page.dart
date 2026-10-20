@@ -1071,7 +1071,7 @@ class _FormField extends StatelessWidget {
                   ),
                 ),
               ),
-              if (suffixIcon != null) suffixIcon!,
+              ?suffixIcon,
             ],
           ),
         ),

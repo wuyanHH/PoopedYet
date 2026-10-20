@@ -79,10 +79,11 @@ void main() {
       expect(find.textContaining('10月12日'), findsOneWidget);
     });
 
-    testWidgets('结束时间默认空着，并说明非必填', (tester) async {
+    testWidgets('结束时间默认空着，备注标为可选填', (tester) async {
       await pump(tester);
-      expect(find.text('未填写'), findsOneWidget);
-      expect(find.textContaining('非必填'), findsWidgets);
+      expect(find.text('未填写'), findsOneWidget, reason: '结束时间默认留空');
+      // 旧版这里是「非必填」的一行说明，现在改成备注区标题右侧的「可选填」。
+      expect(find.text('可选填'), findsOneWidget);
     });
   });
 
@@ -166,7 +167,10 @@ void main() {
 
       await tester.enterText(find.byKey(const ValueKey('noteInput')), '补记一条');
       await tester.pumpAndSettle();
-      await tester.tap(find.text('添加这条备注'));
+      // 提交按钮的文案是「添加备注」（NoteComposer 内置，不是旧版的「添加这条备注」）。
+      await tester.ensureVisible(find.text('添加备注'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('添加备注'));
       await tester.pumpAndSettle();
 
       // 记录还不存在，所以库里应该还没有备注
@@ -189,7 +193,9 @@ void main() {
 
       await tester.enterText(find.byKey(const ValueKey('noteInput')), '不要这条');
       await tester.pumpAndSettle();
-      await tester.tap(find.text('添加这条备注'));
+      await tester.ensureVisible(find.text('添加备注'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('添加备注'));
       await tester.pumpAndSettle();
 
       // 待提交列表右侧的 ×（用 key 找 —— SheetShell 的关闭按钮同图标）

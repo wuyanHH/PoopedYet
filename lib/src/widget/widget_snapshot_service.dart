@@ -40,6 +40,11 @@ class WidgetSnapshotService {
         .get();
     final pooperMap = {for (final p in allPoopers) p.id: p};
 
+    // 1. 读取基础配置与开关（暗号模式、实时灵动胶囊开关）
+    final prefs = await SharedPreferences.getInstance();
+    final isIncognito = prefs.getBool(_keyIncognito) ?? false;
+    final isLiveIslandEnabled = prefs.getBool('settings.liveIslandEnabled') ?? true;
+
     // 2. 检查进行中的记录 —— **按人分开**。
     //
     // 每个人同时最多挂一条（由 ux_active_record 唯一索引保证），
@@ -61,8 +66,9 @@ class WidgetSnapshotService {
     }
 
     // 顶层 liveSession 仍然保留「全家最新的一条」，供锁屏胶囊 / 前台服务使用；
-    // 但它现在带上实际开屙者，通知栏不会再显示成默认成员的名字。
-    final anyLive = activeRecords.isNotEmpty ? activeRecords.first : null;
+    // 如果用户在设置中关闭了灵动岛/实时胶囊，直接置为 isLive: false，
+    // 彻底阻断原生前台服务的启动，并让已运行的服务立刻停止！
+    final anyLive = (activeRecords.isNotEmpty && isLiveIslandEnabled) ? activeRecords.first : null;
     final liveSession = anyLive != null
         ? WidgetLiveSession(
             isLive: true,
@@ -350,10 +356,6 @@ class WidgetSnapshotService {
         );
       }
     }
-
-    // 7. 读取暗号模式开关
-    final prefs = await SharedPreferences.getInstance();
-    final isIncognito = prefs.getBool(_keyIncognito) ?? false;
 
     final defaultScheme = avatarColorFor(defaultPooper.id);
     final defaultBgHex = '#${(defaultScheme.bg.toARGB32() & 0x00FFFFFF).toRadixString(16).padLeft(6, '0')}';

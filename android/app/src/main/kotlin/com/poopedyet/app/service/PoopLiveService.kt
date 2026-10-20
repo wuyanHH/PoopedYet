@@ -28,8 +28,8 @@ class PoopLiveService : Service {
     constructor() : super()
 
     companion object {
-        // 使用 v4 渠道强制在真机上重建 IMPORTANCE_HIGH 高优先级通知渠道，解决旧版本通道被 vivo OriginOS 静音降级的问题
-        const val CHANNEL_ID = "poop_live_island_v4"
+        // 使用 v5 渠道彻底避免旧渠道被 vivo OriginOS / 小米 HyperOS 静音降级残留
+        const val CHANNEL_ID = "poop_live_capsule_v5"
         const val NOTIFICATION_ID = 9527
 
         const val ACTION_START_LIVE = "com.poopedyet.app.START_LIVE"
@@ -67,13 +67,36 @@ class PoopLiveService : Service {
             }
             context.startService(intent)
         }
+
+        fun createNotificationChannel(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                // 清理历史旧渠道，确保全新 v5 渠道的高优先级和悬浮权限生效
+                try {
+                    manager.deleteNotificationChannel("poop_live_island_v3")
+                    manager.deleteNotificationChannel("poop_live_island_v4")
+                } catch (_: Exception) {}
+
+                val name = "如厕实时活动与状态栏胶囊"
+                val desc = "在进行排便时展示实时秒表与一键完成快捷操作"
+                // 必须设为 IMPORTANCE_HIGH 才能被 vivo OriginOS、小米 HyperOS、OPPO 流体云识别为焦点通知/胶囊
+                val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = desc
+                    setShowBadge(true)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    enableLights(true)
+                    enableVibration(false)
+                }
+                manager.createNotificationChannel(channel)
+            }
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        createNotificationChannel(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -121,39 +144,14 @@ class PoopLiveService : Service {
         stopSelf()
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            // 尝试清理旧渠道，防止旧版本静音降级设置残留
-            try {
-                manager.deleteNotificationChannel("poop_live_island_v3")
-            } catch (_: Exception) {}
-
-            val name = "如厕实时活动与状态栏胶囊"
-            val desc = "在进行排便时展示实时秒表与一键完成快捷操作"
-            // 必须设为 IMPORTANCE_HIGH 才能被 vivo OriginOS、小米 HyperOS、OPPO 流体云识别为焦点通知/胶囊
-            val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
-                description = desc
-                setShowBadge(true)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                enableLights(true)
-                enableVibration(false)
-                setSound(null, null)
-            }
-            manager.createNotificationChannel(channel)
-        }
-    }
-
     private fun buildLiveNotification(
         recordId: String,
         pooperName: String,
         startedAtMillis: Long,
         isIncognito: Boolean
     ): Notification {
-        // 计算 Chronometer 基准时间：SystemClock.elapsedRealtime - 已过去的毫秒
-        val elapsedRealtime = SystemClock.elapsedRealtime()
-        val durationAlready = (System.currentTimeMillis() - startedAtMillis).coerceAtLeast(0)
-        val baseChronometerTime = elapsedRealtime - durationAlready
+        // 挂钟开始时间（毫秒级 Epoch 时间戳），Notification.when 与 Chronometer 基准均基于真实挂钟时间
+        val validStartedAt = if (startedAtMillis > 0L) startedAtMillis else System.currentTimeMillis()
 
         // 点击通知主体：打开主页
         val openIntent = Intent(this, MainActivity::class.java).apply {
@@ -183,18 +181,26 @@ class PoopLiveService : Service {
         val finishBtnText = if (isIncognito) "放空达成" else "完成打卡"
 
         val extras = Bundle().apply {
+            // vivo OriginOS 4 / 5 / 6 原子岛与悬浮横幅识别
+            putBoolean("vivo.summaryNotification", false)
+            putBoolean("vivo.enableFloat", true)
+            putBoolean("vivo.enableKeyguard", true)
+            putString("vivo.notification.type", "capsule")
+            putInt("vivo.notification.importance", 4)
+
             // 小米 HyperOS 澎湃 OS 焦点通知 / 灵动胶囊识别
             putString("android.substName", "屙了么")
             putBoolean("miui.enableFloat", true)
             putBoolean("miui.enableKeyguard", true)
             putBoolean("show_when_locked", true)
+
             // OPPO / 一加 / realme (ColorOS 14+) 流体云胶囊识别
             putBoolean("com.coloros.notification.capsule", true)
             putString("com.coloros.notification.capsule_type", "stopwatch")
-            // vivo OriginOS 悬浮横幅通知与锁屏胶囊兼容识别
-            putBoolean("vivo.summaryNotification", false)
-            putBoolean("vivo.enableFloat", true)
-            putBoolean("vivo.enableKeyguard", true)
+            putLong("com.coloros.notification.capsule_start_time", validStartedAt)
+
+            // 华为实况窗模拟
+            putString("hw_live_window_type", "stopwatch")
         }
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -216,7 +222,7 @@ class PoopLiveService : Service {
             // 启用系统级秒表计时器（精准跳秒、极其省电）
             .setUsesChronometer(true)
             .setChronometerCountDown(false)
-            .setWhen(baseChronometerTime)
+            .setWhen(validStartedAt)
             // CATEGORY_STOPWATCH 是厂商灵动胶囊识别的核心标记
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setColor(0xFFA85F29.toInt()) // 焦糖品牌色
