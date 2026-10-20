@@ -175,7 +175,7 @@ class PoopLiveService : Service {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val title = if (isIncognito) "🧻 $pooperName 正在深度放空中..." else "🧻 $pooperName 正在如厕中..."
+        val title = if (isIncognito) "$pooperName 正在深度放空中..." else "$pooperName 正在如厕中..."
         val subText = if (isIncognito) "身心减负中" else "如厕计时进行中"
         val contentText = if (isIncognito) "正在深度放空，身心减负中..." else "正在如厕计时中，点击进入应用"
         val finishBtnText = if (isIncognito) "放空达成" else "完成打卡"

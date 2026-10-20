@@ -105,7 +105,7 @@ class AboutAppPage extends ConsumerStatefulWidget {
           ),
         );
       } else if (result.status == AutoUpdateStatus.upToDate) {
-        _showSnack(context, '🎉 当前已是最新版本 (v$kAppVersion)');
+        _showSnack(context, '当前已是最新版本 (v$kAppVersion)');
       } else {
         _showSnack(context, '未检测到新版本发布（若网络受限可稍后重试）');
       }
@@ -144,7 +144,7 @@ class _AboutAppPageState extends ConsumerState<AboutAppPage> {
         _developerModeUnlocked = true;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('🛠️ 已激活开发者调试菜单'),
+            content: const Text('已激活开发者调试菜单'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: context.tokens.ink,
           ),
@@ -283,7 +283,7 @@ class _AboutAppPageState extends ConsumerState<AboutAppPage> {
 
           // ---------------- 开发者调试彩蛋 ----------------
           if (_developerModeUnlocked || kDebugMode) ...[
-            const SettingsSectionLabel('🛠️ 开发者调试工具'),
+            const SettingsSectionLabel('开发者调试工具'),
             SettingsCard(
               children: [
                 SettingsRow(
@@ -321,7 +321,7 @@ class _AboutAppPageState extends ConsumerState<AboutAppPage> {
           ),
         ),
         content: Text(
-          '⚠️ 警告：演示数据会清空现有所有记录与人员，并生成虚构打卡样本。确定要继续吗？',
+          '警告：演示数据会清空现有所有记录与人员，并生成虚构打卡样本。确定要继续吗？',
           style: TextStyle(fontSize: 13, color: t.ink2, height: 1.5),
         ),
         actions: [

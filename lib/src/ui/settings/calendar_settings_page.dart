@@ -316,7 +316,7 @@ class _CalendarLivePreview extends StatelessWidget {
                                   ),
                                   alignment: Alignment.center,
                                   child: const Text(
-                                    '💩',
+                                    '我',
                                     style: TextStyle(fontSize: 8),
                                   ),
                                 ),

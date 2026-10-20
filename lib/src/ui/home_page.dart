@@ -45,7 +45,7 @@ class HomePage extends ConsumerWidget {
     // 挂载桌面小组件 Deep Link 调度器（一键开屙/完成记录/定位日历）
     ref.watch(widgetDeepLinkHandlerProvider);
 
-    // 监听来自桌面小组件的 UI 动作分发（如 4x4 大号组件点击“📝 补录”）
+    // 监听来自桌面小组件的 UI 动作分发（如 4x4 大号组件点击“补录”）
     ref.listen<WidgetUiAction?>(widgetActionTriggerProvider, (prev, next) {
       if (next == WidgetUiAction.backfill) {
         ref.read(widgetActionTriggerProvider.notifier).clear();

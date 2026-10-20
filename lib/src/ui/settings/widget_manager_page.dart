@@ -172,7 +172,7 @@ class _WidgetManagerPageState extends ConsumerState<WidgetManagerPage> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '💩 屙了么 · 今日已屙 2 次',
+                              '屙了么 · 今日已屙 2 次',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w600,
@@ -194,7 +194,7 @@ class _WidgetManagerPageState extends ConsumerState<WidgetManagerPage> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '🌱 日常轻体 · 放空减负 2 次',
+                              '日常轻体 · 放空减负 2 次',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w600,

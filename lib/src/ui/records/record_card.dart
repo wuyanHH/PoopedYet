@@ -21,8 +21,8 @@ import '../widgets/pooper_avatar.dart';
 ///   - 抛弃生硬且在圆角处穿帮露底的 Dismissible，自研无缝贴合的物理阻尼弹簧抽屉卡片
 ///   - 彻底解决圆角与滑动背景之间的三角形空白瑕疵
 ///   - 左右滑动作语义清晰解耦：
-///     * 向左滑 👈：核心生命周期流转（无结束时间 ➔ 结束打卡并记为当前时间；已有结束时间 ➔ 删除记录）
-///     * 向右滑 👉：内容补充（添加便签备注 / 补充打卡细节，绝不再混淆为标记完成）
+///     * 向左滑：核心生命周期流转（无结束时间则结束打卡并记为当前时间；已有结束时间则删除记录）
+///     * 向右滑：内容补充（添加便签备注 / 补充打卡细节，绝不再混淆为标记完成）
 ///   - 自带自然渐进阻尼与弹性复位动效
 class RecordCard extends ConsumerStatefulWidget {
   const RecordCard({
@@ -496,7 +496,7 @@ class _RecordCardState extends ConsumerState<RecordCard>
 
                     if (isLeftSwipe) {
                       if (!hasEnded) {
-                        // 未结束 ➔ 结束打卡：立即标记完成状态，保证弹簧回弹期间底板保持翡翠绿与已完成状态，绝不闪变红色删除
+                        // 未结束则结束打卡：立即标记完成状态，保证弹簧回弹期间底板保持翡翠绿与已完成状态，绝不闪变红色删除
                         HapticFeedback.lightImpact();
                         setState(() => _isCompleting = true);
                         _resetPosition(spring: true);
@@ -516,12 +516,12 @@ class _RecordCardState extends ConsumerState<RecordCard>
                             );
                         }
                       } else {
-                        // 已结束 ➔ 触发丝滑删除物理动效
+                        // 已结束则触发丝滑删除物理动效
                         HapticFeedback.mediumImpact();
                         await _executeDelete();
                       }
                     } else if (isRightSwipe) {
-                      // 向右滑 👉：内容补充操作（添加便签备注）
+                      // 向右滑：内容补充操作（添加便签备注）
                       HapticFeedback.lightImpact();
                       _resetPosition(spring: true);
                       if (widget.onAddNote != null) {

@@ -10,7 +10,7 @@
     <string name="widget_large_name">屙了么 · 家庭看板 (4×4)</string>
     <string name="widget_large_desc">全员今日状态、最新便签与快捷工作台</string>
 
-    <string name="widget_btn_start">🧻 现在开屙</string>
+    <string name="widget_btn_start">现在开屙</string>
     <string name="widget_btn_finish">完成并记录</string>
     <string name="widget_live_recording">正在屙...</string>
     <string name="widget_today_empty">今天尚未记录</string>
