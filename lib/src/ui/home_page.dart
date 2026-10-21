@@ -57,7 +57,7 @@ class HomePage extends ConsumerWidget {
       }
     });
 
-    // 启动静默检查更新：延迟几秒、24 小时内最多一次、失败完全无声。
+    // 启动静默检查更新：延迟几秒、6 小时内最多一次、失败完全无声。
     // 只有真发现新版本才弹窗，同一个版本只打扰一次。
     ref.listen<AsyncValue<AutoUpdateResult>>(autoUpdateCheckProvider, (_, next) {
       final result = next.value;

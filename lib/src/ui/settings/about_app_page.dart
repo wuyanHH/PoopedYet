@@ -11,6 +11,7 @@ import '../../data/update/apk_downloader.dart';
 import '../../data/update/app_version.dart';
 import '../../data/update/auto_update_checker.dart';
 import '../../data/update/update_prefs.dart';
+import '../../data/update/update_service.dart';
 import '../../dev/demo_seeder.dart';
 import '../../providers.dart';
 import '../../state/calendar_data.dart';
@@ -27,6 +28,9 @@ import 'changelog_page.dart';
 /// 以及版本号连击 5 次激活的开发者调试彩蛋。
 class AboutAppPage extends ConsumerStatefulWidget {
   const AboutAppPage({super.key});
+
+  /// 开源仓库地址
+  static const repoUrl = 'https://github.com/wuyanHH/PoopedYet';
 
   /// 手动检查更新逻辑（供主页与本页复用）
   static Future<void> handleCheckUpdate(
@@ -265,6 +269,33 @@ class _AboutAppPageState extends ConsumerState<AboutAppPage> {
           const SettingsSectionLabel('协议与致谢'),
           SettingsCard(
             children: [
+              SettingsRow(
+                leading: LucideIcons.gitBranch,
+                leadingColor: t.brandInk,
+                leadingBackground: t.brandSoft,
+                title: '开源项目主页',
+                subtitle: AboutAppPage.repoUrl,
+                trailing: const SettingsChevron(),
+                onTap: () async {
+                  HapticFeedback.lightImpact();
+                  final ok = await UpdateService.openUrl(AboutAppPage.repoUrl);
+                  if (!ok && context.mounted) {
+                    await Clipboard.setData(
+                      const ClipboardData(text: AboutAppPage.repoUrl),
+                    );
+                    AboutAppPage._showSnack(context, '已复制仓库链接到剪贴板');
+                  }
+                },
+                onLongPress: () async {
+                  HapticFeedback.mediumImpact();
+                  await Clipboard.setData(
+                    const ClipboardData(text: AboutAppPage.repoUrl),
+                  );
+                  if (context.mounted) {
+                    AboutAppPage._showSnack(context, '已复制仓库链接到剪贴板');
+                  }
+                },
+              ),
               SettingsRow(
                 leading: LucideIcons.notebookPen,
                 leadingColor: t.brandInk,

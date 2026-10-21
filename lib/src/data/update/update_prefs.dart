@@ -70,7 +70,7 @@ class UpdatePrefsNotifier extends Notifier<UpdatePrefs> {
   /// 开关自动检查。
   ///
   /// 重新打开时清掉上次检查时间：下次冷启动会立刻查一次，
-  /// 而不是让人再等满 24 小时。
+  /// 而不是让人再等满 6 小时。
   void setAutoCheck(bool value) {
     // copyWith 的可空参数用 `??` 兜底，传 null 表示「保持原值」，
     // 所以清空 lastCheckAt 只能在这里显式构造。

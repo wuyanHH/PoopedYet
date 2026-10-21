@@ -289,6 +289,7 @@ class SettingsRow extends StatelessWidget {
     this.leadingBackground,
     this.trailing,
     this.onTap,
+    this.onLongPress,
     this.borderRadius,
     this.danger = false,
   });
@@ -301,6 +302,7 @@ class SettingsRow extends StatelessWidget {
   final Color? leadingBackground;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final BorderRadius? borderRadius;
 
   /// 危险操作（删除、清空）用红字。
@@ -366,9 +368,10 @@ class SettingsRow extends StatelessWidget {
       ),
     );
 
-    if (onTap == null) return row;
+    if (onTap == null && onLongPress == null) return row;
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       borderRadius: borderRadius,
       child: row,
     );

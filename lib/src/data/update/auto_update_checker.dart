@@ -50,10 +50,10 @@ class AutoUpdateResult {
 /// 检查更新的统一入口：自动路径与手动路径共用同一段逻辑。
 abstract final class AutoUpdateChecker {
   /// 两次自动检查之间的最小间隔。
-  static const Duration interval = Duration(hours: 24);
+  static const Duration interval = Duration(hours: 6);
 
   /// 间隔的人话描述，设置页副标题直接引用它，避免文案与代码走偏。
-  static const String intervalLabel = '24 小时内最多检查一次';
+  static const String intervalLabel = '6 小时内最多检查一次';
 
   /// 启动静默检查在首屏渲染后延后多久再发请求。
   static const Duration startupDelay = Duration(seconds: 3);
